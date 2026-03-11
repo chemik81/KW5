@@ -584,8 +584,8 @@
     </div>
   </div>
 
-  <!-- Import -->
-  <div class="card" style="margin-top:16px;">
+  <!-- Import hidden in demo -->
+  <div style="display:none">
     <div class="card-title">📥 Import Matches (JSON)</div>
     <p style="color:var(--text2);font-size:13px;margin-bottom:12px;">Paste exported JSON data to import matches.</p>
     <textarea id="import-json" rows="5" style="width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:8px;font-family:monospace;font-size:12px;" placeholder='{"matches":[...]}'></textarea>
@@ -757,31 +757,54 @@ let screenshotBase64 = null;
 // DEMO DATA
 // =============================================
 function loadDemoData() {
-  state.teams = ['Katowice Wolves','Warsaw Bulls','Cracow Kings','Gdansk Sharks','Poznan Lions','Wroclaw Eagles'];
-  state.rounds = [
-    { id:'r1', name:'Round 1', from:'2025-02-01', to:'2025-02-07' },
-    { id:'r2', name:'Round 2', from:'2025-02-08', to:'2025-02-14' },
-    { id:'r3', name:'Round 3', from:'2025-02-15', to:'2025-02-21' },
-    { id:'r4', name:'Round 4', from:'2025-02-22', to:'2025-02-28' },
-    { id:'r5', name:'Round 5', from:'2025-03-01', to:'2025-03-07' },
-    { id:'r6', name:'Round 6', from:'2026-03-08', to:'2026-03-14' },
+  state.teams = [
+    'Katowice Wolves','Warsaw Bulls','Cracow Kings','Gdansk Sharks','Poznan Lions',
+    'Wroclaw Eagles','Lodz Falcons','Szczecin Tigers','Lublin Knights','Bydgoszcz Bears',
+    'Torun Hawks','Rzeszow Dragons','Kielce Storm','Bialystok Lynx','Olsztyn Foxes',
+    'Radom Vipers','Opole Giants','Gliwice Cobras','Czestochowa Wolves','Tarnow Raptors'
   ];
 
-  const players = {
-    'Katowice Wolves':   [['KingSlayer','PG','A+',98],['IronBlock','C','B+',87],['QuickDraw','SG','A',93],['SkyWalker','SF','B',82],['StoneWall','PF','A-',89]],
-    'Warsaw Bulls':      [['BullRush','PG','A',91],['NetBurner','SG','A+',97],['CrownZ','SF','B+',85],['TowerUp','PF','B',80],['VaultMan','C','A-',88]],
-    'Cracow Kings':      [['KingPIN','PG','A-',90],['FlashStep','SG','B+',84],['AirMax','SF','A',92],['GlassEater','PF','A-',89],['Pillar','C','B',79]],
-    'Gdansk Sharks':     [['SharkBite','PG','B+',86],['WaveRider','SG','A',91],['DeepCut','SF','B',81],['TideBreak','PF','A+',96],['CoralWall','C','B+',83]],
-    'Poznan Lions':      [['LionHeart','PG','A',93],['ManeFlow','SG','A-',88],['ClawMark','SF','B+',85],['RoarUp','PF','B',78],['GoldMane','C','A-',87]],
-    'Wroclaw Eagles':    [['EagleEye','PG','A+',99],['TalonSwipe','SG','A',92],['HighSoar','SF','A-',89],['NestGuard','PF','B+',84],['WingSpan','C','B',80]],
+  state.rounds = [
+    { id:'r1', name:'Round 1',  from:'2025-01-06', to:'2025-01-12' },
+    { id:'r2', name:'Round 2',  from:'2025-01-13', to:'2025-01-19' },
+    { id:'r3', name:'Round 3',  from:'2025-01-20', to:'2025-01-26' },
+    { id:'r4', name:'Round 4',  from:'2025-01-27', to:'2025-02-02' },
+    { id:'r5', name:'Round 5',  from:'2025-02-03', to:'2025-02-09' },
+    { id:'r6', name:'Round 6',  from:'2025-02-10', to:'2025-02-16' },
+    { id:'r7', name:'Round 7',  from:'2025-02-17', to:'2025-02-23' },
+    { id:'r8', name:'Round 8',  from:'2025-02-24', to:'2025-03-02' },
+    { id:'r9', name:'Round 9',  from:'2025-03-03', to:'2025-03-09' },
+    { id:'r10',name:'Round 10', from:'2026-03-10', to:'2026-03-16' },
+  ];
+
+  const roster = {
+    'Katowice Wolves':    [['KingSlayer','PG','A+',98],['IronBlock','C','B+',87],['QuickDraw','SG','A',93],['SkyWalker','SF','B',82],['StoneWall','PF','A-',89]],
+    'Warsaw Bulls':       [['BullRush','PG','A',91],['NetBurner','SG','A+',97],['CrownZ','SF','B+',85],['TowerUp','PF','B',80],['VaultMan','C','A-',88]],
+    'Cracow Kings':       [['KingPIN','PG','A-',90],['FlashStep','SG','B+',84],['AirMax','SF','A',92],['GlassEater','PF','A-',89],['Pillar','C','B',79]],
+    'Gdansk Sharks':      [['SharkBite','PG','B+',86],['WaveRider','SG','A',91],['DeepCut','SF','B',81],['TideBreak','PF','A+',96],['CoralWall','C','B+',83]],
+    'Poznan Lions':       [['LionHeart','PG','A',93],['ManeFlow','SG','A-',88],['ClawMark','SF','B+',85],['RoarUp','PF','B',78],['GoldMane','C','A-',87]],
+    'Wroclaw Eagles':     [['EagleEye','PG','A+',99],['TalonSwipe','SG','A',92],['HighSoar','SF','A-',89],['NestGuard','PF','B+',84],['WingSpan','C','B',80]],
+    'Lodz Falcons':       [['FalconX','PG','B+',85],['DiveBomb','SG','A-',88],['WindCut','SF','B',79],['DropZone','PF','B+',83],['StoneFist','C','A',90]],
+    'Szczecin Tigers':    [['TigerClaw','PG','A',92],['StripeFire','SG','B+',86],['JungleCut','SF','A-',89],['RoarBack','PF','B',77],['BigCat','C','B+',84]],
+    'Lublin Knights':     [['SirSlam','PG','B+',84],['ShieldUp','SG','B',78],['LanceThrow','SF','A-',88],['ArmorPlate','PF','B+',82],['FortWall','C','A-',87]],
+    'Bydgoszcz Bears':    [['GrizzlyG','PG','A-',89],['PawSwipe','SG','B+',85],['HoneyTrap','SF','B',80],['WildCharge','PF','A',91],['IceCave','C','B',78]],
+    'Torun Hawks':        [['HawkVision','PG','A',90],['TalonDive','SG','A-',87],['SkyScraper','SF','B+',83],['WindRider','PF','B',79],['NightHawk','C','B+',82]],
+    'Rzeszow Dragons':    [['DragonFire','PG','A+',97],['ScaleBreak','SG','A',91],['InfernoCut','SF','A-',88],['TailWhip','PF','B+',84],['DragonWall','C','B',81]],
+    'Kielce Storm':       [['ThunderBolt','PG','A',93],['LightningQ','SG','A+',96],['StormCell','SF','B+',85],['TornadoZ','PF','B',79],['CloudBurst','C','A-',86]],
+    'Bialystok Lynx':     [['LynxLeap','PG','B+',86],['QuietPaw','SG','A-',88],['ShadowStep','SF','B',80],['NightStalk','PF','B+',83],['ColdEyes','C','A',90]],
+    'Olsztyn Foxes':      [['SlyFox','PG','A-',89],['TrickShot','SG','B+',84],['CunningCut','SF','B',78],['RedBrush','PF','A-',87],['DenGuard','C','B',77]],
+    'Radom Vipers':       [['ViperStrike','PG','A',92],['PoisonShot','SG','A-',88],['FangCut','SF','B+',85],['CoilUp','PF','B',79],['SerpentWall','C','B+',82]],
+    'Opole Giants':       [['BigStep','PG','B',77],['TowerShot','SG','B+',83],['HighReach','SF','A-',87],['MountainQ','PF','A',91],['BoulderBlock','C','A+',95]],
+    'Gliwice Cobras':     [['CobraCoil','PG','A-',88],['HoodFlare','SG','B+',85],['StrikeZone','SF','B',80],['VenomDrop','PF','A-',86],['PitViperC','C','B',78]],
+    'Czestochowa Wolves': [['PackLeader','PG','A',91],['NightHowl','SG','A-',87],['MoonRun','SF','B+',84],['AlphaWolf','PF','A+',96],['FrostBite','C','B+',83]],
+    'Tarnow Raptors':     [['RaptorClaw','PG','A+',98],['VelociQ','SG','A',92],['DinoSlam','SF','A-',89],['PreySeeker','PF','B+',85],['FeatherWall','C','B',80]],
   };
 
-  const positions = ['PG','SG','SF','PF','C'];
-  const teamNames = Object.keys(players);
+  function rnd(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
 
   function mkPlayer(teamName, idx, winnerSide) {
-    const [name, pos, grade, cs] = players[teamName][idx];
-    const base = winnerSide ? [18,22] : [12,18];
+    const [name, pos, grade, cs] = roster[teamName][idx];
+    const base = winnerSide ? [18,28] : [10,18];
     const pts  = rnd(base[0], base[1]);
     const reb  = pos==='C'||pos==='PF' ? rnd(6,14) : rnd(2,7);
     const ast  = pos==='PG' ? rnd(5,12) : rnd(1,5);
@@ -794,51 +817,69 @@ function loadDemoData() {
     return { name, pos, grade, cs, pts, reb, ast, stl, blk, to, fg_pct:fg, tp_pct:tp, ft_pct:ft, team:teamName };
   }
 
-  function rnd(a,b){ return Math.floor(Math.random()*(b-a+1))+a; }
-
   function mkMatch(id, date, t1, t2, w1) {
-    const s1 = w1 ? rnd(72,109) : rnd(58,89);
-    const s2 = w1 ? rnd(58,89)  : rnd(72,109);
-    const t1players = players[t1].map((_,i) => mkPlayer(t1, i, w1));
-    const t2players = players[t2].map((_,i) => mkPlayer(t2, i, !w1));
-    return { id, date, team1:t1, team2:t2, score1:s1, score2:s2, team1_players:t1players, team2_players:t2players, note:'', walkover:false };
+    const s1 = w1 ? rnd(75,112) : rnd(58,89);
+    const s2 = w1 ? rnd(58,89)  : rnd(75,112);
+    const t1p = roster[t1].map((_,i) => mkPlayer(t1, i, w1));
+    const t2p = roster[t2].map((_,i) => mkPlayer(t2, i, !w1));
+    return { id:String(id), date, team1:t1, team2:t2, score1:s1, score2:s2, team1_players:t1p, team2_players:t2p, note:'', walkover:false };
   }
 
-  // Seed for consistent results
+  const T = state.teams;
   const seed = [
-    ['2025-02-03','Katowice Wolves','Warsaw Bulls',true],
-    ['2025-02-04','Cracow Kings','Gdansk Sharks',false],
-    ['2025-02-05','Poznan Lions','Wroclaw Eagles',true],
-    ['2025-02-06','Warsaw Bulls','Cracow Kings',true],
-    ['2025-02-07','Gdansk Sharks','Katowice Wolves',false],
-    ['2025-02-10','Wroclaw Eagles','Warsaw Bulls',false],
-    ['2025-02-11','Katowice Wolves','Cracow Kings',true],
-    ['2025-02-12','Gdansk Sharks','Poznan Lions',true],
-    ['2025-02-13','Warsaw Bulls','Gdansk Sharks',true],
-    ['2025-02-14','Cracow Kings','Wroclaw Eagles',true],
-    ['2025-02-17','Poznan Lions','Katowice Wolves',false],
-    ['2025-02-18','Wroclaw Eagles','Cracow Kings',false],
-    ['2025-02-19','Warsaw Bulls','Poznan Lions',true],
-    ['2025-02-20','Gdansk Sharks','Wroclaw Eagles',true],
-    ['2025-02-21','Katowice Wolves','Warsaw Bulls',false],
-    ['2025-02-24','Cracow Kings','Poznan Lions',true],
-    ['2025-02-25','Wroclaw Eagles','Katowice Wolves',true],
-    ['2025-02-26','Warsaw Bulls','Cracow Kings',false],
-    ['2025-02-27','Poznan Lions','Gdansk Sharks',false],
-    ['2025-02-28','Katowice Wolves','Cracow Kings',true],
-    ['2025-03-03','Gdansk Sharks','Warsaw Bulls',false],
-    ['2025-03-04','Wroclaw Eagles','Poznan Lions',true],
-    ['2025-03-05','Cracow Kings','Katowice Wolves',false],
-    ['2025-03-06','Warsaw Bulls','Wroclaw Eagles',true],
-    ['2025-03-07','Poznan Lions','Cracow Kings',true],
-    ['2026-03-09','Katowice Wolves','Gdansk Sharks',true],
-    ['2026-03-10','Warsaw Bulls','Poznan Lions',false],
-    ['2026-03-11','Wroclaw Eagles','Cracow Kings',true],
-    ['2026-03-12','Gdansk Sharks','Cracow Kings',false],
-    ['2026-03-13','Katowice Wolves','Poznan Lions',true],
+    // Round 1 - Jan 6-12
+    ['2025-01-06',T[0],T[1],true],  ['2025-01-06',T[2],T[3],false], ['2025-01-07',T[4],T[5],true],
+    ['2025-01-07',T[6],T[7],false], ['2025-01-08',T[8],T[9],true],  ['2025-01-08',T[10],T[11],true],
+    ['2025-01-09',T[12],T[13],false],['2025-01-09',T[14],T[15],true],['2025-01-10',T[16],T[17],false],
+    ['2025-01-10',T[18],T[19],true],
+    // Round 2 - Jan 13-19
+    ['2025-01-13',T[1],T[2],true],  ['2025-01-13',T[3],T[4],false], ['2025-01-14',T[5],T[6],true],
+    ['2025-01-14',T[7],T[8],true],  ['2025-01-15',T[9],T[10],false],['2025-01-15',T[11],T[12],true],
+    ['2025-01-16',T[13],T[14],false],['2025-01-16',T[15],T[16],true],['2025-01-17',T[17],T[18],true],
+    ['2025-01-17',T[19],T[0],false],
+    // Round 3 - Jan 20-26
+    ['2025-01-20',T[0],T[2],true],  ['2025-01-20',T[1],T[3],false], ['2025-01-21',T[4],T[6],true],
+    ['2025-01-21',T[5],T[7],false], ['2025-01-22',T[8],T[10],true], ['2025-01-22',T[9],T[11],false],
+    ['2025-01-23',T[12],T[14],true],['2025-01-23',T[13],T[15],false],['2025-01-24',T[16],T[18],true],
+    ['2025-01-24',T[17],T[19],false],
+    // Round 4 - Jan 27 - Feb 2
+    ['2025-01-27',T[3],T[0],false], ['2025-01-27',T[5],T[2],true],  ['2025-01-28',T[7],T[4],false],
+    ['2025-01-28',T[9],T[6],true],  ['2025-01-29',T[11],T[8],false],['2025-01-29',T[13],T[10],true],
+    ['2025-01-30',T[15],T[12],false],['2025-01-30',T[17],T[14],true],['2025-01-31',T[19],T[16],false],
+    ['2025-01-31',T[1],T[18],true],
+    // Round 5 - Feb 3-9
+    ['2025-02-03',T[0],T[4],true],  ['2025-02-03',T[1],T[5],false], ['2025-02-04',T[2],T[6],true],
+    ['2025-02-04',T[3],T[7],true],  ['2025-02-05',T[8],T[12],false],['2025-02-05',T[9],T[13],true],
+    ['2025-02-06',T[10],T[14],false],['2025-02-06',T[11],T[15],true],['2025-02-07',T[16],T[19],true],
+    ['2025-02-07',T[17],T[18],false],
+    // Round 6 - Feb 10-16
+    ['2025-02-10',T[5],T[0],true],  ['2025-02-10',T[6],T[1],false], ['2025-02-11',T[7],T[2],true],
+    ['2025-02-11',T[8],T[3],false], ['2025-02-12',T[9],T[4],true],  ['2025-02-12',T[14],T[10],false],
+    ['2025-02-13',T[15],T[11],true],['2025-02-13',T[16],T[12],false],['2025-02-14',T[17],T[13],true],
+    ['2025-02-14',T[18],T[19],true],
+    // Round 7 - Feb 17-23
+    ['2025-02-17',T[0],T[6],true],  ['2025-02-17',T[1],T[7],true],  ['2025-02-18',T[2],T[8],false],
+    ['2025-02-18',T[3],T[9],true],  ['2025-02-19',T[4],T[10],false],['2025-02-19',T[5],T[11],true],
+    ['2025-02-20',T[12],T[17],false],['2025-02-20',T[13],T[18],true],['2025-02-21',T[14],T[19],false],
+    ['2025-02-21',T[15],T[16],true],
+    // Round 8 - Feb 24 - Mar 2
+    ['2025-02-24',T[7],T[0],false], ['2025-02-24',T[8],T[1],true],  ['2025-02-25',T[9],T[2],false],
+    ['2025-02-25',T[10],T[3],true], ['2025-02-26',T[11],T[4],false],['2025-02-26',T[12],T[5],true],
+    ['2025-02-27',T[13],T[6],false],['2025-02-27',T[19],T[14],true],['2025-02-28',T[16],T[15],false],
+    ['2025-02-28',T[18],T[17],true],
+    // Round 9 - Mar 3-9
+    ['2025-03-03',T[0],T[8],true],  ['2025-03-03',T[1],T[9],false], ['2025-03-04',T[2],T[10],true],
+    ['2025-03-04',T[3],T[11],false],['2025-03-05',T[4],T[12],true], ['2025-03-05',T[5],T[13],false],
+    ['2025-03-06',T[6],T[14],true], ['2025-03-06',T[7],T[15],false],['2025-03-07',T[16],T[17],true],
+    ['2025-03-07',T[18],T[19],false],
+    // Round 10 - current (Mar 10-16 2026)
+    ['2026-03-10',T[0],T[9],true],  ['2026-03-10',T[1],T[10],false],['2026-03-11',T[2],T[11],true],
+    ['2026-03-11',T[3],T[12],false],['2026-03-12',T[4],T[13],true], ['2026-03-12',T[5],T[14],false],
+    ['2026-03-13',T[6],T[15],true], ['2026-03-13',T[7],T[16],false],['2026-03-14',T[8],T[17],true],
+    ['2026-03-14',T[19],T[18],true],
   ];
 
-  state.matches = seed.map(([date,t1,t2,w1],i) => mkMatch(String(i+1),date,t1,t2,w1));
+  state.matches = seed.map(([date,t1,t2,w1],i) => mkMatch(i+1,date,t1,t2,w1));
 }
 
 // =============================================
