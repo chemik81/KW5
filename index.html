@@ -492,22 +492,85 @@
 // ============================================================
 // STATE
 // ============================================================
-const ADMIN_PASS = 'kw5elite2025';
+// ============================================================
+// SECURITY CONFIG
+// Password: kw5elite2025  |  Salt + SHA-256 hashed
+// To change password: open console, type:
+//   hashPassword('yournewpassword')  — copy the result into PASS_HASH
+// ============================================================
+const SALT      = 'KW5EliteS3cur3S@lt!2025#x9z';
+const PASS_HASH = 'f95c8af9aaae2aabac477eb1421c3ad7c899832169fca025590570c0c796a542';
+const MAX_ATTEMPTS   = 3;
+const LOCKOUT_MS     = 15 * 60 * 1000; // 15 min lockout
+const SESSION_MS     = 2  * 60 * 60 * 1000; // 2 hr session
+
 let isAdmin = false;
-let state = { matches: [] };
+let state   = { matches: [] };
 let sortCol = 'per';
 let sortDir = 'desc';
-let posFilter = '';
-let pendingMatch = null;
-let deleteId = null;
+let posFilter   = '';
+let pendingMatch  = null;
 let screenshotB64 = null;
+
+// SHA-256 via WebCrypto API
+async function sha256(msg) {
+  const buf  = new TextEncoder().encode(msg);
+  const hash = await crypto.subtle.digest('SHA-256', buf);
+  return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+// Call this in console to get hash for a new password
+window.hashPassword = async (pw) => {
+  const h = await sha256(SALT + pw);
+  console.log('%cNew PASS_HASH: ' + h, 'color:#d4a843;font-weight:bold');
+};
+
+// Rate limit helpers
+function getAttempts() {
+  return JSON.parse(localStorage.getItem('kw5_att') || '{"n":0,"t":0}');
+}
+function recordFail() {
+  const d = getAttempts();
+  d.n++; d.t = Date.now();
+  localStorage.setItem('kw5_att', JSON.stringify(d));
+}
+function resetAttempts() { localStorage.removeItem('kw5_att'); }
+function lockedOut() {
+  const d = getAttempts();
+  if (d.n >= MAX_ATTEMPTS) {
+    const left = LOCKOUT_MS - (Date.now() - d.t);
+    if (left > 0) return Math.ceil(left/60000); // minutes remaining
+    resetAttempts();
+  }
+  return false;
+}
+
+// Session helpers
+let _sessionTimer = null;
+function startSession() {
+  clearTimeout(_sessionTimer);
+  sessionStorage.setItem('kw5_admin', '1');
+  sessionStorage.setItem('kw5_st', Date.now().toString());
+  _sessionTimer = setTimeout(() => {
+    doLogout();
+    notify('Session expired — logged out automatically', 'info');
+  }, SESSION_MS);
+}
+function sessionValid() {
+  if (sessionStorage.getItem('kw5_admin') !== '1') return false;
+  const start = parseInt(sessionStorage.getItem('kw5_st') || '0');
+  return (Date.now() - start) < SESSION_MS;
+}
 
 // ============================================================
 // INIT
 // ============================================================
 function init() {
   loadState();
-  isAdmin = sessionStorage.getItem('kw5_admin') === '1';
+  isAdmin = sessionValid();
+  if (!isAdmin) {
+    sessionStorage.removeItem('kw5_admin');
+    sessionStorage.removeItem('kw5_st');
+  }
   updateAdminUI();
   document.getElementById('loading').style.display = 'none';
   const today = new Date().toISOString().split('T')[0];
@@ -549,23 +612,52 @@ function showSection(name, btn) {
 // ============================================================
 // LOGIN
 // ============================================================
-function openLogin() { document.getElementById('login-overlay').classList.add('active'); }
-function checkLogin() {
+function openLogin() {
+  const mins = lockedOut();
+  if (mins) {
+    notify(`Too many failed attempts. Try again in ${mins} minute${mins>1?'s':''}.`, 'error');
+    return;
+  }
+  document.getElementById('login-overlay').classList.add('active');
+}
+
+async function checkLogin() {
+  const mins = lockedOut();
+  if (mins) {
+    notify(`Account locked. Try again in ${mins} minute${mins>1?'s':''}.`, 'error');
+    closeModal('login-overlay');
+    return;
+  }
   const p = document.getElementById('login-pass').value;
-  if (p === ADMIN_PASS) {
+  if (!p) return;
+
+  // Hash the input and compare
+  const inputHash = await sha256(SALT + p);
+  document.getElementById('login-pass').value = '';
+
+  if (inputHash === PASS_HASH) {
     isAdmin = true;
-    sessionStorage.setItem('kw5_admin','1');
+    resetAttempts();
+    startSession();
     updateAdminUI();
     closeModal('login-overlay');
-    document.getElementById('login-pass').value = '';
     notify('Admin access granted', 'success');
   } else {
-    notify('Incorrect password', 'error');
+    recordFail();
+    const d = getAttempts();
+    const left = MAX_ATTEMPTS - d.n;
+    if (left <= 0) {
+      notify(`Too many failed attempts. Locked out for 15 minutes.`, 'error');
+    } else {
+      notify(`Incorrect password. ${left} attempt${left>1?'s':''} remaining.`, 'error');
+    }
   }
 }
 function doLogout() {
   isAdmin = false;
+  clearTimeout(_sessionTimer);
   sessionStorage.removeItem('kw5_admin');
+  sessionStorage.removeItem('kw5_st');
   updateAdminUI();
   showSection('stats', document.querySelector('nav button'));
   notify('Logged out', 'info');
