@@ -624,6 +624,12 @@
 <div id="notif"></div>
 
 <script>
+// Hide loading immediately — don't wait for async init
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('loading').style.display = 'none';
+});
+</script>
+<script>
 // ============================================================
 // STATE & SECURITY
 // ============================================================
@@ -1238,7 +1244,7 @@ function loadImg(file) {
 // CLOUDFLARE WORKER URL
 // Replace with your Worker URL after deployment
 // ============================================================
-const WORKER_URL = 'https://kw5-elite-proxy.YOUR-SUBDOMAIN.workers.dev';
+// WORKER_URL is set in state config above
 
 // Fuzzy match — find closest name in roster
 function closestRosterMatch(name, roster) {
