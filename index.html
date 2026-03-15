@@ -430,6 +430,50 @@
       <div style="font-size:13px;color:var(--text2);">AI analysis is routed through a secure server proxy. The API key is stored on the server and is never exposed in the browser.</div>
     </div>
   </div>
+
+  <!-- Player Roster -->
+  <div class="card" style="margin-top:16px;">
+    <div class="card-title">Player Roster</div>
+    <p style="color:var(--text2);font-size:13px;margin-bottom:16px;">
+      Add all known player names here. AI will use this list to match names exactly — reducing errors with unusual spellings, numbers and special characters.
+      Names highlighted in <span style="color:#f97316;font-weight:700;">orange</span> in the review screen mean AI didn't find a match in the roster.
+    </p>
+    <div style="display:flex;gap:8px;margin-bottom:12px;">
+      <input type="text" id="roster-input" placeholder="e.g. xXDragon99Xx" 
+        style="flex:1;background:var(--bg3);border:1px solid var(--border2);color:var(--white);padding:9px 12px;border-radius:3px;font-size:13px;outline:none;"
+        onkeydown="if(event.key==='Enter')addRosterPlayer()"
+        onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--border2)'">
+      <button class="btn btn-gold" onclick="addRosterPlayer()">Add Player</button>
+    </div>
+    <div style="margin-bottom:12px;">
+      <label style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:6px;">Bulk add (one name per line)</label>
+      <textarea id="roster-bulk" rows="4" placeholder="PlayerOne&#10;PlayerTwo&#10;xXDragon99Xx"
+        style="width:100%;background:var(--bg3);border:1px solid var(--border2);color:var(--white);padding:9px 12px;border-radius:3px;font-size:13px;outline:none;font-family:inherit;resize:vertical;"
+        onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--border2)'"></textarea>
+      <button class="btn btn-outline" style="margin-top:6px;" onclick="bulkAddRoster()">Add All</button>
+    </div>
+    <div id="roster-list" style="display:flex;flex-wrap:wrap;gap:6px;min-height:40px;"></div>
+  </div>
+
+  <!-- Name Corrections -->
+  <div class="card" style="margin-top:16px;">
+    <div class="card-title">Name Corrections</div>
+    <p style="color:var(--text2);font-size:13px;margin-bottom:16px;">
+      If AI repeatedly misreads a specific name, add a correction here. It will be applied automatically on every future analysis.
+    </p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+      <input type="text" id="corr-from" placeholder="Wrong name (as AI reads)"
+        style="flex:1;min-width:160px;background:var(--bg3);border:1px solid var(--border2);color:var(--white);padding:9px 12px;border-radius:3px;font-size:13px;outline:none;"
+        onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--border2)'">
+      <div style="display:flex;align-items:center;color:var(--text3);font-size:18px;">→</div>
+      <input type="text" id="corr-to" placeholder="Correct name"
+        style="flex:1;min-width:160px;background:var(--bg3);border:1px solid var(--border2);color:var(--white);padding:9px 12px;border-radius:3px;font-size:13px;outline:none;"
+        onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--border2)'">
+      <button class="btn btn-gold" onclick="addCorrection()">Add</button>
+    </div>
+    <div id="corrections-list"></div>
+    <button class="btn btn-outline" style="margin-top:12px;" onclick="applyCorrectionsToAll()">🔧 Apply to all saved matches</button>
+  </div>
 </section>
 
 </main>
@@ -502,7 +546,7 @@ const LOCKOUT_MS     = 15 * 60 * 1000; // 15 min lockout
 const SESSION_MS     = 2  * 60 * 60 * 1000; // 2 hr session
 
 let isAdmin = false;
-let state   = { matches: [] };
+let state   = { matches: [], roster: [], corrections: {} };
 let sortCol = 'per';
 let sortDir = 'desc';
 let posFilter   = '';
@@ -575,6 +619,8 @@ function init() {
   renderStats();
   renderBoxScores();
   updatePills();
+  renderRoster();
+  renderCorrections();
 }
 
 function loadState() {
@@ -898,6 +944,32 @@ function loadImg(file) {
 // ============================================================
 const WORKER_URL = 'https://kw5-elite-proxy.YOUR-SUBDOMAIN.workers.dev';
 
+// Fuzzy match — find closest name in roster
+function closestRosterMatch(name, roster) {
+  if (!roster.length) return null;
+  const nl = name.toLowerCase();
+  // Exact match
+  const exact = roster.find(r => r.toLowerCase() === nl);
+  if (exact) return exact;
+  // Find best partial match
+  let best = null, bestScore = 0;
+  for (const r of roster) {
+    const rl = r.toLowerCase();
+    let matches = 0;
+    for (let i = 0; i < Math.min(nl.length, rl.length); i++) {
+      if (nl[i] === rl[i]) matches++;
+    }
+    const score = matches / Math.max(nl.length, rl.length);
+    if (score > bestScore && score > 0.6) { bestScore = score; best = r; }
+  }
+  return best;
+}
+
+function isInRoster(name) {
+  if (!state.roster.length) return true; // no roster = no warnings
+  return state.roster.some(r => r.toLowerCase() === name.toLowerCase());
+}
+
 async function analyzeScreenshot() {
   if (!screenshotB64) { notify('Please upload a screenshot first', 'error'); return; }
   if (!isAdmin) { notify('Admin access required', 'error'); return; }
@@ -907,9 +979,13 @@ async function analyzeScreenshot() {
   btn.innerHTML = '<span style="display:inline-block;width:14px;height:14px;border:2px solid rgba(0,0,0,0.3);border-top-color:#000;border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle;margin-right:6px;"></span> Analyzing...';
 
   try {
-    // Get session token (hashed password used as bearer token)
     const adminToken = sessionStorage.getItem('kw5_atoken');
     if (!adminToken) throw new Error('Session invalid — please log in again');
+
+    // Build roster context for the prompt
+    const rosterContext = state.roster.length
+      ? `\n\nKNOWN PLAYER ROSTER (use EXACT spelling from this list when you recognise a name):\n${state.roster.map(r=>`- ${r}`).join('\n')}\n\nIMPORTANT: Player names in NBA 2K are often gamertags with numbers, capital letters and special characters. Read them VERY carefully character by character. If a name closely resembles one from the roster above, use the roster spelling exactly.`
+      : `\n\nIMPORTANT: Player names in NBA 2K are often gamertags. Read them VERY carefully — pay attention to numbers (0 vs O, 1 vs I vs l), capital letters, underscores, and special characters. Copy them exactly as shown on screen.`;
 
     const res = await fetch(WORKER_URL, {
       method: 'POST',
@@ -922,13 +998,26 @@ async function analyzeScreenshot() {
         max_tokens: 4000,
         messages: [{ role:'user', content:[
           { type:'image', source:{ type:'base64', media_type:'image/jpeg', data:screenshotB64 }},
-          { type:'text', text:`Analyze this NBA 2K game stats screenshot. Return ONLY valid JSON, no markdown:
+          { type:'text', text:`Analyze this NBA 2K game stats screenshot and extract all data.${rosterContext}
+
+Return ONLY valid JSON with no markdown, no explanation, no backticks:
 {
   "score1": 85,
   "score2": 72,
-  "team1_players": [{"name":"PlayerName","pos":"PG","grade":"A+","cs":98,"pts":25,"reb":5,"ast":8,"stl":2,"blk":0,"to":3,"fg_pct":"50.0","tp_pct":"40.0","ft_pct":"90.0"}],
+  "team1_players": [
+    {"name":"ExactGamertag","pos":"PG","grade":"A+","cs":98,"pts":25,"reb":5,"ast":8,"stl":2,"blk":0,"to":3,"fg_pct":"50.0","tp_pct":"40.0","ft_pct":"90.0"}
+  ],
   "team2_players": [...]
-}` }
+}
+
+Rules:
+- Copy player names EXACTLY as shown — including numbers, symbols, capitalisation
+- If a name matches the roster list, use the roster spelling
+- pos must be one of: PG, SG, SF, PF, C
+- grade is the letter grade shown (A+, A, A-, B+, B, etc)
+- cs is the Overall/CS number
+- All stat values must be numbers (not strings)
+- fg_pct, tp_pct, ft_pct are strings like "47.2"` }
         ]}]
       })
     });
@@ -941,9 +1030,26 @@ async function analyzeScreenshot() {
     if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
     let text = data.content[0].text.trim().replace(/```json|```/g,'').trim();
     const parsed = JSON.parse(text);
+
+    // Apply saved corrections
+    const applyCorr = (players) => (players||[]).map(p => ({
+      ...p, name: state.corrections[p.name] || p.name
+    }));
+    parsed.team1_players = applyCorr(parsed.team1_players);
+    parsed.team2_players = applyCorr(parsed.team2_players);
+
     pendingMatch = parsed;
     showReview(parsed);
-    notify('Screenshot analyzed!', 'success');
+
+    // Count unknown names
+    const all = [...(parsed.team1_players||[]), ...(parsed.team2_players||[])];
+    const unknown = all.filter(p => p.name && !isInRoster(p.name));
+    if (unknown.length && state.roster.length) {
+      notify(`⚠️ ${unknown.length} unrecognised name${unknown.length>1?'s':''} — highlighted in orange`, 'info');
+    } else {
+      notify('Screenshot analyzed successfully!', 'success');
+    }
+
   } catch(e) {
     notify('Analysis failed: ' + e.message, 'error');
   }
@@ -956,22 +1062,46 @@ function showReview(data) {
     if (!players||!players.length) return '<p style="color:var(--text3)">No players detected</p>';
     return `<div style="overflow-x:auto;margin-bottom:16px;">
       <table class="review-table">
-        <thead><tr><th style="text-align:left;min-width:120px;">Name</th><th>POS</th><th>GRD</th><th>CS</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>FG%</th><th>3P%</th><th>FT%</th></tr></thead>
-        <tbody>${players.map((p,pi)=>`<tr>
-          <td><input class="wide" type="text" value="${p.name||''}" oninput="updateP(${idx},${pi},'name',this.value)"></td>
-          <td><input style="width:38px" type="text" value="${p.pos||''}" oninput="updateP(${idx},${pi},'pos',this.value)"></td>
-          <td><input style="width:38px" type="text" value="${p.grade||''}" oninput="updateP(${idx},${pi},'grade',this.value)"></td>
-          <td><input type="number" value="${p.cs||0}" oninput="updateP(${idx},${pi},'cs',this.value)"></td>
-          <td><input type="number" value="${p.pts||0}" oninput="updateP(${idx},${pi},'pts',this.value)"></td>
-          <td><input type="number" value="${p.reb||0}" oninput="updateP(${idx},${pi},'reb',this.value)"></td>
-          <td><input type="number" value="${p.ast||0}" oninput="updateP(${idx},${pi},'ast',this.value)"></td>
-          <td><input type="number" value="${p.stl||0}" oninput="updateP(${idx},${pi},'stl',this.value)"></td>
-          <td><input type="number" value="${p.blk||0}" oninput="updateP(${idx},${pi},'blk',this.value)"></td>
-          <td><input type="number" value="${p.to||0}" oninput="updateP(${idx},${pi},'to',this.value)"></td>
-          <td><input type="text" value="${p.fg_pct||''}" oninput="updateP(${idx},${pi},'fg_pct',this.value)"></td>
-          <td><input type="text" value="${p.tp_pct||''}" oninput="updateP(${idx},${pi},'tp_pct',this.value)"></td>
-          <td><input type="text" value="${p.ft_pct||''}" oninput="updateP(${idx},${pi},'ft_pct',this.value)"></td>
-        </tr>`).join('')}</tbody>
+        <thead><tr>
+          <th style="text-align:left;min-width:160px;">Name</th>
+          <th>POS</th><th>GRD</th><th>CS</th><th>PTS</th><th>REB</th>
+          <th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>FG%</th><th>3P%</th><th>FT%</th>
+        </tr></thead>
+        <tbody>${players.map((p,pi) => {
+          const inRoster = isInRoster(p.name);
+          const suggestion = !inRoster ? closestRosterMatch(p.name, state.roster) : null;
+          const nameStyle = !inRoster && state.roster.length
+            ? 'border-color:#f97316!important;background:rgba(249,115,22,0.1);'
+            : '';
+          const suggHtml = suggestion
+            ? `<div style="font-size:10px;color:#f97316;margin-top:2px;cursor:pointer;" onclick="fixName(${idx},${pi},'${suggestion.replace(/'/g,"\\'")}')">
+                💡 Did you mean: <strong>${suggestion}</strong>? (click to fix)
+               </div>`
+            : (!inRoster && state.roster.length
+                ? `<div style="font-size:10px;color:#f97316;margin-top:2px;">⚠️ Not in roster — check spelling</div>`
+                : '');
+          return `<tr>
+            <td>
+              <input class="wide" type="text" value="${p.name||''}"
+                style="${nameStyle}"
+                oninput="updateP(${idx},${pi},'name',this.value);rerenderNameCell(this,${idx},${pi})"
+                id="name-cell-${idx}-${pi}">
+              ${suggHtml}
+            </td>
+            <td><input style="width:38px" type="text" value="${p.pos||''}" oninput="updateP(${idx},${pi},'pos',this.value)"></td>
+            <td><input style="width:38px" type="text" value="${p.grade||''}" oninput="updateP(${idx},${pi},'grade',this.value)"></td>
+            <td><input type="number" value="${p.cs||0}" oninput="updateP(${idx},${pi},'cs',this.value)"></td>
+            <td><input type="number" value="${p.pts||0}" oninput="updateP(${idx},${pi},'pts',this.value)"></td>
+            <td><input type="number" value="${p.reb||0}" oninput="updateP(${idx},${pi},'reb',this.value)"></td>
+            <td><input type="number" value="${p.ast||0}" oninput="updateP(${idx},${pi},'ast',this.value)"></td>
+            <td><input type="number" value="${p.stl||0}" oninput="updateP(${idx},${pi},'stl',this.value)"></td>
+            <td><input type="number" value="${p.blk||0}" oninput="updateP(${idx},${pi},'blk',this.value)"></td>
+            <td><input type="number" value="${p.to||0}" oninput="updateP(${idx},${pi},'to',this.value)"></td>
+            <td><input type="text" value="${p.fg_pct||''}" oninput="updateP(${idx},${pi},'fg_pct',this.value)"></td>
+            <td><input type="text" value="${p.tp_pct||''}" oninput="updateP(${idx},${pi},'tp_pct',this.value)"></td>
+            <td><input type="text" value="${p.ft_pct||''}" oninput="updateP(${idx},${pi},'ft_pct',this.value)"></td>
+          </tr>`;
+        }).join('')}</tbody>
       </table>
     </div>`;
   };
@@ -980,18 +1110,51 @@ function showReview(data) {
     <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:16px;align-items:flex-end;">
       <div style="display:flex;align-items:center;gap:12px;">
         <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:1px;">Score T1</label>
-          <input type="number" value="${data.score1||0}" oninput="pendingMatch.score1=this.value" style="width:70px;background:var(--bg3);border:1px solid var(--border2);color:var(--white);padding:8px;border-radius:3px;text-align:center;font-family:'Bebas Neue';font-size:22px;"></div>
+          <input type="number" value="${data.score1||0}" oninput="pendingMatch.score1=this.value"
+            style="width:70px;background:var(--bg3);border:1px solid var(--border2);color:var(--white);padding:8px;border-radius:3px;text-align:center;font-family:'Bebas Neue';font-size:22px;outline:none;"></div>
         <div style="font-family:'Bebas Neue';font-size:24px;color:var(--text3);padding-bottom:2px;">:</div>
         <div><label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:1px;">Score T2</label>
-          <input type="number" value="${data.score2||0}" oninput="pendingMatch.score2=this.value" style="width:70px;background:var(--bg3);border:1px solid var(--border2);color:var(--white);padding:8px;border-radius:3px;text-align:center;font-family:'Bebas Neue';font-size:22px;"></div>
+          <input type="number" value="${data.score2||0}" oninput="pendingMatch.score2=this.value"
+            style="width:70px;background:var(--bg3);border:1px solid var(--border2);color:var(--white);padding:8px;border-radius:3px;text-align:center;font-family:'Bebas Neue';font-size:22px;outline:none;"></div>
       </div>
     </div>
+    ${state.roster.length ? `<div style="padding:10px 14px;background:rgba(212,168,67,0.08);border:1px solid rgba(212,168,67,0.2);border-radius:3px;font-size:12px;color:var(--text2);margin-bottom:16px;">
+      🎯 Roster active (${state.roster.length} players) — names in <span style="color:#f97316;font-weight:700;">orange</span> were not found in roster. Click suggestions to auto-fix.
+    </div>` : ''}
     <div style="color:var(--gold);font-family:'Bebas Neue';font-size:14px;letter-spacing:2px;margin-bottom:8px;">TEAM 1 PLAYERS</div>
     ${makeTable(data.team1_players,1)}
     <div style="color:var(--gold);font-family:'Bebas Neue';font-size:14px;letter-spacing:2px;margin-bottom:8px;">TEAM 2 PLAYERS</div>
     ${makeTable(data.team2_players,2)}
   `;
   document.getElementById('review-card').style.display = 'block';
+  document.getElementById('review-card').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+// Fix name from suggestion click
+function fixName(teamIdx, pi, correctName) {
+  updateP(teamIdx, pi, 'name', correctName);
+  const input = document.getElementById(`name-cell-${teamIdx}-${pi}`);
+  if (input) {
+    input.value = correctName;
+    input.style = '';
+    input.parentElement.querySelector('div')?.remove();
+  }
+  notify(`Name fixed: ${correctName}`, 'success');
+}
+
+// Re-check roster match as admin types
+function rerenderNameCell(input, teamIdx, pi) {
+  const val = input.value;
+  const inRoster = isInRoster(val);
+  if (inRoster || !state.roster.length) {
+    input.style.borderColor = '';
+    input.style.background = '';
+    const hint = input.parentElement.querySelector('div');
+    if (hint) hint.remove();
+  } else {
+    input.style.borderColor = '#f97316';
+    input.style.background = 'rgba(249,115,22,0.1)';
+  }
 }
 
 function updateP(teamIdx, pi, field, val) {
@@ -1079,6 +1242,106 @@ function renderCompare() {
     </table>`;
 }
 
+
+// ============================================================
+// ROSTER MANAGEMENT
+// ============================================================
+function addRosterPlayer() {
+  const input = document.getElementById('roster-input');
+  const name = input.value.trim();
+  if (!name) return;
+  if (!state.roster.includes(name)) {
+    state.roster.push(name);
+    saveState(); renderRoster();
+  }
+  input.value = ''; input.focus();
+}
+
+function bulkAddRoster() {
+  const lines = document.getElementById('roster-bulk').value
+    .split('\n').map(l=>l.trim()).filter(Boolean);
+  let added = 0;
+  for (const name of lines) {
+    if (!state.roster.includes(name)) { state.roster.push(name); added++; }
+  }
+  saveState(); renderRoster();
+  document.getElementById('roster-bulk').value = '';
+  notify(`Added ${added} player${added!==1?'s':''} to roster`, 'success');
+}
+
+function removeRosterPlayer(name) {
+  state.roster = state.roster.filter(r => r !== name);
+  saveState(); renderRoster();
+}
+
+function renderRoster() {
+  const el = document.getElementById('roster-list');
+  if (!el) return;
+  if (!state.roster.length) {
+    el.innerHTML = '<span style="font-size:13px;color:var(--text3);">No players added yet.</span>';
+    return;
+  }
+  el.innerHTML = [...state.roster].sort().map(name => `
+    <span style="display:inline-flex;align-items:center;gap:6px;background:var(--bg3);border:1px solid var(--border2);border-radius:3px;padding:5px 10px;font-size:13px;font-weight:600;">
+      ${name}
+      <button onclick="removeRosterPlayer('${name.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')">
+        style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;line-height:1;padding:0;transition:color .2s;"
+        onmouseover="this.style.color='#e74c3c'" onmouseout="this.style.color='var(--text3)'">✕</button>
+    </span>`).join('');
+}
+
+// ============================================================
+// NAME CORRECTIONS
+// ============================================================
+function addCorrection() {
+  const from = document.getElementById('corr-from').value.trim();
+  const to   = document.getElementById('corr-to').value.trim();
+  if (!from || !to) { notify('Fill in both fields', 'error'); return; }
+  state.corrections[from] = to;
+  saveState(); renderCorrections();
+  document.getElementById('corr-from').value = '';
+  document.getElementById('corr-to').value = '';
+  notify(`Correction added: "${from}" → "${to}"`, 'success');
+}
+
+function removeCorrection(key) {
+  delete state.corrections[key];
+  saveState(); renderCorrections();
+}
+
+function renderCorrections() {
+  const el = document.getElementById('corrections-list');
+  if (!el) return;
+  const keys = Object.keys(state.corrections);
+  if (!keys.length) {
+    el.innerHTML = '<span style="font-size:13px;color:var(--text3);">No corrections added yet.</span>';
+    return;
+  }
+  el.innerHTML = `<div style="display:flex;flex-direction:column;gap:6px;margin-top:8px;">
+    ${keys.map(k => `
+      <div style="display:flex;align-items:center;gap:10px;background:var(--bg3);border:1px solid var(--border2);border-radius:3px;padding:8px 12px;font-size:13px;">
+        <span style="color:#f97316;font-weight:700;flex:1;">${k}</span>
+        <span style="color:var(--text3);">→</span>
+        <span style="color:#4ade80;font-weight:700;flex:1;">${state.corrections[k]}</span>
+        <button onclick="removeCorrection('${k.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')"
+          style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:16px;transition:color .2s;"
+          onmouseover="this.style.color='#e74c3c'" onmouseout="this.style.color='var(--text3)'">✕</button>
+      </div>`).join('')}
+  </div>`;
+}
+
+function applyCorrectionsToAll() {
+  if (!Object.keys(state.corrections).length) { notify('No corrections defined', 'info'); return; }
+  let changed = 0;
+  state.matches.forEach(m => {
+    [...(m.team1_players||[]), ...(m.team2_players||[])].forEach(p => {
+      if (state.corrections[p.name]) { p.name = state.corrections[p.name]; changed++; }
+    });
+  });
+  saveState(); renderStats(); renderBoxScores();
+  notify(`Applied corrections to ${changed} player record${changed!==1?'s':''}`, 'success');
+}
+
 // ============================================================
 // ADMIN UTILS
 // ============================================================
@@ -1089,10 +1352,10 @@ function exportData() {
 }
 
 function clearAllData() {
-  if (!confirm('Delete ALL match data? This cannot be undone.')) return;
-  state = { matches:[] };
+  if (!confirm('Delete ALL match data? Roster and corrections will be kept.')) return;
+  state.matches = [];
   saveState(); renderStats(); renderBoxScores(); updatePills();
-  notify('All data cleared', 'info');
+  notify('All match data cleared', 'info');
 }
 
 // ============================================================
