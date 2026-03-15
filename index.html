@@ -230,7 +230,7 @@
   .upload-icon { font-size:40px; margin-bottom:12px; }
   .upload-title { font-family:'Barlow Condensed',sans-serif; font-size:18px; font-weight:700; letter-spacing:1px; text-transform:uppercase; margin-bottom:6px; }
   .upload-sub { font-size:13px; color:var(--text3); }
-  .preview-img { max-width:100%; max-height:280px; border-radius:4px; margin-top:12px; display:none; border:1px solid var(--border2); }
+  .preview-img { max-width:100%; max-height:500px; border-radius:4px; margin-top:12px; display:none; border:1px solid var(--border2); cursor:zoom-in; }
   .form-group { margin-bottom:14px; }
   .form-group label { font-size:11px; color:var(--text3); display:block; margin-bottom:6px; text-transform:uppercase; letter-spacing:1px; }
   .form-group input, .form-group select {
@@ -1544,8 +1544,9 @@ function showReview(data) {
       <table class="review-table">
         <thead><tr>
           <th style="text-align:left;min-width:160px;">Name</th>
-          <th>POS</th><th>GRD</th><th>CS</th><th>PTS</th><th>REB</th>
-          <th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>FG%</th><th>3P%</th><th>FT%</th>
+          <th>POS</th><th>GRD</th><th>PTS</th><th>REB</th>
+          <th>AST</th><th>STL</th><th>BLK</th><th>TO</th>
+          <th>FGM/FGA</th><th>3PM/3PA</th><th>FTM/FTA</th>
         </tr></thead>
         <tbody>${players.map((p,pi) => {
           const inRoster = isInRoster(p.name);
@@ -1558,8 +1559,12 @@ function showReview(data) {
                 💡 Did you mean: <strong>${suggestion}</strong>? (click to fix)
                </div>`
             : (!inRoster && state.roster.length
-                ? `<div style="font-size:10px;color:#f97316;margin-top:2px;">⚠️ Not in roster — check spelling</div>`
+                ? `<div style="font-size:10px;color:#f97316;margin-top:2px;">⚠️ Not in roster — will be added automatically on save</div>`
                 : '');
+          // FGM/FGA display
+          const fgVal = (p.fgm!=null||p.fga!=null) ? `${p.fgm||0}/${p.fga||0}` : '';
+          const tpVal = (p.tpm!=null||p.tpa!=null) ? `${p.tpm||0}/${p.tpa||0}` : '';
+          const ftVal = (p.ftm!=null||p.fta!=null) ? `${p.ftm||0}/${p.fta||0}` : '';
           return `<tr>
             <td>
               <input class="wide" type="text" value="${p.name||''}"
@@ -1570,16 +1575,18 @@ function showReview(data) {
             </td>
             <td><input style="width:38px" type="text" value="${p.pos||''}" oninput="updateP(${idx},${pi},'pos',this.value)"></td>
             <td><input style="width:38px" type="text" value="${p.grade||''}" oninput="updateP(${idx},${pi},'grade',this.value)"></td>
-            <td><input type="number" value="${p.cs||0}" oninput="updateP(${idx},${pi},'cs',this.value)"></td>
             <td><input type="number" value="${p.pts||0}" oninput="updateP(${idx},${pi},'pts',this.value)"></td>
             <td><input type="number" value="${p.reb||0}" oninput="updateP(${idx},${pi},'reb',this.value)"></td>
             <td><input type="number" value="${p.ast||0}" oninput="updateP(${idx},${pi},'ast',this.value)"></td>
             <td><input type="number" value="${p.stl||0}" oninput="updateP(${idx},${pi},'stl',this.value)"></td>
             <td><input type="number" value="${p.blk||0}" oninput="updateP(${idx},${pi},'blk',this.value)"></td>
             <td><input type="number" value="${p.to||0}" oninput="updateP(${idx},${pi},'to',this.value)"></td>
-            <td><input type="text" value="${p.fg_pct||''}" oninput="updateP(${idx},${pi},'fg_pct',this.value)"></td>
-            <td><input type="text" value="${p.tp_pct||''}" oninput="updateP(${idx},${pi},'tp_pct',this.value)"></td>
-            <td><input type="text" value="${p.ft_pct||''}" oninput="updateP(${idx},${pi},'ft_pct',this.value)"></td>
+            <td><input type="text" value="${fgVal}" style="width:56px" placeholder="6/15"
+              oninput="parseShotInput(${idx},${pi},'fg',this.value)"></td>
+            <td><input type="text" value="${tpVal}" style="width:56px" placeholder="2/6"
+              oninput="parseShotInput(${idx},${pi},'tp',this.value)"></td>
+            <td><input type="text" value="${ftVal}" style="width:56px" placeholder="2/2"
+              oninput="parseShotInput(${idx},${pi},'ft',this.value)"></td>
           </tr>`;
         }).join('')}</tbody>
       </table>
@@ -1597,9 +1604,23 @@ function showReview(data) {
           <input type="number" value="${data.score2||0}" oninput="pendingMatch.score2=this.value"
             style="width:70px;background:var(--bg3);border:1px solid var(--border2);color:var(--white);padding:8px;border-radius:3px;text-align:center;font-family:'Bebas Neue';font-size:22px;outline:none;"></div>
       </div>
+      <div style="display:flex;gap:12px;flex:1;min-width:280px;">
+        <div style="flex:1;">
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:1px;">Team 1 Name</label>
+          <input type="text" value="${data.team1||'Team 1'}" oninput="pendingMatch.team1=this.value"
+            style="width:100%;background:var(--bg3);border:1px solid var(--border2);color:var(--white);padding:8px 10px;border-radius:3px;font-size:13px;font-weight:700;outline:none;"
+            onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--border2)'">
+        </div>
+        <div style="flex:1;">
+          <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:4px;text-transform:uppercase;letter-spacing:1px;">Team 2 Name</label>
+          <input type="text" value="${data.team2||'Team 2'}" oninput="pendingMatch.team2=this.value"
+            style="width:100%;background:var(--bg3);border:1px solid var(--border2);color:var(--white);padding:8px 10px;border-radius:3px;font-size:13px;font-weight:700;outline:none;"
+            onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--border2)'">
+        </div>
+      </div>
     </div>
     ${state.roster.length ? `<div style="padding:10px 14px;background:rgba(212,168,67,0.08);border:1px solid rgba(212,168,67,0.2);border-radius:3px;font-size:12px;color:var(--text2);margin-bottom:16px;">
-      🎯 Roster active (${state.roster.length} players) — names in <span style="color:#f97316;font-weight:700;">orange</span> were not found in roster. Click suggestions to auto-fix.
+      🎯 Roster active (${state.roster.length} players) — names in <span style="color:#f97316;font-weight:700;">orange</span> not in roster. They will be <strong>added automatically</strong> when you save.
     </div>` : ''}
     <div style="color:var(--gold);font-family:'Bebas Neue';font-size:14px;letter-spacing:2px;margin-bottom:8px;">TEAM 1 PLAYERS</div>
     ${makeTable(data.team1_players,1)}
@@ -1637,6 +1658,17 @@ function rerenderNameCell(input, teamIdx, pi) {
   }
 }
 
+// Parse "6/15" format into fgm/fga fields
+function parseShotInput(teamIdx, pi, type, val) {
+  const arr = teamIdx===1 ? pendingMatch.team1_players : pendingMatch.team2_players;
+  if (!arr || !arr[pi]) return;
+  const parts = val.split('/');
+  if (parts.length === 2) {
+    arr[pi][type+'m'] = parseInt(parts[0])||0;
+    arr[pi][type+'a'] = parseInt(parts[1])||0;
+  }
+}
+
 function updateP(teamIdx, pi, field, val) {
   if (!pendingMatch) return;
   const arr = teamIdx===1 ? pendingMatch.team1_players : pendingMatch.team2_players;
@@ -1652,10 +1684,21 @@ function saveMatch() {
     note: document.getElementById('match-note').value
   };
   state.matches.push(match);
+
+  // Auto-add new player names to roster
+  let newPlayers = 0;
+  [...(match.team1_players||[]), ...(match.team2_players||[])].forEach(p => {
+    if (p.name && !state.roster.includes(p.name)) {
+      state.roster.push(p.name);
+      newPlayers++;
+    }
+  });
+
   saveState();
-  renderStats(); renderBoxScores(); updatePills();
+  renderStats(); renderBoxScores(); updatePills(); renderRoster();
   cancelReview();
-  notify('Box score saved! Statistics updated.', 'success');
+  if (newPlayers > 0) notify(`✅ Saved! ${newPlayers} new player${newPlayers>1?'s':''} added to roster.`, 'success');
+  else notify('✅ Box score saved! Statistics updated.', 'success');
   showSection('stats', document.querySelector('nav button'));
 }
 
