@@ -571,10 +571,39 @@
         <label>Confirm Password</label>
         <input type="password" id="sa-confirm-admin-pass" placeholder="Repeat password"
           style="background:var(--bg3);border:1px solid var(--border2);color:var(--white);padding:9px 12px;border-radius:3px;font-size:13px;width:100%;outline:none;"
-          onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--border2)'">
+          onfocus="this.style.borderColor='var(--border2)'">
       </div>
     </div>
     <button class="btn btn-gold" onclick="changeAdminPassword()">🔑 Update Admin Password</button>
+  </div>
+
+  <!-- Super Admin Password -->
+  <div class="card" style="margin-bottom:16px;border-top-color:var(--gold);">
+    <div class="card-title">👑 Change Super Admin Password</div>
+    <p style="color:var(--text2);font-size:13px;margin-bottom:16px;">
+      Change your own Super Admin password. You will need to use the new password next time you log in with <strong style="color:var(--gold)">Ctrl + Shift + K</strong>.
+    </p>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px;">
+      <div class="form-group">
+        <label>Current Password</label>
+        <input type="password" id="sa-current-super-pass" placeholder="Current password"
+          style="background:var(--bg3);border:1px solid var(--border2);color:var(--white);padding:9px 12px;border-radius:3px;font-size:13px;width:100%;outline:none;"
+          onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--border2)'">
+      </div>
+      <div class="form-group">
+        <label>New Password</label>
+        <input type="password" id="sa-new-super-pass" placeholder="New password (min 8 chars)"
+          style="background:var(--bg3);border:1px solid var(--border2);color:var(--white);padding:9px 12px;border-radius:3px;font-size:13px;width:100%;outline:none;"
+          onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--border2)'">
+      </div>
+      <div class="form-group">
+        <label>Confirm New Password</label>
+        <input type="password" id="sa-confirm-super-pass" placeholder="Repeat new password"
+          style="background:var(--bg3);border:1px solid var(--border2);color:var(--white);padding:9px 12px;border-radius:3px;font-size:13px;width:100%;outline:none;"
+          onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--border2)'">
+      </div>
+    </div>
+    <button class="btn btn-gold" onclick="changeSuperAdminPassword()">👑 Update Super Admin Password</button>
   </div>
 
   <!-- Danger Zone -->
@@ -1088,6 +1117,29 @@ async function changeAdminPassword() {
   document.getElementById('sa-new-admin-pass').value = '';
   document.getElementById('sa-confirm-admin-pass').value = '';
   notify('✅ Admin password updated', 'success');
+}
+
+async function changeSuperAdminPassword() {
+  const current  = document.getElementById('sa-current-super-pass').value;
+  const p1       = document.getElementById('sa-new-super-pass').value;
+  const p2       = document.getElementById('sa-confirm-super-pass').value;
+  if (!current) { notify('Enter your current password', 'error'); return; }
+  if (!p1)      { notify('Enter a new password', 'error'); return; }
+  if (p1 !== p2){ notify('New passwords do not match', 'error'); return; }
+  if (p1.length < 8) { notify('Minimum 8 characters', 'error'); return; }
+  // Verify current password first
+  const currentHash = await sha256(SA_SALT + current);
+  if (currentHash !== SA_HASH) { notify('❌ Current password is incorrect', 'error'); return; }
+  // Set new password
+  const newHash = await sha256(SA_SALT + p1);
+  SA_HASH = newHash;
+  localStorage.setItem('kw5_sa_hash', newHash);
+  document.getElementById('sa-current-super-pass').value = '';
+  document.getElementById('sa-new-super-pass').value = '';
+  document.getElementById('sa-confirm-super-pass').value = '';
+  // Update session token
+  sessionStorage.setItem('kw5_atoken', newHash);
+  notify('✅ Super Admin password updated', 'success');
 }
 
 // Grade to numeric value for CS calculation
