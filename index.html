@@ -1158,8 +1158,24 @@ async function changeSuperAdminPassword() {
 
 // Grade to numeric value for CS calculation
 function gradeToNum(grade) {
-  const map = { 'A+':100,'A':93,'A-':87,'B+':83,'B':77,'B-':70,'C+':67,'C':63,'C-':57,'D':50,'F':30 };
+  const map = { 'A+':100,'A':93,'A-':87,'B+':83,'B':77,'B-':70,'C+':67,'C':63,'C-':57,'D+':53,'D':50,'D-':43,'F':30 };
   return map[grade] || 70;
+}
+
+function numToGrade(val) {
+  if (val >= 97) return 'A+';
+  if (val >= 90) return 'A';
+  if (val >= 85) return 'A-';
+  if (val >= 80) return 'B+';
+  if (val >= 73) return 'B';
+  if (val >= 67) return 'B-';
+  if (val >= 64) return 'C+';
+  if (val >= 60) return 'C';
+  if (val >= 54) return 'C-';
+  if (val >= 51) return 'D+';
+  if (val >= 46) return 'D';
+  if (val >= 36) return 'D-';
+  return 'F';
 }
 
 // ============================================================
@@ -1194,7 +1210,7 @@ function getAggregates(matches) {
     const g = p.gp || 1;
     p.ppg = p.pts/g; p.rpg = p.reb/g; p.apg = p.ast/g;
     p.spg = p.stl/g; p.bpg = p.blk/g; p.tpg = p.to/g;
-    p.grd = p.grades.length ? p.grades[Math.floor(p.grades.length/2)] : '';
+    p.grd = p.grades.length ? numToGrade(p.grades.reduce((sum,g) => sum + gradeToNum(g), 0) / p.grades.length) : '';
     // Shooting percentages from totals
     p.fg_pct = p.fga > 0 ? ((p.fgm/p.fga)*100).toFixed(1) : '—';
     p.tp_pct = p.tpa > 0 ? ((p.tpm/p.tpa)*100).toFixed(1) : '—';
