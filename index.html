@@ -1229,9 +1229,9 @@ function renderStats() {
     { key:'name', label:'Player', sortable:true },
     { key:'pos',  label:'POS',  sortable:true },
     { key:'grd',  label:'GRD',  sortable:true },
-    { key:'gp',   label:'GP',   sortable:true },
     { key:'csa',  label:'CS ℹ',   sortable:true },
     { key:'per',  label:'PER ℹ',  sortable:true },
+    { key:'gp',   label:'GP',   sortable:true },
     { key:'ppg',  label:'PTS',  sortable:true },
     { key:'rpg',  label:'REB',  sortable:true },
     { key:'apg',  label:'AST',  sortable:true },
@@ -1258,9 +1258,9 @@ function renderStats() {
         <td class="td-name">${p.name}</td>
         <td class="td-pos">${p.pos}</td>
         <td class="td-grd ${grdClass}">${p.grd||'—'}</td>
-        <td>${p.gp}</td>
         <td>${p.csa?p.csa.toFixed(0):'—'}</td>
         <td><div class="per-bar"><span class="per-val">${(p.per||0).toFixed(1)}</span><div class="per-bg"><div class="per-fill" style="width:${((p.per||0)/maxPer*100).toFixed(1)}%"></div></div></div></td>
+        <td>${p.gp}</td>
         <td class="td-pts">${(p.ppg||0).toFixed(1)}</td>
         <td>${(p.rpg||0).toFixed(1)}</td>
         <td>${(p.apg||0).toFixed(1)}</td>
