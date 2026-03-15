@@ -1492,7 +1492,7 @@ Rules:
 - team1 and team2: read the team name shown on screen. If not visible use "Team 1" / "Team 2"
 - Copy player names EXACTLY as shown — including numbers, symbols, capitalisation
 - If a name matches the roster list, use the roster spelling
-- pos: infer from player role if not shown (PG, SG, SF, PF, C)
+- pos: assign positions strictly by row order top to bottom: 1st player = PG, 2nd = SG, 3rd = SF, 4th = PF, 5th = C. Do this for BOTH teams independently.
 - grade is the letter grade shown (A+, A, A-, B+, B, etc)
 - fgm/fga: field goals made/attempted (from FGM/FGA column e.g. "6/15" → fgm:6, fga:15)
 - tpm/tpa: 3-pointers made/attempted (from 3PM/3PA column)
