@@ -819,12 +819,19 @@ function generateDemoData() {
 // INIT
 // ============================================================
 async function init() {
-  // Try load from DB first, fall back to localStorage
-  const hasBin = localStorage.getItem('kw5_bin') && getEncrypted('kw5_mk');
-  if (hasBin) {
-    const ok = await loadFromDb();
-    if (!ok) loadState(); // fallback to local if DB fails
-  } else {
+  try {
+    // Try load from DB first, fall back to localStorage
+    const hasBin = localStorage.getItem('kw5_bin') && getEncrypted('kw5_mk');
+    if (hasBin) {
+      const ok = await Promise.race([
+        loadFromDb(),
+        new Promise(resolve => setTimeout(() => resolve(false), 5000)) // 5s timeout
+      ]);
+      if (!ok) loadState();
+    } else {
+      loadState();
+    }
+  } catch(e) {
     loadState();
   }
 
@@ -838,16 +845,18 @@ async function init() {
   }
 
   // Restore session
-  const role = sessionValid();
-  if (role === 'super') { isSuperAdmin = true; isAdmin = true; }
-  else if (role === 'admin') { isAdmin = true; isSuperAdmin = false; }
-  else {
-    sessionStorage.removeItem('kw5_role');
-    sessionStorage.removeItem('kw5_st');
-  }
+  try {
+    const role = sessionValid();
+    if (role === 'super') { isSuperAdmin = true; isAdmin = true; }
+    else if (role === 'admin') { isAdmin = true; isSuperAdmin = false; }
+    else {
+      sessionStorage.removeItem('kw5_role');
+      sessionStorage.removeItem('kw5_st');
+    }
+  } catch(e) {}
 
   updateAdminUI();
-  document.getElementById('loading').style.display = 'none';
+  document.getElementById('loading').style.display = 'none'; // Always hide loading
   const today = new Date().toISOString().split('T')[0];
   document.getElementById('match-date').value = today;
   WORKER_URL = localStorage.getItem('kw5_worker_url') || WORKER_URL;
