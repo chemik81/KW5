@@ -22,6 +22,23 @@
     --text3:   #555540;
     --card-shadow: 0 4px 32px rgba(0,0,0,0.8);
   }
+  .light {
+    --bg:      #f0efe8;
+    --bg2:     #ffffff;
+    --bg3:     #e8e6de;
+    --bg4:     #d8d6cc;
+    --border:  #ccc8b8;
+    --border2: #bbb8a8;
+    --white:   #111108;
+    --text2:   #555540;
+    --text3:   #999980;
+    --card-shadow: 0 2px 12px rgba(0,0,0,0.1);
+    --goldglow: rgba(184,136,42,0.12);
+  }
+  .light body::before { background: linear-gradient(90deg,#b8882a,#d4a843,#b8882a); }
+  .light header { background:#fff; border-bottom:1px solid var(--border2); }
+  .light .hero { background: linear-gradient(135deg,#f5f3e8,#fffef5); }
+  .light .hero::before { background: radial-gradient(ellipse at 30% 50%, rgba(184,136,42,0.08) 0%, transparent 60%); }
   * { box-sizing:border-box; margin:0; padding:0; }
   body { background:var(--bg); color:var(--white); font-family:'Inter',sans-serif; min-height:100vh; }
 
@@ -272,7 +289,7 @@
   /* ── MATCHES LIST ── */
   .match-card { background:var(--bg2); border:1px solid var(--border); border-left:3px solid transparent; border-radius:3px; padding:14px 18px; display:flex; align-items:center; gap:12px; cursor:pointer; transition:all .2s; margin-bottom:6px; }
   .match-card:hover { border-left-color:var(--gold); background:var(--bg3); }
-  .match-date { font-size:11px; color:var(--text3); width:80px; flex-shrink:0; font-family:'Barlow Condensed',sans-serif; letter-spacing:1px; }
+  .match-date { font-size:13px; color:var(--text2); width:90px; flex-shrink:0; font-family:'Barlow Condensed',sans-serif; letter-spacing:1px; font-weight:600; }
   .match-vs { flex:1; display:flex; flex-direction:column; gap:4px; }
   .match-row { display:flex; align-items:center; gap:8px; }
   .match-player-name { flex:1; font-size:13px; font-weight:600; font-family:'Barlow Condensed',sans-serif; letter-spacing:.5px; text-transform:uppercase; }
@@ -314,6 +331,8 @@
     <button id="superadmin-nav-btn" onclick="showSection('superadmin',this)" style="display:none">👑 Super Admin</button>
   </nav>
   <div class="header-right">
+    <button class="icon-btn" onclick="toggleTheme()" id="theme-btn" title="Toggle light/dark">🌙</button>
+    <button class="icon-btn" onclick="openInfoModal()" title="About CS & PER">ℹ️</button>
     <button class="icon-btn" id="login-btn" onclick="openLoginModal('admin')">🔐 Admin</button>
     <button class="icon-btn admin-active" id="logout-btn" style="display:none" onclick="doLogout()">🔓 Logout</button>
   </div>
@@ -619,6 +638,51 @@
   </div>
 </div>
 
+<!-- INFO MODAL -->
+<div class="modal-overlay" id="info-overlay">
+  <div class="modal" style="max-width:520px;">
+    <div class="modal-header">
+      <h3>📖 Statistics Guide</h3>
+      <button class="btn btn-outline" onclick="closeModal('info-overlay')">✕</button>
+    </div>
+
+    <div style="margin-bottom:20px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+        <span style="font-family:'Bebas Neue';font-size:22px;color:var(--gold);letter-spacing:2px;">CS</span>
+        <span style="font-family:'Barlow Condensed';font-size:16px;font-weight:700;color:var(--white);letter-spacing:1px;">CARD SCORE / OVERALL</span>
+      </div>
+      <p style="font-size:13px;color:var(--text2);line-height:1.7;">
+        The <strong style="color:var(--white)">Card Score (CS)</strong> is the Overall rating of the player's MyPlayer card in NBA 2K — a number from 60 to 99. It reflects the overall quality of the card used in that match, not the skill of the player. A higher CS means a stronger card with better base attributes across the board.
+      </p>
+      <div style="margin-top:10px;padding:10px 14px;background:var(--bg3);border-left:3px solid var(--gold3);border-radius:3px;font-size:12px;color:var(--text2);">
+        💡 Two players can have identical stats but different CS — the one with a lower CS performed relatively better given their card's limitations.
+      </div>
+    </div>
+
+    <div style="border-top:1px solid var(--border2);padding-top:20px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+        <span style="font-family:'Bebas Neue';font-size:22px;color:var(--gold);letter-spacing:2px;">PER</span>
+        <span style="font-family:'Barlow Condensed';font-size:16px;font-weight:700;color:var(--white);letter-spacing:1px;">PLAYER EFFICIENCY RATING</span>
+      </div>
+      <p style="font-size:13px;color:var(--text2);line-height:1.7;">
+        <strong style="color:var(--white)">PER</strong> is a single number that summarises a player's overall performance per game. It combines all major statistical categories into one score, rewarding positive contributions and penalising turnovers.
+      </p>
+      <div style="margin-top:12px;padding:12px 14px;background:var(--bg3);border-radius:3px;font-size:12px;font-family:monospace;color:var(--text2);line-height:1.8;">
+        PER = PPG + (RPG × 1.2) + (APG × 1.5)<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ (SPG × 2.0) + (BPG × 2.0) − (TPG × 1.5)
+      </div>
+      <div style="margin-top:10px;padding:10px 14px;background:var(--bg3);border-left:3px solid var(--gold3);border-radius:3px;font-size:12px;color:var(--text2);">
+        💡 Assists and defensive plays (steals, blocks) are weighted higher because they are harder to achieve and have a greater impact on the game outcome.
+      </div>
+      <div style="margin-top:12px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-size:12px;text-align:center;">
+        <div style="background:var(--bg3);padding:8px;border-radius:3px;"><div style="color:var(--text3);margin-bottom:4px;">Below 15</div><div style="color:#f97316;font-weight:700;">Developing</div></div>
+        <div style="background:var(--bg3);padding:8px;border-radius:3px;"><div style="color:var(--text3);margin-bottom:4px;">15 – 25</div><div style="color:var(--gold);font-weight:700;">Solid</div></div>
+        <div style="background:var(--bg3);padding:8px;border-radius:3px;"><div style="color:var(--text3);margin-bottom:4px;">Above 25</div><div style="color:#4ade80;font-weight:700;">Elite</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- NOTIFICATIONS -->
 <div id="notif"></div>
 
@@ -861,6 +925,7 @@ async function init() {
   } catch(e) {}
 
   updateAdminUI();
+  applyTheme();
   document.getElementById('loading').style.display = 'none'; // Always hide loading
   const today = new Date().toISOString().split('T')[0];
   document.getElementById('match-date').value = today;
@@ -1089,8 +1154,8 @@ function renderStats() {
     { key:'pos',  label:'POS',  sortable:true },
     { key:'gp',   label:'GP',   sortable:true },
     { key:'grd',  label:'GRD',  sortable:true },
-    { key:'csa',  label:'CS',   sortable:true },
-    { key:'per',  label:'PER',  sortable:true },
+    { key:'csa',  label:'CS ℹ',   sortable:true },
+    { key:'per',  label:'PER ℹ',  sortable:true },
     { key:'ppg',  label:'PTS',  sortable:true },
     { key:'rpg',  label:'REB',  sortable:true },
     { key:'apg',  label:'AST',  sortable:true },
@@ -1670,6 +1735,34 @@ function clearAllData() {
   state.matches = [];
   saveState(); renderStats(); renderBoxScores(); updatePills();
   notify('All match data cleared', 'info');
+}
+
+// ============================================================
+// THEME TOGGLE
+// ============================================================
+let isDark = localStorage.getItem('kw5_theme') !== 'light';
+
+function applyTheme() {
+  if (isDark) {
+    document.body.classList.remove('light');
+    document.getElementById('theme-btn').textContent = '🌙';
+  } else {
+    document.body.classList.add('light');
+    document.getElementById('theme-btn').textContent = '☀️';
+  }
+}
+
+function toggleTheme() {
+  isDark = !isDark;
+  localStorage.setItem('kw5_theme', isDark ? 'dark' : 'light');
+  applyTheme();
+}
+
+// ============================================================
+// INFO MODAL
+// ============================================================
+function openInfoModal() {
+  document.getElementById('info-overlay').classList.add('active');
 }
 
 // ============================================================
