@@ -649,13 +649,17 @@
     <div style="margin-bottom:20px;">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
         <span style="font-family:'Bebas Neue';font-size:22px;color:var(--gold);letter-spacing:2px;">CS</span>
-        <span style="font-family:'Barlow Condensed';font-size:16px;font-weight:700;color:var(--white);letter-spacing:1px;">CARD SCORE / OVERALL</span>
+        <span style="font-family:'Barlow Condensed';font-size:16px;font-weight:700;color:var(--white);letter-spacing:1px;">COMPOSITE SCORE</span>
       </div>
       <p style="font-size:13px;color:var(--text2);line-height:1.7;">
-        The <strong style="color:var(--white)">Card Score (CS)</strong> is the Overall rating of the player's MyPlayer card in NBA 2K — a number from 60 to 99. It reflects the overall quality of the card used in that match, not the skill of the player. A higher CS means a stronger card with better base attributes across the board.
+        The <strong style="color:var(--white)">Composite Score (CS)</strong> is a weighted summary of a player's key statistical contributions per game. It rewards well-rounded players who score, defend and contribute across multiple areas.
       </p>
+      <div style="margin-top:12px;padding:12px 14px;background:var(--bg3);border-radius:3px;font-size:12px;font-family:monospace;color:var(--text2);line-height:1.8;">
+        CS = (PTS × 0.25) + (STL × 0.20) + (BLK × 0.18)<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ (REB × 0.15) + (AST × 0.12) + (Grade × 0.10)
+      </div>
       <div style="margin-top:10px;padding:10px 14px;background:var(--bg3);border-left:3px solid var(--gold3);border-radius:3px;font-size:12px;color:var(--text2);">
-        💡 Two players can have identical stats but different CS — the one with a lower CS performed relatively better given their card's limitations.
+        💡 Steals and blocks are weighted heavily because they directly stop the opposition. Grade contributes 10% — a player with a great letter grade but poor stats won't rank highly.
       </div>
     </div>
 
@@ -1086,6 +1090,12 @@ async function changeAdminPassword() {
   notify('✅ Admin password updated', 'success');
 }
 
+// Grade to numeric value for CS calculation
+function gradeToNum(grade) {
+  const map = { 'A+':100,'A':93,'A-':87,'B+':83,'B':77,'B-':70,'C+':67,'C':63,'C-':57,'D':50,'F':30 };
+  return map[grade] || 70;
+}
+
 // ============================================================
 // PLAYER AGGREGATES
 // ============================================================
@@ -1105,7 +1115,6 @@ function getAggregates(matches) {
         pl.blk += +p.blk||0;
         pl.to  += +p.to ||0;
         if (p.grade) pl.grades.push(p.grade);
-        if (p.cs) pl.cs += +p.cs||0;
         if (p.pos && !pl.pos) pl.pos = p.pos;
       });
     };
@@ -1116,9 +1125,13 @@ function getAggregates(matches) {
     const g = p.gp || 1;
     p.ppg = p.pts/g; p.rpg = p.reb/g; p.apg = p.ast/g;
     p.spg = p.stl/g; p.bpg = p.blk/g; p.tpg = p.to/g;
-    p.csa = p.cs/g;
-    p.grd = p.grades.length ? p.grades[p.grades.length-1] : '';
+    p.grd = p.grades.length ? p.grades[Math.floor(p.grades.length/2)] : '';
     p.per = p.ppg + p.rpg*1.2 + p.apg*1.5 + p.spg*2 + p.bpg*2 - p.tpg*1.5;
+    // Composite Score: PTS(25%) + STL(20%) + BLK(18%) + REB(15%) + AST(12%) + Grade(10%)
+    const gradeVal = p.grades.length
+      ? p.grades.reduce((sum,g) => sum + gradeToNum(g), 0) / p.grades.length
+      : 70;
+    p.csa = (p.ppg * 0.25) + (p.spg * 0.20) + (p.bpg * 0.18) + (p.rpg * 0.15) + (p.apg * 0.12) + (gradeVal * 0.10);
     return p;
   });
 }
