@@ -1158,7 +1158,7 @@ function getAggregates(matches) {
     const process = (players) => {
       (players||[]).forEach(p => {
         if (!p.name) return;
-        if (!map[p.name]) map[p.name] = { name:p.name, pos:p.pos||'', gp:0, pts:0, reb:0, ast:0, stl:0, blk:0, to:0, grades:[], cs:0 };
+        if (!map[p.name]) map[p.name] = { name:p.name, pos:p.pos||'', gp:0, pts:0, reb:0, ast:0, stl:0, blk:0, to:0, grades:[], fgm:0,fga:0,tpm:0,tpa:0,ftm:0,fta:0 };
         const pl = map[p.name];
         pl.gp++;
         pl.pts += +p.pts||0;
@@ -1167,6 +1167,9 @@ function getAggregates(matches) {
         pl.stl += +p.stl||0;
         pl.blk += +p.blk||0;
         pl.to  += +p.to ||0;
+        pl.fgm += +p.fgm||0; pl.fga += +p.fga||0;
+        pl.tpm += +p.tpm||0; pl.tpa += +p.tpa||0;
+        pl.ftm += +p.ftm||0; pl.fta += +p.fta||0;
         if (p.grade) pl.grades.push(p.grade);
         if (p.pos && !pl.pos) pl.pos = p.pos;
       });
@@ -1179,6 +1182,13 @@ function getAggregates(matches) {
     p.ppg = p.pts/g; p.rpg = p.reb/g; p.apg = p.ast/g;
     p.spg = p.stl/g; p.bpg = p.blk/g; p.tpg = p.to/g;
     p.grd = p.grades.length ? p.grades[Math.floor(p.grades.length/2)] : '';
+    // Shooting percentages from totals
+    p.fg_pct = p.fga > 0 ? ((p.fgm/p.fga)*100).toFixed(1) : '—';
+    p.tp_pct = p.tpa > 0 ? ((p.tpm/p.tpa)*100).toFixed(1) : '—';
+    p.ft_pct = p.fta > 0 ? ((p.ftm/p.fta)*100).toFixed(1) : '—';
+    p.fg_str = p.fga > 0 ? `${p.fgm}/${p.fga}` : '—';
+    p.tp_str = p.tpa > 0 ? `${p.tpm}/${p.tpa}` : '—';
+    p.ft_str = p.fta > 0 ? `${p.ftm}/${p.fta}` : '—';
     p.per = p.ppg + p.rpg*1.2 + p.apg*1.5 + p.spg*2 + p.bpg*2 - p.tpg*1.5;
     // Composite Score: PTS(25%) + STL(20%) + BLK(18%) + REB(15%) + AST(12%) + Grade(10%)
     const gradeVal = p.grades.length
@@ -1228,6 +1238,9 @@ function renderStats() {
     { key:'spg',  label:'STL',  sortable:true },
     { key:'bpg',  label:'BLK',  sortable:true },
     { key:'tpg',  label:'TO',   sortable:true },
+    { key:'fg_pct', label:'FG%', sortable:true },
+    { key:'tp_pct', label:'3P%', sortable:true },
+    { key:'ft_pct', label:'FT%', sortable:true },
   ];
 
   wrap.innerHTML = `<table>
@@ -1254,6 +1267,9 @@ function renderStats() {
         <td>${(p.spg||0).toFixed(1)}</td>
         <td>${(p.bpg||0).toFixed(1)}</td>
         <td>${(p.tpg||0).toFixed(1)}</td>
+        <td>${p.fg_pct && p.fg_pct!=='—' ? p.fg_pct+'%' : '—'}</td>
+        <td>${p.tp_pct && p.tp_pct!=='—' ? p.tp_pct+'%' : '—'}</td>
+        <td>${p.ft_pct && p.ft_pct!=='—' ? p.ft_pct+'%' : '—'}</td>
       </tr>`;
     }).join('')}
     </tbody>
@@ -1296,15 +1312,17 @@ function renderBoxScores() {
     const s1 = +m.score1||0, s2 = +m.score2||0;
     const w1 = s1>s2, w2 = s2>s1;
     const p1 = (m.team1_players||[]).length, p2 = (m.team2_players||[]).length;
+    const t1name = m.team1 || 'Team 1';
+    const t2name = m.team2 || 'Team 2';
     return `<div class="match-card" onclick="openDetail('${m.id}')">
       <div class="match-date">${m.date||''}<br><span style="color:var(--text3);font-size:10px;">${m.note||''}</span></div>
       <div class="match-vs">
         <div class="match-row">
-          <span class="match-player-name" style="${w1?'color:var(--white)':'color:var(--text2)'}">Team 1 (${p1} players)</span>
+          <span class="match-player-name" style="${w1?'color:var(--white)':'color:var(--text2)'}">${t1name}</span>
           <span class="match-score-val ${w1?'score-w':'score-l'}">${s1}</span>
         </div>
         <div class="match-row">
-          <span class="match-player-name" style="${w2?'color:var(--white)':'color:var(--text2)'}">Team 2 (${p2} players)</span>
+          <span class="match-player-name" style="${w2?'color:var(--white)':'color:var(--text2)'}">${t2name}</span>
           <span class="match-score-val ${w2?'score-w':'score-l'}">${s2}</span>
         </div>
       </div>
@@ -1318,39 +1336,50 @@ function openDetail(id) {
   if (!m) return;
   document.getElementById('detail-title').textContent = `Box Score · ${m.date||''}${m.note?' · '+m.note:''}`;
   const s1=+m.score1||0, s2=+m.score2||0;
+  const t1 = m.team1 || 'Team 1';
+  const t2 = m.team2 || 'Team 2';
   document.getElementById('detail-content').innerHTML = `
     <div style="display:flex;justify-content:center;gap:32px;margin-bottom:20px;text-align:center;">
-      <div><div style="font-size:16px;font-weight:700;color:var(--text2)">Team 1</div><div style="font-family:'Bebas Neue';font-size:56px;color:${s1>s2?'var(--gold)':'var(--text3)'}">${s1}</div></div>
+      <div><div style="font-size:16px;font-weight:700;color:var(--text2)">${t1}</div><div style="font-family:'Bebas Neue';font-size:56px;color:${s1>s2?'var(--gold)':'var(--text3)'}">${s1}</div></div>
       <div style="font-family:'Bebas Neue';font-size:28px;color:var(--text3);padding-top:20px">VS</div>
-      <div><div style="font-size:16px;font-weight:700;color:var(--text2)">Team 2</div><div style="font-family:'Bebas Neue';font-size:56px;color:${s2>s1?'var(--gold)':'var(--text3)'}">${s2}</div></div>
+      <div><div style="font-size:16px;font-weight:700;color:var(--text2)">${t2}</div><div style="font-family:'Bebas Neue';font-size:56px;color:${s2>s1?'var(--gold)':'var(--text3)'}">${s2}</div></div>
     </div>
-    ${renderPlayerDetailTable(m.team1_players,'Team 1')}
-    ${renderPlayerDetailTable(m.team2_players,'Team 2')}
+    ${renderPlayerDetailTable(m.team1_players, t1)}
+    ${renderPlayerDetailTable(m.team2_players, t2)}
   `;
   document.getElementById('detail-overlay').classList.add('active');
 }
 
 function renderPlayerDetailTable(players, label) {
   if (!players||!players.length) return '';
+  // Calculate per-game totals for display
+  const rows = players.map(p => {
+    const fgStr = (p.fgm!=null&&p.fga!=null) ? `${p.fgm}/${p.fga}` : (p.fg_pct||'—');
+    const tpStr = (p.tpm!=null&&p.tpa!=null) ? `${p.tpm}/${p.tpa}` : (p.tp_pct||'—');
+    const ftStr = (p.ftm!=null&&p.fta!=null) ? `${p.ftm}/${p.fta}` : (p.ft_pct||'—');
+    const fgPct = (p.fgm!=null&&p.fga>0) ? ` (${((p.fgm/p.fga)*100).toFixed(0)}%)` : '';
+    const tpPct = (p.tpm!=null&&p.tpa>0) ? ` (${((p.tpm/p.tpa)*100).toFixed(0)}%)` : '';
+    const ftPct = (p.ftm!=null&&p.fta>0) ? ` (${((p.ftm/p.fta)*100).toFixed(0)}%)` : '';
+    return { ...p, fgStr, tpStr, ftStr, fgPct, tpPct, ftPct };
+  });
   return `<div style="margin-bottom:16px;">
     <div style="font-family:'Bebas Neue';font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:8px;">${label}</div>
     <div style="overflow-x:auto;">
       <table style="width:100%;font-size:12px;border-collapse:collapse;">
-        <thead><tr>${['Player','POS','GRD','CS','PTS','REB','AST','STL','BLK','TO','FG%','3P%','FT%'].map(h=>`<th style="padding:6px 8px;color:var(--text3);border-bottom:1px solid var(--border2);text-align:${h==='Player'?'left':'center'};font-size:10px;text-transform:uppercase;letter-spacing:1px;">${h}</th>`).join('')}</tr></thead>
-        <tbody>${(players||[]).map(p=>`<tr>
-          <td style="padding:6px 8px;font-weight:700;font-family:'Barlow Condensed';letter-spacing:.5px;text-transform:uppercase;">${p.name||''}</td>
+        <thead><tr>${['Player','POS','GRD','PTS','REB','AST','STL','BLK','TO','FGM/FGA','3PM/3PA','FTM/FTA'].map(h=>`<th style="padding:6px 8px;color:var(--text3);border-bottom:1px solid var(--border2);text-align:${h==='Player'?'left':'center'};font-size:10px;text-transform:uppercase;letter-spacing:1px;white-space:nowrap;">${h}</th>`).join('')}</tr></thead>
+        <tbody>${rows.map(p=>`<tr>
+          <td style="padding:6px 8px;font-weight:700;font-family:'Barlow Condensed';letter-spacing:.5px;text-transform:uppercase;white-space:nowrap;">${p.name||''}</td>
           <td style="text-align:center;padding:4px;color:var(--text2);font-size:11px;">${p.pos||''}</td>
           <td style="text-align:center;padding:4px;font-weight:700;font-size:11px;">${p.grade||''}</td>
-          <td style="text-align:center;padding:4px;">${p.cs||''}</td>
           <td style="text-align:center;padding:4px;font-weight:700;color:var(--gold);font-family:'Bebas Neue';font-size:16px;">${p.pts||0}</td>
           <td style="text-align:center;padding:4px;">${p.reb||0}</td>
           <td style="text-align:center;padding:4px;">${p.ast||0}</td>
           <td style="text-align:center;padding:4px;">${p.stl||0}</td>
           <td style="text-align:center;padding:4px;">${p.blk||0}</td>
           <td style="text-align:center;padding:4px;">${p.to||0}</td>
-          <td style="text-align:center;padding:4px;">${p.fg_pct||'—'}</td>
-          <td style="text-align:center;padding:4px;">${p.tp_pct||'—'}</td>
-          <td style="text-align:center;padding:4px;">${p.ft_pct||'—'}</td>
+          <td style="text-align:center;padding:4px;white-space:nowrap;">${p.fgStr}<span style="color:var(--text3);font-size:10px;">${p.fgPct}</span></td>
+          <td style="text-align:center;padding:4px;white-space:nowrap;">${p.tpStr}<span style="color:var(--text3);font-size:10px;">${p.tpPct}</span></td>
+          <td style="text-align:center;padding:4px;white-space:nowrap;">${p.ftStr}<span style="color:var(--text3);font-size:10px;">${p.ftPct}</span></td>
         </tr>`).join('')}</tbody>
       </table>
     </div>
@@ -1448,22 +1477,27 @@ async function analyzeScreenshot() {
 
 Return ONLY valid JSON with no markdown, no explanation, no backticks:
 {
+  "team1": "Team name from screen (e.g. Katowice Aliens PL)",
+  "team2": "Team name from screen",
   "score1": 85,
   "score2": 72,
   "team1_players": [
-    {"name":"ExactGamertag","pos":"PG","grade":"A+","cs":98,"pts":25,"reb":5,"ast":8,"stl":2,"blk":0,"to":3,"fg_pct":"50.0","tp_pct":"40.0","ft_pct":"90.0"}
+    {"name":"ExactGamertag","pos":"PG","grade":"A+","pts":25,"reb":5,"ast":8,"stl":2,"blk":0,"to":3,
+     "fgm":6,"fga":15,"tpm":2,"tpa":6,"ftm":2,"fta":2}
   ],
   "team2_players": [...]
 }
 
 Rules:
+- team1 and team2: read the team name shown on screen. If not visible use "Team 1" / "Team 2"
 - Copy player names EXACTLY as shown — including numbers, symbols, capitalisation
 - If a name matches the roster list, use the roster spelling
-- pos must be one of: PG, SG, SF, PF, C
+- pos: infer from player role if not shown (PG, SG, SF, PF, C)
 - grade is the letter grade shown (A+, A, A-, B+, B, etc)
-- cs is the Overall/CS number
-- All stat values must be numbers (not strings)
-- fg_pct, tp_pct, ft_pct are strings like "47.2"` }
+- fgm/fga: field goals made/attempted (from FGM/FGA column e.g. "6/15" → fgm:6, fga:15)
+- tpm/tpa: 3-pointers made/attempted (from 3PM/3PA column)
+- ftm/fta: free throws made/attempted (from FTM/FTA column)
+- All values must be numbers` }
         ]}]
       })
     });
