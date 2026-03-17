@@ -1215,7 +1215,7 @@ function renderStats() {
         <td>${p.fg_pct && p.fg_pct!=='—' ? p.fg_pct+'%' : '—'}</td>
         <td>${p.tp_pct && p.tp_pct!=='—' ? p.tp_pct+'%' : '—'}</td>
         <td>${p.ft_pct && p.ft_pct!=='—' ? p.ft_pct+'%' : '—'}</td>
-        <td>${p.csa?p.csa.toFixed(0):'—'}</td>
+        <td>${p.csa?p.csa.toFixed(1):'—'}</td>
         <td><div class="per-bar"><span class="per-val">${(p.per||0).toFixed(1)}</span><div class="per-bg"><div class="per-fill" style="width:${((p.per||0)/maxPer*100).toFixed(1)}%"></div></div></div></td>
       </tr>`;
     }).join('')}
