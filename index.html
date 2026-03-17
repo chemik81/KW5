@@ -1347,19 +1347,11 @@ function handleDrop(e) {
 function loadImg(file) {
   const reader = new FileReader();
   reader.onload = e => {
-    const arr = new Uint8Array(e.target.result.slice(0, 8));
-    // Detect real format from magic bytes
-    let detectedType = 'image/jpeg';
-    if (arr[0] === 0x89 && arr[1] === 0x50) detectedType = 'image/png';
-    else if (arr[0] === 0x47 && arr[1] === 0x49) detectedType = 'image/gif';
-    else if (arr[0] === 0x52 && arr[1] === 0x49) detectedType = 'image/webp';
-
-    // Compress via canvas to stay under Anthropic 5MB base64 limit
     const img = new Image();
     img.onload = () => {
       const canvas = document.createElement('canvas');
       let w = img.width, h = img.height;
-      // Scale down if too large
+      // Scale down if too large (max 1920px on longest side)
       const MAX = 1920;
       if (w > MAX || h > MAX) {
         if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
@@ -1367,7 +1359,7 @@ function loadImg(file) {
       }
       canvas.width = w; canvas.height = h;
       canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      // Export as JPEG quality 0.85 — keeps size well under 5MB
+      // Export as JPEG 0.85 — well under 5MB limit
       const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
       screenshotMimeType = 'image/jpeg';
       screenshotB64 = dataUrl.split(',')[1];
@@ -1376,7 +1368,7 @@ function loadImg(file) {
     };
     img.src = e.target.result;
   };
-  reader.readAsArrayBuffer(file);
+  reader.readAsDataURL(file);
 }
 
 // ============================================================
