@@ -1133,10 +1133,12 @@ function getAggregates(matches) {
     p.ft_str = p.fta > 0 ? `${p.ftm}/${p.fta}` : '—';
     p.per = p.ppg + p.rpg*1.2 + p.apg*1.5 + p.spg*2 + p.bpg*2 - p.tpg*1.5;
     // Composite Score: PTS(25%) + STL(20%) + BLK(18%) + REB(15%) + AST(12%) + Grade(10%)
+    // Grade normalized to 0-10 scale so it doesn't dominate
     const gradeVal = p.grades.length
       ? p.grades.reduce((sum,g) => sum + gradeToNum(g), 0) / p.grades.length
       : 70;
-    p.csa = (p.ppg * 0.25) + (p.spg * 0.20) + (p.bpg * 0.18) + (p.rpg * 0.15) + (p.apg * 0.12) + (gradeVal * 0.10);
+    const gradeNorm = (gradeVal - 30) / 7; // maps F(30)→0, A+(100)→10
+    p.csa = (p.ppg * 0.25) + (p.spg * 0.20) + (p.bpg * 0.18) + (p.rpg * 0.15) + (p.apg * 0.12) + (gradeNorm * 1.0);
     return p;
   });
 }
