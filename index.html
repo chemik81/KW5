@@ -951,8 +951,10 @@ async function init() {
     loadState();
   }
 
-  // Demo data if still empty
-  if (!state.matches.length) {
+  // Demo data only if JSONBin not configured AND no local data AND never had real data
+  const hasBinConfig = localStorage.getItem('kw5_bin') && getEncrypted('kw5_mk');
+  const hadRealData = localStorage.getItem('kw5_had_real_data');
+  if (!state.matches.length && !hasBinConfig && !hadRealData) {
     state = generateDemoData();
     const banner = document.createElement('div');
     banner.style.cssText = 'background:linear-gradient(90deg,rgba(212,168,67,0.1),rgba(212,168,67,0.05));border-bottom:1px solid rgba(212,168,67,0.2);padding:7px 24px;text-align:center;font-size:12px;color:var(--text2);letter-spacing:1px;font-family:Barlow Condensed,sans-serif;text-transform:uppercase;';
@@ -1713,6 +1715,7 @@ function saveMatch() {
     note: document.getElementById('match-note').value
   };
   state.matches.push(match);
+  localStorage.setItem('kw5_had_real_data', '1');
 
   // Auto-add new player names to roster
   let newPlayers = 0;
