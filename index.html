@@ -2406,23 +2406,15 @@ function drawShareCard(d) {
   ctx.fillStyle = glowGrad;
   ctx.fillRect(0, 0, W, H);
 
-  // ── KW5 logo top-right ──────────────────────────────────────
+  // ── KW5 logo — bottom bar left ──────────────────────────────
   if (window._kw5LogoImg && window._kw5LogoImg.complete) {
     ctx.save();
-    ctx.globalAlpha = 0.85;
-    const lh = 52;
+    ctx.globalAlpha = 0.9;
+    const lh = 28;
     const lw = window._kw5LogoImg.naturalWidth > 0
       ? Math.round(lh * window._kw5LogoImg.naturalWidth / window._kw5LogoImg.naturalHeight)
       : lh;
-    ctx.drawImage(window._kw5LogoImg, W - 28 - lw, 14, lw, lh);
-    ctx.restore();
-  } else {
-    // Fallback text watermark
-    ctx.save();
-    ctx.font = 'bold 11px Arial';
-    ctx.fillStyle = 'rgba(212,168,67,0.35)';
-    ctx.textAlign = 'right';
-    ctx.fillText('KW5 ELITE LEAGUE', W - 28, 30);
+    ctx.drawImage(window._kw5LogoImg, 28, H - 44 + (44 - lh) / 2, lw, lh);
     ctx.restore();
   }
 
@@ -2590,9 +2582,9 @@ function drawShareCard(d) {
   ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(0, H-44); ctx.lineTo(W, H-44); ctx.stroke();
   ctx.font = '500 11px Arial';
-  ctx.fillStyle = 'rgba(212,168,67,0.5)';
+  ctx.fillStyle = 'rgba(212,168,67,0.45)';
   ctx.textAlign = 'left';
-  ctx.fillText('KW5 ELITE LEAGUE', 28, H - 16);
+  ctx.fillText('KW5 ELITE LEAGUE', 72, H - 16);
   ctx.textAlign = 'right';
   ctx.fillStyle = 'rgba(255,255,255,0.25)';
   ctx.fillText('kw5.eu', W - 28, H - 16);
