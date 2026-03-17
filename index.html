@@ -1351,14 +1351,19 @@ function editMatch(id) {
   pendingMatch = JSON.parse(JSON.stringify(m));
   pendingMatch._editId = id; // mark as edit mode
   closeModal('detail-overlay');
-  // Switch to upload tab and show review with existing data
-  switchTab('upload');
+  // Switch to admin section (where upload/review lives)
+  showSection('admin', document.getElementById('admin-nav-btn'));
   // Pre-fill date and note fields
   const dateEl = document.getElementById('match-date');
   const noteEl = document.getElementById('match-note');
   if (dateEl) dateEl.value = m.date || '';
   if (noteEl) noteEl.value = m.note || '';
   showReview(pendingMatch);
+  // Scroll to review card
+  setTimeout(() => {
+    const rc = document.getElementById('review-card');
+    if (rc) rc.scrollIntoView({ behavior:'smooth', block:'start' });
+  }, 100);
   // Update save button label
   const saveBtn = document.getElementById('save-btn');
   if (saveBtn) {
