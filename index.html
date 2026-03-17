@@ -2067,12 +2067,12 @@ function openPlayerModal(playerName) {
     `<span style="background:var(--gold);color:#000;font-size:10px;font-weight:700;padding:1px 6px;border-radius:3px;margin-right:6px;">${pos||'—'}</span>` +
     `<span style="color:var(--text2);">${teamName}</span>` +
     `<span style="color:var(--text3);margin:0 8px;">·</span>` +
-    `<span>${gp} meczy</span>`;
+    `<span>${gp} games</span>`;
 
   document.getElementById('player-modal-content').innerHTML = `
     <!-- Career records -->
     <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:10px 16px;margin-bottom:16px;">
-      <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">🏆 Rekordy kariery</div>
+      <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">🏆 Career Records</div>
       <div style="display:flex;gap:24px;flex-wrap:wrap;">
         ${[['PTS',bestPts],['REB',bestReb],['AST',bestAst],['STL',bestStl],['BLK',bestBlk]].map(([l,v])=>
           `<div><span style="font-size:10px;color:var(--text3);">${l} </span><span style="font-family:'Bebas Neue';font-size:18px;color:var(--gold);">${v}</span></div>`
@@ -2099,17 +2099,17 @@ function openPlayerModal(playerName) {
       <div style="background:rgba(212,168,67,0.08);border:1px solid rgba(212,168,67,0.3);border-radius:6px;padding:14px;text-align:center;">
         <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Composite Score</div>
         <div style="font-family:'Bebas Neue';font-size:38px;color:var(--gold);">${csVal}</div>
-        <div style="font-size:10px;color:var(--text3);">wyżej = lepiej</div>
+        <div style="font-size:10px;color:var(--text3);">higher = better</div>
       </div>
       <div style="background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.3);border-radius:6px;padding:14px;text-align:center;">
         <div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">PER</div>
         <div style="font-family:'Bebas Neue';font-size:38px;color:#3b82f6;">${perVal}</div>
-        <div style="font-size:10px;color:var(--text3);">wyżej = lepiej</div>
+        <div style="font-size:10px;color:var(--text3);">higher = better</div>
       </div>
     </div>
 
     <!-- Match history -->
-    <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Historia meczów <span style="color:var(--text3);font-weight:400;">(kliknij wiersz aby otworzyć box score)</span></div>
+    <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Match History <span style="color:var(--text3);font-weight:400;">(click row to open box score)</span></div>
     <div style="overflow-x:auto;">
       <table style="width:100%;font-size:12px;border-collapse:collapse;">
         <thead><tr>
