@@ -523,26 +523,10 @@
   <!-- JSONBin Config -->
   <div class="card" style="margin-bottom:16px;">
     <div class="card-title">☁️ Database (JSONBin)</div>
-    <p style="color:var(--text2);font-size:13px;margin-bottom:16px;">
-      Connect a JSONBin database so all match data is stored in the cloud and visible to everyone who visits the page.
-      Get a free account at <a href="https://jsonbin.io" target="_blank" style="color:var(--gold);">jsonbin.io</a>.
+    <p style="color:var(--text2);font-size:13px;margin-bottom:12px;">
+      Database is securely configured in Cloudflare Worker — no credentials needed here. Data loads automatically from the cloud on every page visit.
     </p>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
-      <div class="form-group">
-        <label>Master Key</label>
-        <input type="password" id="sa-master-key" placeholder="$2b$10$..."
-          style="background:var(--bg3);border:1px solid var(--border2);color:var(--white);padding:9px 12px;border-radius:3px;font-size:13px;width:100%;outline:none;"
-          onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--border2)'">
-      </div>
-      <div class="form-group">
-        <label>Bin ID</label>
-        <input type="text" id="sa-bin-id" placeholder="6845abc123def456"
-          style="background:var(--bg3);border:1px solid var(--border2);color:var(--white);padding:9px 12px;border-radius:3px;font-size:13px;width:100%;outline:none;"
-          onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--border2)'">
-      </div>
-    </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;">
-      <button class="btn btn-gold" onclick="saveDbConfig()">💾 Save & Connect</button>
       <button class="btn btn-outline" onclick="testDbConnection()">🔌 Test Connection</button>
       <button class="btn btn-outline" onclick="syncToDb()">⬆️ Push data to DB</button>
       <button class="btn btn-outline" onclick="loadFromDb()">⬇️ Pull data from DB</button>
@@ -993,9 +977,8 @@ function loadState() {
 
 function saveState() {
   localStorage.setItem('kw5elite_data', JSON.stringify(state));
-  // Auto-sync to DB if configured
-  const hasBin = localStorage.getItem('kw5_bin') && getEncrypted('kw5_mk');
-  if (hasBin) syncToDb();
+  // Auto-sync to DB via Worker
+  if (WORKER_URL) syncToDb();
 }
 
 function updateAdminUI() {
