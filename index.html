@@ -753,6 +753,7 @@ let sortDir = 'desc';
 let posFilter    = '';
 let pendingMatch  = null;
 let screenshotB64 = null;
+
 let screenshotMimeType = 'image/jpeg';
 
 // Dynamic worker URL — set by superadmin
@@ -862,66 +863,6 @@ function setDbStatus(msg, type) {
 }
 
 // ============================================================
-// DEMO DATA
-// ============================================================
-function generateDemoData() {
-  const rnd = (a,b) => Math.floor(Math.random()*(b-a+1))+a;
-
-  const players = [
-    ['xXKingSlayerXx','PG'], ['IronBlock99','C'],   ['QuickDraw_7','SG'],
-    ['SkyWalker2K','SF'],    ['StoneWall','PF'],     ['BullRush','PG'],
-    ['NetBurner','SG'],      ['CrownZ','SF'],         ['TowerUp','PF'],
-    ['VaultMan','C'],        ['DragonFire','PG'],     ['ScaleBreak','SG'],
-    ['InfernoCut','SF'],     ['TailWhip','PF'],       ['DragonWall','C'],
-    ['ThunderBolt','PG'],    ['LightningQ','SG'],     ['StormCell','SF'],
-    ['TornadoZ','PF'],       ['CloudBurst','C'],
-  ];
-
-  const roster = players.map(p => p[0]);
-
-  const grades = ['A+','A+','A','A','A','A-','A-','B+','B+','B'];
-
-  function mkPlayer(idx, winner) {
-    const [name, pos] = players[idx];
-    const base = winner ? [20,32] : [10,20];
-    const pts = rnd(base[0], base[1]);
-    const reb = pos==='C'||pos==='PF' ? rnd(7,15) : rnd(2,7);
-    const ast = pos==='PG' ? rnd(6,14) : rnd(1,5);
-    const stl = rnd(0,3); const blk = pos==='C'||pos==='PF' ? rnd(0,4) : rnd(0,2);
-    const to  = rnd(0,4);
-    const cs  = rnd(88,99);
-    const grade = grades[rnd(0,grades.length-1)];
-    const fg  = (rnd(38,62)/100).toFixed(3).slice(1);
-    const tp  = (rnd(28,55)/100).toFixed(3).slice(1);
-    const ft  = (rnd(65,98)/100).toFixed(3).slice(1);
-    return { name, pos, grade, cs, pts, reb, ast, stl, blk, to, fg_pct:fg, tp_pct:tp, ft_pct:ft };
-  }
-
-  // 4 match schedule - pairs of 5 players
-  const schedule = [
-    { date:'2026-02-03', note:'Elite Week 1', t1:[0,1,2,3,4],   t2:[5,6,7,8,9],   w1:true  },
-    { date:'2026-02-10', note:'Elite Week 2', t1:[10,11,12,13,14],t2:[15,16,17,18,19],w1:false},
-    { date:'2026-02-17', note:'Elite Week 3', t1:[0,1,2,3,4],   t2:[10,11,12,13,14],w1:true  },
-    { date:'2026-02-24', note:'Elite Week 4', t1:[5,6,7,8,9],   t2:[15,16,17,18,19],w1:true  },
-    { date:'2026-03-03', note:'Elite Week 5', t1:[0,1,2,3,4],   t2:[15,16,17,18,19],w1:false },
-    { date:'2026-03-10', note:'Elite Week 6', t1:[10,11,12,13,14],t2:[5,6,7,8,9],   w1:true  },
-  ];
-
-  const matches = schedule.map((m, i) => {
-    const s1 = m.w1 ? rnd(78,115) : rnd(60,89);
-    const s2 = m.w1 ? rnd(60,89)  : rnd(78,115);
-    return {
-      id: String(i+1), date: m.date, note: m.note,
-      score1: s1, score2: s2,
-      team1_players: m.t1.map(idx => mkPlayer(idx, m.w1)),
-      team2_players: m.t2.map(idx => mkPlayer(idx, !m.w1)),
-    };
-  });
-
-  return { matches, roster, corrections: {} };
-}
-
-// ============================================================
 // INIT
 // ============================================================
 async function init() {
@@ -938,16 +879,6 @@ async function init() {
     }
   } catch(e) {
     loadState();
-  }
-
-  // Demo data only if no real data saved yet
-  const hadRealData = localStorage.getItem('kw5_had_real_data');
-  if (!state.matches.length && !hadRealData) {
-    state = generateDemoData();
-    const banner = document.createElement('div');
-    banner.style.cssText = 'background:linear-gradient(90deg,rgba(212,168,67,0.1),rgba(212,168,67,0.05));border-bottom:1px solid rgba(212,168,67,0.2);padding:7px 24px;text-align:center;font-size:12px;color:var(--text2);letter-spacing:1px;font-family:Barlow Condensed,sans-serif;text-transform:uppercase;';
-    banner.innerHTML = '🏆 <strong style="color:var(--gold)">Demo Mode</strong> — Sample data · Upload a real box score to replace';
-    document.querySelector('header').after(banner);
   }
 
   // Restore session
@@ -977,7 +908,7 @@ function loadState() {
 
 function saveState() {
   localStorage.setItem('kw5elite_data', JSON.stringify(state));
-  // Auto-sync to DB via Worker
+  // Never sync demo data to DB
   if (WORKER_URL) syncToDb();
 }
 
@@ -1699,7 +1630,6 @@ function saveMatch() {
     note: document.getElementById('match-note').value
   };
   state.matches.push(match);
-  localStorage.setItem('kw5_had_real_data', '1');
 
   // Auto-add new player names to roster
   let newPlayers = 0;
@@ -1893,7 +1823,10 @@ function exportData() {
 function clearAllData() {
   if (!confirm('Delete ALL match data? Roster and corrections will be kept.')) return;
   state.matches = [];
-  saveState(); renderStats(); renderBoxScores(); updatePills();
+  localStorage.setItem('kw5elite_data', JSON.stringify(state));
+  // Explicitly sync empty matches to DB so demo can't come back
+  if (WORKER_URL) syncToDb();
+  renderStats(); renderBoxScores(); updatePills();
   notify('All match data cleared', 'info');
 }
 
