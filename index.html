@@ -446,7 +446,7 @@
     <p style="color:var(--text2);font-size:13px;margin-bottom:16px;">Check the data below, correct if needed, then save.</p>
     <div id="review-content"></div>
     <div class="btn-row">
-      <button class="btn btn-gold" onclick="saveMatch()">✅ Save to Statistics</button>
+      <button class="btn btn-gold" id="save-btn" onclick="saveMatch()">✅ Save Box Score</button>
       <button class="btn btn-outline" onclick="cancelReview()">Cancel</button>
     </div>
   </div>
@@ -642,7 +642,10 @@
   <div class="modal" style="max-width:900px;">
     <div class="modal-header">
       <h3 id="detail-title">Box Score</h3>
-      <button class="btn btn-outline" onclick="closeModal('detail-overlay')">✕ Close</button>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button id="detail-edit-btn" class="btn btn-outline" style="display:none;background:rgba(212,168,67,0.15);border-color:var(--gold);color:var(--gold);">✏️ Edit</button>
+        <button class="btn btn-outline" onclick="closeModal('detail-overlay')">✕ Close</button>
+      </div>
     </div>
     <div id="detail-content"></div>
   </div>
@@ -1100,7 +1103,7 @@ function getAggregates(matches) {
     const process = (players) => {
       (players||[]).forEach(p => {
         if (!p.name) return;
-        if (!map[p.name]) map[p.name] = { name:p.name, pos:p.pos||'', gp:0, pts:0, reb:0, ast:0, stl:0, blk:0, to:0, grades:[], fgm:0,fga:0,tpm:0,tpa:0,ftm:0,fta:0 };
+        if (!map[p.name]) map[p.name] = { name:p.name, pos:p.pos||'', gp:0, pts:0, reb:0, ast:0, stl:0, blk:0, to:0, pf:0, grades:[], fgm:0,fga:0,tpm:0,tpa:0,ftm:0,fta:0 };
         const pl = map[p.name];
         pl.gp++;
         pl.pts += +p.pts||0;
@@ -1109,6 +1112,7 @@ function getAggregates(matches) {
         pl.stl += +p.stl||0;
         pl.blk += +p.blk||0;
         pl.to  += +p.to ||0;
+        pl.pf  += +p.pf ||0;
         pl.fgm += +p.fgm||0; pl.fga += +p.fga||0;
         pl.tpm += +p.tpm||0; pl.tpa += +p.tpa||0;
         pl.ftm += +p.ftm||0; pl.fta += +p.fta||0;
@@ -1122,7 +1126,7 @@ function getAggregates(matches) {
   const players = Object.values(map).map(p => {
     const g = p.gp || 1;
     p.ppg = p.pts/g; p.rpg = p.reb/g; p.apg = p.ast/g;
-    p.spg = p.stl/g; p.bpg = p.blk/g; p.tpg = p.to/g;
+    p.spg = p.stl/g; p.bpg = p.blk/g; p.tpg = p.to/g; p.fpg = p.pf/g;
     p.grd = p.grades.length ? numToGrade(p.grades.reduce((sum,g) => sum + gradeToNum(g), 0) / p.grades.length) : '';
     // Shooting percentages from totals
     p.fg_pct = p.fga > 0 ? ((p.fgm/p.fga)*100).toFixed(1) : '—';
@@ -1183,6 +1187,7 @@ function renderStats() {
     { key:'spg',    label:'STL',    sortable:true },
     { key:'bpg',    label:'BLK',    sortable:true },
     { key:'tpg',    label:'TO',     sortable:true },
+    { key:'fpg',    label:'PF',     sortable:true },
     { key:'fg_pct', label:'FG%',    sortable:true },
     { key:'tp_pct', label:'3P%',    sortable:true },
     { key:'ft_pct', label:'FT%',    sortable:true },
@@ -1212,6 +1217,7 @@ function renderStats() {
         <td>${(p.spg||0).toFixed(1)}</td>
         <td>${(p.bpg||0).toFixed(1)}</td>
         <td>${(p.tpg||0).toFixed(1)}</td>
+        <td>${(p.fpg||0).toFixed(1)}</td>
         <td>${p.fg_pct && p.fg_pct!=='—' ? p.fg_pct+'%' : '—'}</td>
         <td>${p.tp_pct && p.tp_pct!=='—' ? p.tp_pct+'%' : '—'}</td>
         <td>${p.ft_pct && p.ft_pct!=='—' ? p.ft_pct+'%' : '—'}</td>
@@ -1282,6 +1288,8 @@ function openDetail(id) {
   const m = state.matches.find(x=>x.id===id);
   if (!m) return;
   document.getElementById('detail-title').textContent = `Box Score · ${m.date||''}${m.note?' · '+m.note:''}`;
+  const editBtn = document.getElementById('detail-edit-btn');
+  if (editBtn) { editBtn.style.display = isAdmin ? 'inline-flex' : 'none'; editBtn.onclick = () => editMatch(id); }
   const s1=+m.score1||0, s2=+m.score2||0;
   const t1 = m.team1 || 'Team 1';
   const t2 = m.team2 || 'Team 2';
@@ -1313,7 +1321,7 @@ function renderPlayerDetailTable(players, label) {
     <div style="font-family:'Bebas Neue';font-size:16px;letter-spacing:2px;color:var(--gold);margin-bottom:8px;">${label}</div>
     <div style="overflow-x:auto;">
       <table style="width:100%;font-size:12px;border-collapse:collapse;">
-        <thead><tr>${['Player','POS','GRD','PTS','REB','AST','STL','BLK','TO','FGM/FGA','3PM/3PA','FTM/FTA'].map(h=>`<th style="padding:6px 8px;color:var(--text3);border-bottom:1px solid var(--border2);text-align:${h==='Player'?'left':'center'};font-size:10px;text-transform:uppercase;letter-spacing:1px;white-space:nowrap;">${h}</th>`).join('')}</tr></thead>
+        <thead><tr>${['Player','POS','GRD','PTS','REB','AST','STL','BLK','TO','PF','FGM/FGA','3PM/3PA','FTM/FTA'].map(h=>`<th style="padding:6px 8px;color:var(--text3);border-bottom:1px solid var(--border2);text-align:${h==='Player'?'left':'center'};font-size:10px;text-transform:uppercase;letter-spacing:1px;white-space:nowrap;">${h}</th>`).join('')}</tr></thead>
         <tbody>${rows.map(p=>`<tr>
           <td style="padding:6px 8px;font-weight:700;font-family:'Barlow Condensed';letter-spacing:.5px;text-transform:uppercase;white-space:nowrap;">${p.name||''}</td>
           <td style="text-align:center;padding:4px;color:var(--text2);font-size:11px;">${p.pos||''}</td>
@@ -1324,6 +1332,7 @@ function renderPlayerDetailTable(players, label) {
           <td style="text-align:center;padding:4px;">${p.stl||0}</td>
           <td style="text-align:center;padding:4px;">${p.blk||0}</td>
           <td style="text-align:center;padding:4px;">${p.to||0}</td>
+          <td style="text-align:center;padding:4px;">${p.pf||0}</td>
           <td style="text-align:center;padding:4px;white-space:nowrap;">${p.fgStr}<span style="color:var(--text3);font-size:10px;">${p.fgPct}</span></td>
           <td style="text-align:center;padding:4px;white-space:nowrap;">${p.tpStr}<span style="color:var(--text3);font-size:10px;">${p.tpPct}</span></td>
           <td style="text-align:center;padding:4px;white-space:nowrap;">${p.ftStr}<span style="color:var(--text3);font-size:10px;">${p.ftPct}</span></td>
@@ -1333,6 +1342,31 @@ function renderPlayerDetailTable(players, label) {
   </div>`;
 }
 
+
+function editMatch(id) {
+  if (!isAdmin) return;
+  const m = state.matches.find(x=>x.id===id);
+  if (!m) return;
+  // Deep copy to pendingMatch so we can edit freely
+  pendingMatch = JSON.parse(JSON.stringify(m));
+  pendingMatch._editId = id; // mark as edit mode
+  closeModal('detail-overlay');
+  // Switch to upload tab and show review with existing data
+  switchTab('upload');
+  // Pre-fill date and note fields
+  const dateEl = document.getElementById('match-date');
+  const noteEl = document.getElementById('match-note');
+  if (dateEl) dateEl.value = m.date || '';
+  if (noteEl) noteEl.value = m.note || '';
+  showReview(pendingMatch);
+  // Update save button label
+  const saveBtn = document.getElementById('save-btn');
+  if (saveBtn) {
+    saveBtn.textContent = '💾 Save Changes';
+    saveBtn.style.background = 'var(--gold)';
+  }
+  notify('Edit mode — make changes and click Save Changes', 'info');
+}
 function deleteMatch(id) {
   if (!isAdmin) return;
   state.matches = state.matches.filter(m=>m.id!==id);
@@ -1445,7 +1479,7 @@ Return ONLY valid JSON with no markdown, no explanation, no backticks:
   "score1": 85,
   "score2": 72,
   "team1_players": [
-    {"name":"ExactGamertag","pos":"PG","grade":"A+","pts":25,"reb":5,"ast":8,"stl":2,"blk":0,"to":3,
+    {"name":"ExactGamertag","pos":"PG","grade":"A+","pts":25,"reb":5,"ast":8,"stl":2,"blk":0,"to":3,"pf":2,
      "fgm":6,"fga":15,"tpm":2,"tpa":6,"ftm":2,"fta":2}
   ],
   "team2_players": [...]
@@ -1454,7 +1488,7 @@ Return ONLY valid JSON with no markdown, no explanation, no backticks:
 COLUMN ORDER on NBA 2K Game Stats screen (left to right):
 GRADE | PTS | REB | AST | STL | BLK | TO | PF | FGM-FGA | 3PM-3PA | FTM-FTA
 
-IMPORTANT - do NOT confuse: STL (steals)=5th col, BLK (blocks)=6th col, TO (turnovers)=7th col. PF (personal fouls)=8th col - DO NOT record PF in JSON.
+IMPORTANT - do NOT confuse: STL (steals)=5th col, BLK (blocks)=6th col, TO (turnovers)=7th col, PF (personal fouls)=8th col. Record PF as "pf" in JSON.
 
 Rules:
 - team1 and team2: read the team name shown on screen. If not visible use "Team 1" / "Team 2"
@@ -1513,7 +1547,7 @@ function showReview(data) {
         <thead><tr>
           <th style="text-align:left;min-width:160px;">Name</th>
           <th>POS</th><th>GRD</th><th>PTS</th><th>REB</th>
-          <th>AST</th><th>STL</th><th>BLK</th><th>TO</th>
+          <th>AST</th><th>STL</th><th>BLK</th><th>TO</th><th>PF</th>
           <th>FGM/FGA</th><th>3PM/3PA</th><th>FTM/FTA</th>
         </tr></thead>
         <tbody>${players.map((p,pi) => {
@@ -1549,6 +1583,7 @@ function showReview(data) {
             <td><input type="number" value="${p.stl||0}" oninput="updateP(${idx},${pi},'stl',this.value)"></td>
             <td><input type="number" value="${p.blk||0}" oninput="updateP(${idx},${pi},'blk',this.value)"></td>
             <td><input type="number" value="${p.to||0}" oninput="updateP(${idx},${pi},'to',this.value)"></td>
+            <td><input type="number" value="${p.pf||0}" oninput="updateP(${idx},${pi},'pf',this.value)"></td>
             <td><input type="text" value="${fgVal}" style="width:56px" placeholder="6/15"
               oninput="parseShotInput(${idx},${pi},'fg',this.value)"></td>
             <td><input type="text" value="${tpVal}" style="width:56px" placeholder="2/6"
@@ -1645,13 +1680,22 @@ function updateP(teamIdx, pi, field, val) {
 
 function saveMatch() {
   if (!pendingMatch) return;
+  const isEdit = !!pendingMatch._editId;
   const match = {
     ...pendingMatch,
-    id: Date.now().toString(),
+    id: isEdit ? pendingMatch._editId : Date.now().toString(),
     date: document.getElementById('match-date').value,
     note: document.getElementById('match-note').value
   };
-  state.matches.push(match);
+  delete match._editId;
+
+  if (isEdit) {
+    // Replace existing match
+    const idx = state.matches.findIndex(m => m.id === match.id);
+    if (idx !== -1) state.matches[idx] = match;
+  } else {
+    state.matches.push(match);
+  }
 
   // Auto-add new player names to roster
   let newPlayers = 0;
@@ -1665,7 +1709,11 @@ function saveMatch() {
   saveState();
   renderStats(); renderBoxScores(); updatePills(); renderRoster();
   cancelReview();
-  if (newPlayers > 0) notify(`✅ Saved! ${newPlayers} new player${newPlayers>1?'s':''} added to roster.`, 'success');
+  // Reset save button label
+  const saveBtn = document.getElementById('save-btn');
+  if (saveBtn) { saveBtn.textContent = '✅ Save Box Score'; saveBtn.style.background = ''; }
+  if (isEdit) notify('✅ Box score updated!', 'success');
+  else if (newPlayers > 0) notify(`✅ Saved! ${newPlayers} new player${newPlayers>1?'s':''} added to roster.`, 'success');
   else notify('✅ Box score saved! Statistics updated.', 'success');
   showSection('stats', document.querySelector('nav button'));
 }
