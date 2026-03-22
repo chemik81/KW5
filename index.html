@@ -1521,8 +1521,8 @@ HOW TO READ EACH ROW: Start from the player name, then read each number left to 
 - 4th value = AST (assists, typically 0-15)
 - 5th value = STL (steals, typically 0-3)
 - 6th value = BLK (blocks, typically 0-2, NEVER above 3)
-- 7th value = FOULS (personal fouls, typically 0-5)
-- 8th value = TO (turnovers, typically 0-4)
+- 7th value → save as "pf" (typically 0-5). This is the column BETWEEN BLK(6th) and TO(8th). Never skip it even if value is 0.
+- 8th value → save as "to" (typically 0-4). This is the LAST single-number column, immediately before FGM/FGA fraction. CRITICAL: positions 7 and 8 are both small numbers — count carefully from left, never guess.
 - 9th value = FGM/FGA (fraction, e.g. "11/16")
 - 10th value = 3PM/3PA (fraction, e.g. "7/11")
 - 11th value = FTM/FTA (fraction, e.g. "2/2")
@@ -1532,8 +1532,9 @@ MANDATORY VERIFICATION STEP — do this before outputting JSON:
 2. Sum your extracted values for each column and compare to the TOTAL row.
 3. If PTS sum ≠ TOTAL PTS: re-read every player row for that team.
 4. If AST sum ≠ TOTAL AST: re-read assists column — you likely misread one row.
-5. If FOULS sum ≠ TOTAL FOULS: re-read fouls column.
-6. Only output JSON when all column sums match the TOTAL row.
+5. If FOULS sum ≠ TOTAL FOULS: re-read fouls column — check you didn't put TO values in FOULS.
+6. If TO sum ≠ TOTAL TO: re-read TO column — check you didn't put FOULS values in TO.
+7. Only output JSON when ALL column sums match the TOTAL row.
 
 COMMON MISTAKES TO AVOID:
 - Do NOT skip a column when a player has 0 — zeros must still be counted as a position
