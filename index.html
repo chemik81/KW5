@@ -1512,22 +1512,33 @@ CRITICAL - COLUMN ORDER on NBA 2K Game Stats screen:
 Exactly 11 data columns per player row, always in this fixed order regardless of language:
 1=GRD  2=PTS  3=REB  4=AST  5=STL  6=BLK  7=FOULS  8=TO  9=FGM/FGA  10=3PM/3PA  11=FTM/FTA
 
-Column headers may be in ANY language — use column POSITION, not header text.
-- Position 2 (pts): typically 5-35
-- Position 3 (reb): typically 0-15
-- Position 4 (ast): typically 0-15
-- Position 5 (stl): typically 0-3
-- Position 6 (blk): typically 0-2, ALMOST NEVER above 2
-- Position 7 (pf): personal fouls, typically 1-5
-- Position 8 (to): turnovers, typically 0-4
-- Position 9: fraction like "6/15" → fgm=6, fga=15
-- Position 10: fraction like "2/6" → tpm=2, tpa=6
-- Position 11: fraction like "2/2" → ftm=2, fta=2
+Column headers may appear in ANY language — always use column POSITION, never header text.
 
-SELF-CHECK after reading:
-- If any blk > 3: wrong column — re-read row
-- If pf = 0 for ALL players on a team: missed fouls column — re-read
-- Sum of each stat column must equal the TOTAL row shown on screen
+HOW TO READ EACH ROW: Start from the player name, then read each number left to right:
+- 1st value after name = GRD (letter grade)
+- 2nd value = PTS (points, typically 5-35)
+- 3rd value = REB (rebounds, typically 0-15)
+- 4th value = AST (assists, typically 0-15)
+- 5th value = STL (steals, typically 0-3)
+- 6th value = BLK (blocks, typically 0-2, NEVER above 3)
+- 7th value = FOULS (personal fouls, typically 0-5)
+- 8th value = TO (turnovers, typically 0-4)
+- 9th value = FGM/FGA (fraction, e.g. "11/16")
+- 10th value = 3PM/3PA (fraction, e.g. "7/11")
+- 11th value = FTM/FTA (fraction, e.g. "2/2")
+
+MANDATORY VERIFICATION STEP — do this before outputting JSON:
+1. The screen shows a TOTAL row at the bottom of each team. Read those totals.
+2. Sum your extracted values for each column and compare to the TOTAL row.
+3. If PTS sum ≠ TOTAL PTS: re-read every player row for that team.
+4. If AST sum ≠ TOTAL AST: re-read assists column — you likely misread one row.
+5. If FOULS sum ≠ TOTAL FOULS: re-read fouls column.
+6. Only output JSON when all column sums match the TOTAL row.
+
+COMMON MISTAKES TO AVOID:
+- Do NOT skip a column when a player has 0 — zeros must still be counted as a position
+- BLK > 3 for any single player = definitely wrong column
+- If a row seems to have only 7-8 values, you missed some zeros
 
 Rules:
 - team1 and team2: use "Team 1" and "Team 2" always
