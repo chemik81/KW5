@@ -1508,22 +1508,34 @@ Return ONLY valid JSON with no markdown, no explanation, no backticks:
   "team2_players": [...]
 }
 
-CRITICAL - COLUMN ORDER on NBA 2K Game Stats screen (left to right):
-GRD | PTS | REB | AST | STL | BLK | FOULS | TO | FGM/FGA | 3PM/3PA | FTM/FTA
-         col1  col2  col3  col4  col5  col6    col7   col8
+CRITICAL - COLUMN ORDER on NBA 2K Game Stats screen:
+The screen always has exactly 11 data columns per player row (regardless of language):
+POSITION:  1     2     3     4     5     6       7     8         9         10
+MEANING:  GRD | PTS | REB | AST | STL | BLK | FOULS | TO | FGM/FGA | 3PM/3PA | FTM/FTA
 
-COLUMN RULES - read very carefully:
-- col5 = STL = steals → save as "stl". Usually 0,1,2,3
-- col6 = BLK = blocks → save as "blk". Usually 0,1,2. BLK is typically LOW (0 or 1 for most players)
-- col7 = FOULS → save as "pf". This is the column LABELLED "FOULS" on screen. Typically 1,2,3,4
-- col8 = TO = turnovers → save as "to". Usually 0,1,2,3
+Column headers may appear in ANY language (English, Polish, Spanish, etc.) but the ORDER is always the same.
+Do NOT rely on header text — rely on column POSITION (1st number column = PTS, 2nd = REB, etc.)
 
-WARNING: The column header says "FOULS" not "PF". Do NOT read FOULS value as BLK.
-BLK (blocks) is almost always 0 or 1. If you see BLK > 3 for a single player you are probably reading the wrong column.
-FOULS comes BEFORE TO on the 2K screen.
+Column meanings by position:
+- Position 1 (letter grade): → "grade"
+- Position 2 (points, typically 5-35): → "pts"
+- Position 3 (rebounds, typically 0-15): → "reb"
+- Position 4 (assists, typically 0-15): → "ast"
+- Position 5 (steals, typically 0-3): → "stl"
+- Position 6 (blocks, typically 0-2, RARELY above 2): → "blk"
+- Position 7 (personal fouls, typically 1-5): → "pf"
+- Position 8 (turnovers, typically 0-4): → "to"
+- Position 9 (field goals made/attempted e.g. "6/15"): → "fgm"/"fga"
+- Position 10 (3-pointers made/attempted e.g. "2/6"): → "tpm"/"tpa"
+- Position 11 (free throws made/attempted e.g. "2/2"): → "ftm"/"fta"
+
+VERIFICATION - after reading, check:
+- blk > 3 for any player → wrong column, re-read
+- pf = 0 for ALL players on a team → missed the fouls column, re-read
+- Sum of player values must match the TOTAL row visible on screen
 
 Rules:
-- team1 and team2: read the team name shown on screen. If not visible use "Team 1" / "Team 2"
+- team1 and team2: use "Team 1" and "Team 2" — do not guess team names from logos"
 - Copy player names EXACTLY as shown — including numbers, symbols, capitalisation
 - If a name matches the roster list, use the roster spelling
 - pos: assign positions strictly by row order top to bottom: 1st player = PG, 2nd = SG, 3rd = SF, 4th = PF, 5th = C. Do this for BOTH teams independently.
