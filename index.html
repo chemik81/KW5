@@ -1482,14 +1482,14 @@ async function analyzeScreenshot() {
       ? `\n\nKNOWN PLAYER ROSTER (use EXACT spelling from this list when you recognise a name):\n${state.roster.map(r=>`- ${r}`).join('\n')}\n\nIMPORTANT: Player names in NBA 2K are often gamertags with numbers, capital letters and special characters. Read them VERY carefully character by character. If a name closely resembles one from the roster above, use the roster spelling exactly.`
       : `\n\nIMPORTANT: Player names in NBA 2K are often gamertags. Read them VERY carefully — pay attention to numbers (0 vs O, 1 vs I vs l), capital letters, underscores, and special characters. Copy them exactly as shown on screen.`;
 
-    const res = await fetch(WORKER_URL.replace(/\/+$/, '') + '/gemini', {
+    const res = await fetch(WORKER_URL.replace(/\/+$/, ''), {
       method: 'POST',
       headers: {
         'Content-Type':  'application/json',
         'X-Admin-Token': adminToken,
       },
       body: JSON.stringify({
-        model:      'gemini-2.5-flash',
+        model:      'claude-haiku-4-5-20251001',
         max_tokens: 8192,
         messages: [{ role:'user', content:[
           { type:'image', source:{ type:'base64', media_type: screenshotMimeType, data:screenshotB64 }},
