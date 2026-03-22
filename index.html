@@ -1121,7 +1121,7 @@ function getAggregates(matches) {
     const process = (players) => {
       (players||[]).forEach(p => {
         if (!p.name) return;
-        if (!map[p.name]) map[p.name] = { name:p.name, pos:p.pos||'', gp:0, pts:0, reb:0, ast:0, stl:0, blk:0, to:0, pf:0, grades:[], fgm:0,fga:0,tpm:0,tpa:0,ftm:0,fta:0 };
+        if (!map[p.name]) map[p.name] = { name:p.name, pos:p.pos||'', gp:0, pts:0, reb:0, ast:0, stl:0, blk:0, to:0, pf:0, grades:[], fgm:0,fga:0,tpm:0,tpa:0,ftm:0,fta:0, posCounts:{} };
         const pl = map[p.name];
         pl.gp++;
         pl.pts += +p.pts||0;
@@ -1135,11 +1135,16 @@ function getAggregates(matches) {
         pl.tpm += +p.tpm||0; pl.tpa += +p.tpa||0;
         pl.ftm += +p.ftm||0; pl.fta += +p.fta||0;
         if (p.grade) pl.grades.push(p.grade);
-        if (p.pos && !pl.pos) pl.pos = p.pos;
+        if (p.pos) { pl.posCounts[p.pos] = (pl.posCounts[p.pos]||0)+1; }
       });
     };
     process(m.team1_players);
     process(m.team2_players);
+  });
+  Object.values(map).forEach(p => {
+    if (p.posCounts && Object.keys(p.posCounts).length > 0) {
+      p.pos = Object.keys(p.posCounts).reduce((a,b) => p.posCounts[a] >= p.posCounts[b] ? a : b);
+    }
   });
   const players = Object.values(map).map(p => {
     const g = p.gp || 1;
