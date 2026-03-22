@@ -2098,7 +2098,15 @@ function openPlayerModal(playerName) {
 
   // Team
   const teamName = games[games.length-1].team;
-  const pos = games[games.length-1].pos;
+  const posCountsModal = {};
+  games.forEach(g => { if(g.pos) posCountsModal[g.pos] = (posCountsModal[g.pos]||0)+1; });
+  const pos = Object.keys(posCountsModal).length
+    ? Object.keys(posCountsModal).reduce((a,b) => posCountsModal[a]>=posCountsModal[b]?a:b)
+    : '—';
+  const posLabel = Object.keys(posCountsModal).length > 1
+    ? pos + ' <span style="font-size:10px;color:var(--text3);font-weight:400">(' +
+      Object.entries(posCountsModal).sort((a,b)=>b[1]-a[1]).map(([p,n])=>p+':'+n+'g').join(' / ') + ')</span>'
+    : pos;
 
   // Sorted games newest first
   const sorted = [...games].sort((a,b)=>b.date.localeCompare(a.date));
@@ -2135,7 +2143,7 @@ function openPlayerModal(playerName) {
 
   document.getElementById('player-modal-name').textContent = playerName;
   document.getElementById('player-modal-meta').innerHTML =
-    `<span style="background:var(--gold);color:#000;font-size:10px;font-weight:700;padding:1px 6px;border-radius:3px;margin-right:6px;">${pos||'—'}</span>` +
+    `<span style="background:var(--gold);color:#000;font-size:10px;font-weight:700;padding:1px 6px;border-radius:3px;margin-right:6px;">${posLabel||'—'}</span>` +
     `<span>${gp} games</span>`;
 
   document.getElementById('player-modal-content').innerHTML = `
