@@ -1519,6 +1519,9 @@ Exactly 11 data columns per player row, always in this fixed order regardless of
 
 Column headers may appear in ANY language — always use column POSITION, never header text.
 
+SCREEN STRUCTURE: Above each team table there is a header row showing YOU / YOUR MATCHUP / TEAM OWNER. This row may contain the team captain's name — this is NOT a player, ignore it completely. Below it is the column header row (GRD, PTS, REB...). The actual players start below that.
+Each team has EXACTLY 5 players — always count from the TOTAL row upward: the 5 rows immediately above TOTAL are the players. Never include the captain from the header row.
+
 HOW TO READ EACH ROW: Start from the player name, then read each number left to right:
 - 1st value after name = GRD (letter grade)
 - 2nd value = PTS (points, typically 5-35)
