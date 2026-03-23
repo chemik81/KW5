@@ -1484,17 +1484,17 @@ async function analyzeScreenshot() {
 
     // Build roster context for the prompt
     const rosterContext = state.roster.length
-      ? `\n\nKNOWN PLAYER ROSTER (use EXACT spelling from this list when you recognise a name):\n${state.roster.map(r=>`- ${r}`).join('\n')}\n\nIMPORTANT: Player names in NBA 2K are often gamertags with numbers, capital letters and special characters. Read them VERY carefully character by character. If a name closely resembles one from the roster above, use the roster spelling exactly.`
+      ? `\n\nKNOWN PLAYER ROSTER — these are the only valid players. The captain shown in the YOU/YOUR MATCHUP header row may also appear in this list, but DO NOT include them as a player — they appear in the header only, not in the player rows. Only extract players from the 5 rows above TOTAL:\n${state.roster.map(r=>`- ${r}`).join('\n')}\n\nIMPORTANT: Player names in NBA 2K are often gamertags with numbers, capital letters and special characters. Read them VERY carefully character by character. If a name closely resembles one from the roster above, use the roster spelling exactly.`
       : `\n\nIMPORTANT: Player names in NBA 2K are often gamertags. Read them VERY carefully — pay attention to numbers (0 vs O, 1 vs I vs l), capital letters, underscores, and special characters. Copy them exactly as shown on screen.`;
 
-    const res = await fetch(WORKER_URL.replace(/\/+$/, ''), {
+    const res = await fetch(WORKER_URL.replace(/\/+$/, '') + '/gemini', {
       method: 'POST',
       headers: {
         'Content-Type':  'application/json',
         'X-Admin-Token': adminToken,
       },
       body: JSON.stringify({
-        model:      'claude-haiku-4-5-20251001',
+        model:      'gemini-2.5-flash',
         max_tokens: 8192,
         messages: [{ role:'user', content:[
           { type:'image', source:{ type:'base64', media_type: screenshotMimeType, data:screenshotB64 }},
@@ -1519,8 +1519,13 @@ Exactly 11 data columns per player row, always in this fixed order regardless of
 
 Column headers may appear in ANY language — always use column POSITION, never header text.
 
-SCREEN STRUCTURE: Above each team table there is a header row showing YOU / YOUR MATCHUP / TEAM OWNER. This row may contain the team captain's name — this is NOT a player, ignore it completely. Below it is the column header row (GRD, PTS, REB...). The actual players start below that.
-Each team has EXACTLY 5 players — always count from the TOTAL row upward: the 5 rows immediately above TOTAL are the players. Never include the captain from the header row.
+SCREEN STRUCTURE: Above each team's data there are TWO non-player rows to skip:
+1. A row with "YOU" / "YOUR MATCHUP" / "TEAM OWNER" label — may contain the captain's gamertag. SKIP IT.
+2. A column header row with "GRD", "PTS", "REB" etc. SKIP IT.
+The ONLY players are the rows between the column headers and the TOTAL row.
+Count them: there are EXACTLY 5 player rows per team, always.
+The TOTAL row is gold/yellow colored at the bottom. Work backwards from it.
+If you accidentally include the captain's row, your player count will be 6 — that is wrong, remove the first one.
 
 HOW TO READ EACH ROW: Start from the player name, then read each number left to right:
 - 1st value after name = GRD (letter grade)
@@ -1597,28 +1602,17 @@ Rules:
     const applyCorr = (players) => (players||[]).map(p => ({
       ...p, name: state.corrections[p.name] || p.name
     }));
-    // Fix players: remove header row (captain) if present
-    const fixPlayers = (players, score) => {
+    // Fix players: always take last 5 (closest to TOTAL row = real players)
+    const fixPlayers = (players) => {
       if (!players || players.length === 0) return players;
-      // Remove any player with grade='GRD' (header row leaked in)
-      players = players.filter(p => p.grade !== 'GRD' && p.grade !== '');
-      const sumPts = arr => arr.reduce((s,p) => s+(+p.pts||0), 0);
-      if (players.length <= 5 && sumPts(players) === score) return players;
-      // If 6 players, try removing first to match score
-      if (players.length >= 6) {
-        const wo = players.slice(1);
-        if (sumPts(wo) === score) return wo;
-        return players.slice(0, 5);
-      }
-      // 5 players but sum doesn't match — try removing first
-      if (players.length === 5) {
-        const wo = players.slice(1);
-        if (wo.length > 0 && sumPts(wo) === score) return wo;
-      }
+      // Remove rows with grade='GRD' or empty grade (header leaked in)
+      players = players.filter(p => p.grade && p.grade !== 'GRD');
+      // If more than 5, take last 5 (captain is always first)
+      if (players.length > 5) return players.slice(-5);
       return players;
     };
-    parsed.team1_players = fixPlayers(applyCorr(parsed.team1_players), parsed.score1);
-    parsed.team2_players = fixPlayers(applyCorr(parsed.team2_players), parsed.score2);
+    parsed.team1_players = fixPlayers(applyCorr(parsed.team1_players));
+    parsed.team2_players = fixPlayers(applyCorr(parsed.team2_players));
 
     pendingMatch = parsed;
     showReview(parsed);
