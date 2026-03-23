@@ -1597,8 +1597,28 @@ Rules:
     const applyCorr = (players) => (players||[]).map(p => ({
       ...p, name: state.corrections[p.name] || p.name
     }));
-    parsed.team1_players = applyCorr(parsed.team1_players);
-    parsed.team2_players = applyCorr(parsed.team2_players);
+    // Fix players: remove header row (captain) if present
+    const fixPlayers = (players, score) => {
+      if (!players || players.length === 0) return players;
+      // Remove any player with grade='GRD' (header row leaked in)
+      players = players.filter(p => p.grade !== 'GRD' && p.grade !== '');
+      const sumPts = arr => arr.reduce((s,p) => s+(+p.pts||0), 0);
+      if (players.length <= 5 && sumPts(players) === score) return players;
+      // If 6 players, try removing first to match score
+      if (players.length >= 6) {
+        const wo = players.slice(1);
+        if (sumPts(wo) === score) return wo;
+        return players.slice(0, 5);
+      }
+      // 5 players but sum doesn't match — try removing first
+      if (players.length === 5) {
+        const wo = players.slice(1);
+        if (wo.length > 0 && sumPts(wo) === score) return wo;
+      }
+      return players;
+    };
+    parsed.team1_players = fixPlayers(applyCorr(parsed.team1_players), parsed.score1);
+    parsed.team2_players = fixPlayers(applyCorr(parsed.team2_players), parsed.score2);
 
     pendingMatch = parsed;
     showReview(parsed);
