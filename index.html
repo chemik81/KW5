@@ -1543,7 +1543,34 @@ Rules:
     const data = await res.json();
     if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
     let text = data.content[0].text.trim().replace(/```json|```/g,'').trim();
-    const parsed = JSON.parse(text);
+
+    // Try to parse — if truncated, retry once
+    let parsed;
+    try {
+      parsed = JSON.parse(text);
+    } catch(parseErr) {
+      notify('First attempt truncated, retrying…', 'info');
+      // Retry
+      const res2 = await fetch(WORKER_URL + '/gemini', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Admin-Token': adminToken },
+        body: JSON.stringify({
+          model: 'gemini-2.5-flash',
+          max_tokens: 8192,
+          messages: [{ role:'user', content:[
+            { type:'image', source:{ type:'base64', media_type: screenshotMimeType, data:screenshotB64 }},
+            { type:'text', text: `Return ONLY valid compact JSON (no whitespace/newlines) for this NBA 2K screenshot:
+{"team1":"name","team2":"name","score1":0,"score2":0,"team1_players":[{"name":"","pos":"PG","grade":"A","pts":0,"reb":0,"ast":0,"stl":0,"blk":0,"pf":0,"to":0,"fgm":0,"fga":0,"tpm":0,"tpa":0,"ftm":0,"fta":0}],"team2_players":[...]}
+COLUMNS: GRD|PTS|REB|AST|STL|BLK|FOULS(=pf)|TO|FGM/FGA|3PM/3PA|FTM/FTA. 5 players per team, positions top-to-bottom: PG,SG,SF,PF,C.` }
+          ]}]
+        })
+      });
+      if (!res2.ok) throw new Error('Retry failed: ' + res2.status);
+      const data2 = await res2.json();
+      if (data2.error) throw new Error(data2.error.message || JSON.stringify(data2.error));
+      let text2 = data2.content[0].text.trim().replace(/```json|```/g,'').trim();
+      parsed = JSON.parse(text2);
+    }
 
     // Apply saved corrections
     const applyCorr = (players) => (players||[]).map(p => ({
