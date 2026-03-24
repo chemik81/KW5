@@ -1519,8 +1519,15 @@ COLUMN RULES - read very carefully:
 - col8 = TO = turnovers → save as "to". Usually 0,1,2,3
 
 WARNING: The column header says "FOULS" not "PF". Do NOT read FOULS value as BLK.
-BLK (blocks) is almost always 0 or 1. If you see BLK > 3 for a single player you are probably reading the wrong column.
 FOULS comes BEFORE TO on the 2K screen.
+
+CRITICAL EXAMPLE — when TO=0, do NOT skip it or swap it with FOULS:
+Screen shows: STL=1, BLK=1, FOULS=4, TO=0
+Correct JSON: "stl":1, "blk":1, "pf":4, "to":0   ← TO is 0, that is fine
+WRONG JSON:   "stl":1, "blk":1, "pf":0, "to":4   ← DO NOT swap them
+
+Even if TO column shows 0, you must still record it as "to":0.
+Count all 8 columns carefully every row: col5=stl, col6=blk, col7=pf, col8=to.
 
 Rules:
 - team1 and team2: read the team name shown on screen. If not visible use "Team 1" / "Team 2"
