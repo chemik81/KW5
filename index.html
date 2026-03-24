@@ -1121,7 +1121,7 @@ function getAggregates(matches) {
     const process = (players) => {
       (players||[]).forEach(p => {
         if (!p.name) return;
-        if (!map[p.name]) map[p.name] = { name:p.name, pos:p.pos||'', gp:0, pts:0, reb:0, ast:0, stl:0, blk:0, to:0, pf:0, grades:[], fgm:0,fga:0,tpm:0,tpa:0,ftm:0,fta:0, posCounts:{} };
+        if (!map[p.name]) map[p.name] = { name:p.name, pos:p.pos||'', gp:0, pts:0, reb:0, ast:0, stl:0, blk:0, to:0, pf:0, grades:[], fgm:0,fga:0,tpm:0,tpa:0,ftm:0,fta:0 };
         const pl = map[p.name];
         pl.gp++;
         pl.pts += +p.pts||0;
@@ -1135,16 +1135,11 @@ function getAggregates(matches) {
         pl.tpm += +p.tpm||0; pl.tpa += +p.tpa||0;
         pl.ftm += +p.ftm||0; pl.fta += +p.fta||0;
         if (p.grade) pl.grades.push(p.grade);
-        if (p.pos) { pl.posCounts[p.pos] = (pl.posCounts[p.pos]||0)+1; }
+        if (p.pos && !pl.pos) pl.pos = p.pos;
       });
     };
     process(m.team1_players);
     process(m.team2_players);
-  });
-  Object.values(map).forEach(p => {
-    if (p.posCounts && Object.keys(p.posCounts).length > 0) {
-      p.pos = Object.keys(p.posCounts).reduce((a,b) => p.posCounts[a] >= p.posCounts[b] ? a : b);
-    }
   });
   const players = Object.values(map).map(p => {
     const g = p.gp || 1;
@@ -1484,10 +1479,10 @@ async function analyzeScreenshot() {
 
     // Build roster context for the prompt
     const rosterContext = state.roster.length
-      ? `\n\nKNOWN PLAYER ROSTER — these are the only valid players. The captain shown in the YOU/YOUR MATCHUP header row may also appear in this list, but DO NOT include them as a player — they appear in the header only, not in the player rows. Only extract players from the 5 rows above TOTAL:\n${state.roster.map(r=>`- ${r}`).join('\n')}\n\nIMPORTANT: Player names in NBA 2K are often gamertags with numbers, capital letters and special characters. Read them VERY carefully character by character. If a name closely resembles one from the roster above, use the roster spelling exactly.`
+      ? `\n\nKNOWN PLAYER ROSTER (use EXACT spelling from this list when you recognise a name):\n${state.roster.map(r=>`- ${r}`).join('\n')}\n\nIMPORTANT: Player names in NBA 2K are often gamertags with numbers, capital letters and special characters. Read them VERY carefully character by character. If a name closely resembles one from the roster above, use the roster spelling exactly.`
       : `\n\nIMPORTANT: Player names in NBA 2K are often gamertags. Read them VERY carefully — pay attention to numbers (0 vs O, 1 vs I vs l), capital letters, underscores, and special characters. Copy them exactly as shown on screen.`;
 
-    const res = await fetch(WORKER_URL.replace(/\/+$/, '') + '/gemini', {
+    const res = await fetch(WORKER_URL + '/gemini', {
       method: 'POST',
       headers: {
         'Content-Type':  'application/json',
@@ -1513,49 +1508,22 @@ Return ONLY valid JSON with no markdown, no explanation, no backticks:
   "team2_players": [...]
 }
 
-CRITICAL - COLUMN ORDER on NBA 2K Game Stats screen:
-Exactly 11 data columns per player row, always in this fixed order regardless of language:
-1=GRD  2=PTS  3=REB  4=AST  5=STL  6=BLK  7=FOULS  8=TO  9=FGM/FGA  10=3PM/3PA  11=FTM/FTA
+CRITICAL - COLUMN ORDER on NBA 2K Game Stats screen (left to right):
+GRD | PTS | REB | AST | STL | BLK | FOULS | TO | FGM/FGA | 3PM/3PA | FTM/FTA
+         col1  col2  col3  col4  col5  col6    col7   col8
 
-Column headers may appear in ANY language — always use column POSITION, never header text.
+COLUMN RULES - read very carefully:
+- col5 = STL = steals → save as "stl". Usually 0,1,2,3
+- col6 = BLK = blocks → save as "blk". Usually 0,1,2. BLK is typically LOW (0 or 1 for most players)
+- col7 = FOULS → save as "pf". This is the column LABELLED "FOULS" on screen. Typically 1,2,3,4
+- col8 = TO = turnovers → save as "to". Usually 0,1,2,3
 
-SCREEN STRUCTURE: Above each team's data there are TWO non-player rows to skip:
-1. A row with "YOU" / "YOUR MATCHUP" / "TEAM OWNER" label — may contain the captain's gamertag. SKIP IT.
-2. A column header row with "GRD", "PTS", "REB" etc. SKIP IT.
-The ONLY players are the rows between the column headers and the TOTAL row.
-Count them: there are EXACTLY 5 player rows per team, always.
-The TOTAL row is gold/yellow colored at the bottom. Work backwards from it.
-If you accidentally include the captain's row, your player count will be 6 — that is wrong, remove the first one.
-
-HOW TO READ EACH ROW: Start from the player name, then read each number left to right:
-- 1st value after name = GRD (letter grade)
-- 2nd value = PTS (points, typically 5-35)
-- 3rd value = REB (rebounds, typically 0-15)
-- 4th value = AST (assists, typically 0-15)
-- 5th value = STL (steals, typically 0-3)
-- 6th value = BLK (blocks, typically 0-2, NEVER above 3)
-- 7th value → save as "pf" (typically 0-5). This is the column BETWEEN BLK(6th) and TO(8th). Never skip it even if value is 0.
-- 8th value → save as "to" (typically 0-4). This is the LAST single-number column, immediately before FGM/FGA fraction. CRITICAL: positions 7 and 8 are both small numbers — count carefully from left, never guess.
-- 9th value = FGM/FGA (fraction, e.g. "11/16")
-- 10th value = 3PM/3PA (fraction, e.g. "7/11")
-- 11th value = FTM/FTA (fraction, e.g. "2/2")
-
-MANDATORY VERIFICATION STEP — do this before outputting JSON:
-1. The screen shows a TOTAL row at the bottom of each team. Read those totals.
-2. Sum your extracted values for each column and compare to the TOTAL row.
-3. If PTS sum ≠ TOTAL PTS: re-read every player row for that team.
-4. If AST sum ≠ TOTAL AST: re-read assists column — you likely misread one row.
-5. If FOULS sum ≠ TOTAL FOULS: re-read fouls column — check you didn't put TO values in FOULS.
-6. If TO sum ≠ TOTAL TO: re-read TO column — check you didn't put FOULS values in TO.
-7. Only output JSON when ALL column sums match the TOTAL row.
-
-COMMON MISTAKES TO AVOID:
-- Do NOT skip a column when a player has 0 — zeros must still be counted as a position
-- BLK > 3 for any single player = definitely wrong column
-- If a row seems to have only 7-8 values, you missed some zeros
+WARNING: The column header says "FOULS" not "PF". Do NOT read FOULS value as BLK.
+BLK (blocks) is almost always 0 or 1. If you see BLK > 3 for a single player you are probably reading the wrong column.
+FOULS comes BEFORE TO on the 2K screen.
 
 Rules:
-- team1 and team2: use "Team 1" and "Team 2" always
+- team1 and team2: read the team name shown on screen. If not visible use "Team 1" / "Team 2"
 - Copy player names EXACTLY as shown — including numbers, symbols, capitalisation
 - If a name matches the roster list, use the roster spelling
 - pos: assign positions strictly by row order top to bottom: 1st player = PG, 2nd = SG, 3rd = SF, 4th = PF, 5th = C. Do this for BOTH teams independently.
@@ -1574,45 +1542,15 @@ Rules:
 
     const data = await res.json();
     if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
-    let raw = (data.content || []).map(c => c.text || '').join(''); console.log('RAW FULL:', raw);
-    // Extract JSON object
-    const j0 = raw.indexOf('{'), j1 = raw.lastIndexOf('}');
-    let text = (j0 !== -1 && j1 !== -1) ? raw.slice(j0, j1+1) : raw.trim().replace(/^```[a-z]*\n?/,'').replace(/```$/,'').trim();
-    // Remove JS comments
-    text = text.replace(/\/\/[^\n]*/g,'').replace(/\/\*[\s\S]*?\*\//g,'');
-    // Fix unescaped control chars inside strings
-    let inStr=false, esc=false, out='';
-    for(let i=0;i<text.length;i++){
-      const c=text[i];
-      if(esc){out+=c;esc=false;continue;}
-      if(c==='\\'){esc=true;out+=c;continue;}
-      if(c==='"'){inStr=!inStr;out+=c;continue;}
-      if(inStr){
-        if(c==='\n'){out+='\\n';continue;}
-        if(c==='\r'){out+='\\r';continue;}
-        if(c==='\t'){out+='\\t';continue;}
-        if(c.charCodeAt(0)<32)continue;
-      }
-      out+=c;
-    }
-    text=out.replace(/,\s*([}\]])/g,'$1');
+    let text = data.content[0].text.trim().replace(/```json|```/g,'').trim();
     const parsed = JSON.parse(text);
 
     // Apply saved corrections
     const applyCorr = (players) => (players||[]).map(p => ({
       ...p, name: state.corrections[p.name] || p.name
     }));
-    // Fix players: always take last 5 (closest to TOTAL row = real players)
-    const fixPlayers = (players) => {
-      if (!players || players.length === 0) return players;
-      // Remove rows with grade='GRD' or empty grade (header leaked in)
-      players = players.filter(p => p.grade && p.grade !== 'GRD');
-      // If more than 5, take last 5 (captain is always first)
-      if (players.length > 5) return players.slice(-5);
-      return players;
-    };
-    parsed.team1_players = fixPlayers(applyCorr(parsed.team1_players));
-    parsed.team2_players = fixPlayers(applyCorr(parsed.team2_players));
+    parsed.team1_players = applyCorr(parsed.team1_players);
+    parsed.team2_players = applyCorr(parsed.team2_players);
 
     pendingMatch = parsed;
     showReview(parsed);
@@ -2115,15 +2053,7 @@ function openPlayerModal(playerName) {
 
   // Team
   const teamName = games[games.length-1].team;
-  const posCountsModal = {};
-  games.forEach(g => { if(g.pos) posCountsModal[g.pos] = (posCountsModal[g.pos]||0)+1; });
-  const pos = Object.keys(posCountsModal).length
-    ? Object.keys(posCountsModal).reduce((a,b) => posCountsModal[a]>=posCountsModal[b]?a:b)
-    : '—';
-  const posLabel = Object.keys(posCountsModal).length > 1
-    ? pos + ' <span style="font-size:10px;color:var(--text3);font-weight:400">(' +
-      Object.entries(posCountsModal).sort((a,b)=>b[1]-a[1]).map(([p,n])=>p+':'+n+'g').join(' / ') + ')</span>'
-    : pos;
+  const pos = games[games.length-1].pos;
 
   // Sorted games newest first
   const sorted = [...games].sort((a,b)=>b.date.localeCompare(a.date));
@@ -2160,7 +2090,7 @@ function openPlayerModal(playerName) {
 
   document.getElementById('player-modal-name').textContent = playerName;
   document.getElementById('player-modal-meta').innerHTML =
-    `<span style="background:var(--gold);color:#000;font-size:10px;font-weight:700;padding:1px 6px;border-radius:3px;margin-right:6px;">${posLabel||'—'}</span>` +
+    `<span style="background:var(--gold);color:#000;font-size:10px;font-weight:700;padding:1px 6px;border-radius:3px;margin-right:6px;">${pos||'—'}</span>` +
     `<span>${gp} games</span>`;
 
   document.getElementById('player-modal-content').innerHTML = `
