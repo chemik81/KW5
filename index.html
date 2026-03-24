@@ -1574,7 +1574,7 @@ Rules:
 
     const data = await res.json();
     if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
-    let raw = (data.content || []).map(c => c.text || '').join(''); console.log('RAW LEN:', raw.length, 'AROUND 384:', JSON.stringify(raw.slice(370, 400)));
+    let raw = (data.content || []).map(c => c.text || '').join(''); console.log('RAW FULL:', raw);
     // Extract JSON object
     const j0 = raw.indexOf('{'), j1 = raw.lastIndexOf('}');
     let text = (j0 !== -1 && j1 !== -1) ? raw.slice(j0, j1+1) : raw.trim().replace(/^```[a-z]*\n?/,'').replace(/```$/,'').trim();
