@@ -1121,7 +1121,7 @@ function getAggregates(matches) {
     const process = (players) => {
       (players||[]).forEach(p => {
         if (!p.name) return;
-        if (!map[p.name]) map[p.name] = { name:p.name, pos:p.pos||'', gp:0, pts:0, reb:0, ast:0, stl:0, blk:0, to:0, pf:0, grades:[], fgm:0,fga:0,tpm:0,tpa:0,ftm:0,fta:0 };
+        if (!map[p.name]) map[p.name] = { name:p.name, pos:'', posCounts:{}, gp:0, pts:0, reb:0, ast:0, stl:0, blk:0, to:0, pf:0, grades:[], fgm:0,fga:0,tpm:0,tpa:0,ftm:0,fta:0 };
         const pl = map[p.name];
         pl.gp++;
         pl.pts += +p.pts||0;
@@ -1135,12 +1135,18 @@ function getAggregates(matches) {
         pl.tpm += +p.tpm||0; pl.tpa += +p.tpa||0;
         pl.ftm += +p.ftm||0; pl.fta += +p.fta||0;
         if (p.grade) pl.grades.push(p.grade);
-        if (p.pos && !pl.pos) pl.pos = p.pos;
+        if (p.pos) pl.posCounts[p.pos] = (pl.posCounts[p.pos]||0) + 1;
       });
     };
     process(m.team1_players);
     process(m.team2_players);
   });
+  // Compute primary position (most frequent) for each player
+  Object.values(map).forEach(p => {
+    if (Object.keys(p.posCounts).length === 0) { p.pos = ''; return; }
+    p.pos = Object.entries(p.posCounts).sort((a,b) => b[1]-a[1])[0][0];
+  });
+
   const players = Object.values(map).map(p => {
     const g = p.gp || 1;
     p.ppg = p.pts/g; p.rpg = p.reb/g; p.apg = p.ast/g;
@@ -2094,9 +2100,20 @@ function openPlayerModal(playerName) {
   const csVal = (ptsScore*0.25 + stlScore*0.20 + blkScore*0.18 + rebScore*0.15 + astScore*0.12 + gradeScore2*0.10).toFixed(1);
   const perVal = (aggP.ppg + aggP.rpg*1.2 + aggP.apg*1.5 + aggP.spg*2 + aggP.bpg*2 - aggP.tpg*1.5).toFixed(1);
 
-  // Team
+  // Team & position breakdown
   const teamName = games[games.length-1].team;
-  const pos = games[games.length-1].pos;
+  // Count positions across all games
+  const posCounts = {};
+  games.forEach(g => { if (g.pos) posCounts[g.pos] = (posCounts[g.pos]||0) + 1; });
+  // Primary = most frequent
+  const pos = Object.keys(posCounts).length
+    ? Object.entries(posCounts).sort((a,b)=>b[1]-a[1])[0][0]
+    : (games[games.length-1].pos || '—');
+  // Position breakdown string e.g. "C 6 games · PG 2 games"
+  const posBreakdown = Object.entries(posCounts)
+    .sort((a,b)=>b[1]-a[1])
+    .map(([p,c])=>`${p} ${c}g`)
+    .join(' · ');
 
   // Sorted games newest first
   const sorted = [...games].sort((a,b)=>b.date.localeCompare(a.date));
@@ -2134,7 +2151,10 @@ function openPlayerModal(playerName) {
   document.getElementById('player-modal-name').textContent = playerName;
   document.getElementById('player-modal-meta').innerHTML =
     `<span style="background:var(--gold);color:#000;font-size:10px;font-weight:700;padding:1px 6px;border-radius:3px;margin-right:6px;">${pos||'—'}</span>` +
-    `<span>${gp} games</span>`;
+    `<span>${gp} games</span>` +
+    (Object.keys(posCounts).length > 1
+      ? `<span style="color:var(--text3);margin-left:10px;font-size:11px;">(${posBreakdown})</span>`
+      : '');
 
   document.getElementById('player-modal-content').innerHTML = `
     <!-- Career records -->
