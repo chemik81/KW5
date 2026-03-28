@@ -841,7 +841,62 @@ async function loadFromDb() {
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const rec = (await res.json()).record;
-    if (rec && rec.matches)     state.matches     = rec.matches;
+    if (rec && rec.matches) {
+      // Convert Gemini format {team1:{name,score,players}} to KW5 format
+      state.matches = rec.matches.map(m => {
+        // Already in KW5 format
+        if (typeof m.team1 === 'string') return m;
+        // Convert from Gemini/NBA format
+        const t1 = m.team1 || {};
+        const t2 = m.team2 || {};
+        return {
+          id:           m.id,
+          date:         m.date,
+          discordAuthor: m.discordAuthor || '',
+          autoProcessed: m.autoProcessed || false,
+          team1:        t1.name || 'Team 1',
+          team2:        t2.name || 'Team 2',
+          score1:       t1.score || 0,
+          score2:       t2.score || 0,
+          team1_players: (t1.players || []).map(p => ({
+            name:  p.name || '',
+            pos:   p.pos || '',
+            grade: p.grade || 'B',
+            pts:   p.pts || 0,
+            reb:   p.reb || 0,
+            ast:   p.ast || 0,
+            stl:   p.stl || 0,
+            blk:   p.blk || 0,
+            to:    p.to || 0,
+            pf:    p.fouls || p.pf || 0,
+            fgm:   p.fgm || 0,
+            fga:   p.fga || 0,
+            tpm:   p.tpm || 0,
+            tpa:   p.tpa || 0,
+            ftm:   p.ftm || 0,
+            fta:   p.fta || 0,
+          })),
+          team2_players: (t2.players || []).map(p => ({
+            name:  p.name || '',
+            pos:   p.pos || '',
+            grade: p.grade || 'B',
+            pts:   p.pts || 0,
+            reb:   p.reb || 0,
+            ast:   p.ast || 0,
+            stl:   p.stl || 0,
+            blk:   p.blk || 0,
+            to:    p.to || 0,
+            pf:    p.fouls || p.pf || 0,
+            fgm:   p.fgm || 0,
+            fga:   p.fga || 0,
+            tpm:   p.tpm || 0,
+            tpa:   p.tpa || 0,
+            ftm:   p.ftm || 0,
+            fta:   p.fta || 0,
+          })),
+        };
+      });
+    }
     if (rec && rec.roster)      state.roster      = rec.roster;
     if (rec && rec.corrections) state.corrections = rec.corrections;
     setDbStatus('✅ Connected — data loaded', 'ok');
