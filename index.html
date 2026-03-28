@@ -1362,13 +1362,15 @@ function renderBoxScores() {
           <span class="match-score-val ${w2?'score-w':'score-l'}">${s2}</span>
         </div>
       </div>
-      ${isAdmin ? `<button class="match-del" onclick="event.stopPropagation();deleteMatch('${m.id}')">🗑</button>` : ''}
+      ${isAdmin ? `
+        <button class="match-edit" onclick="event.stopPropagation();editMatch('${m.id}')" title="Edytuj" style="position:absolute;top:8px;right:36px;background:transparent;border:1px solid #444;color:#aaa;border-radius:4px;width:26px;height:26px;cursor:pointer;font-size:.8rem">✏️</button>
+        <button class="match-del" onclick="event.stopPropagation();deleteMatch('${m.id}')">🗑</button>` : ''}
     </div>`;
   }).join('');
 }
 
 function openDetail(id) {
-  const m = state.matches.find(x=>x.id===id);
+  const m = state.matches.find(x=>String(x.id)===String(id));
   if (!m) return;
   document.getElementById('detail-title').textContent = `Box Score · ${m.date||''}${m.note?' · '+m.note:''}`;
   const editBtn = document.getElementById('detail-edit-btn');
@@ -1428,7 +1430,7 @@ function renderPlayerDetailTable(players, label) {
 
 function editMatch(id) {
   if (!isAdmin) return;
-  const m = state.matches.find(x=>x.id===id);
+  const m = state.matches.find(x=>String(x.id)===String(id));
   if (!m) return;
   // Deep copy to pendingMatch so we can edit freely
   pendingMatch = JSON.parse(JSON.stringify(m));
@@ -2878,80 +2880,136 @@ function openSmartMerge() {
   });
   const names = [...playerNames].sort();
 
-  // Find similar pairs (levenshtein <= 2, or one contains the other)
-  const pairs = [];
-  const seen = new Set();
+  // Group similar names using union-find
+  const parent = {};
+  names.forEach(n => parent[n] = n);
+
+  function find(x) { return parent[x] === x ? x : (parent[x] = find(parent[x])); }
+  function union(a, b) { parent[find(a)] = find(b); }
+
   for(let i=0;i<names.length;i++) {
     for(let j=i+1;j<names.length;j++) {
       const a = names[i], b = names[j];
-      const key = a+'|'+b;
-      if(seen.has(key)) continue;
+      if(state.corrections[a] || state.corrections[b]) continue;
       const dist = levenshtein(a.toLowerCase(), b.toLowerCase());
-      const aContainsB = a.toLowerCase().includes(b.toLowerCase()) || b.toLowerCase().includes(a.toLowerCase());
-      if(dist <= 2 || (aContainsB && Math.abs(a.length-b.length) <= 4)) {
-        // Skip if already in corrections
-        if(state.corrections[a] || state.corrections[b]) continue;
-        pairs.push({a, b, dist});
-        seen.add(key);
-      }
+      const shorter = a.length < b.length ? a : b;
+      const longer  = a.length < b.length ? b : a;
+      const contained = longer.toLowerCase().includes(shorter.toLowerCase());
+      if(dist <= 2 || (contained && shorter.length >= 3)) union(a, b);
     }
   }
+
+  // Build groups
+  const groups = {};
+  names.forEach(n => {
+    const root = find(n);
+    if(!groups[root]) groups[root] = [];
+    groups[root].push(n);
+  });
+
+  // Only show groups with 2+ members
+  const multiGroups = Object.values(groups).filter(g => g.length > 1);
 
   // Build modal HTML
   const overlay = document.createElement('div');
   overlay.id = 'smart-merge-overlay';
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1rem';
 
-  const pairsHtml = pairs.length ? pairs.map((pair,i) => `
-    <div id="smp-${i}" style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--bg2,#1a1a2e);border-radius:6px;margin-bottom:6px;flex-wrap:wrap">
-      <span style="font-weight:700;color:#f0c040">${pair.a}</span>
-      <span style="color:#888">↔</span>
-      <span style="font-weight:700;color:#f0c040">${pair.b}</span>
-      <span style="font-size:.75rem;color:#888;margin-left:4px">dist:${pair.dist}</span>
-      <div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
-        <button onclick="smartMergeApply('${pair.a.replace(/'/g,"\'")}','${pair.b.replace(/'/g,"\'")}',${i})" 
-          style="background:#f0c040;color:#000;border:none;border-radius:4px;padding:3px 10px;cursor:pointer;font-size:.8rem;font-weight:700">
-          Połącz → ${pair.b}
+  const groupsHtml = multiGroups.length ? multiGroups.map((group, gi) => {
+    // Sort by frequency (most played = correct name)
+    const freq = {};
+    group.forEach(n => {
+      freq[n] = state.matches.reduce((s,m) =>
+        s + (m.team1_players||[]).filter(p=>p.name===n).length
+          + (m.team2_players||[]).filter(p=>p.name===n).length, 0);
+    });
+    group.sort((a,b) => freq[b]-freq[a]);
+    const suggested = group[0]; // most frequent = likely correct
+
+    const nickBtns = group.map(n =>
+      `<button onclick="smartMergeSetTarget(${gi},'${n.replace(/'/g,"\'")}')"
+        id="smg-${gi}-${n.replace(/[^a-zA-Z0-9]/g,'_')}"
+        style="background:${n===suggested?'#f0c040':'transparent'};color:${n===suggested?'#000':'#f0c040'};border:1px solid #f0c040;border-radius:4px;padding:3px 10px;cursor:pointer;font-size:.85rem;font-weight:700">
+        ${n} <span style="font-size:.7rem;opacity:.7">(${freq[n]}g)</span>
+      </button>`
+    ).join('');
+
+    return `<div id="smg-${gi}" style="padding:10px;background:var(--bg2,#1a1a2e);border-radius:8px;margin-bottom:8px">
+      <div style="font-size:.75rem;color:#888;margin-bottom:6px">Wybierz poprawny nick — reszta zostanie przekierowana:</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">${nickBtns}</div>
+      <div style="display:flex;gap:6px">
+        <button onclick="smartMergeApplyGroup(${gi},'${group.map(n=>n.replace(/'/g,"\'")).join('|')}')"
+          style="background:#f0c040;color:#000;border:none;border-radius:4px;padding:4px 14px;cursor:pointer;font-size:.85rem;font-weight:700">
+          ✅ Połącz grupę
         </button>
-        <button onclick="smartMergeApply('${pair.b.replace(/'/g,"\'")}','${pair.a.replace(/'/g,"\'")}',${i})"
-          style="background:#f0c040;color:#000;border:none;border-radius:4px;padding:3px 10px;cursor:pointer;font-size:.8rem;font-weight:700">
-          Połącz → ${pair.a}
-        </button>
-        <button onclick="document.getElementById('smp-${i}').remove()"
-          style="background:transparent;border:1px solid #555;color:#888;border-radius:4px;padding:3px 8px;cursor:pointer;font-size:.8rem">
+        <button onclick="document.getElementById('smg-${gi}').remove()"
+          style="background:transparent;border:1px solid #555;color:#888;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:.8rem">
           Pomiń
         </button>
       </div>
-    </div>`).join('') 
+    </div>`;
+  }).join('')
     : '<p style="color:#888;text-align:center">Nie znaleziono podobnych nicków 🎉</p>';
 
   overlay.innerHTML = `
-    <div style="background:var(--bg,#0d0d1a);border:1px solid #333;border-radius:12px;padding:1.5rem;width:100%;max-width:700px;max-height:85vh;overflow-y:auto">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
-        <h2 style="margin:0;font-size:1.2rem">🔍 Smart Merge — podobne nicki (${pairs.length})</h2>
+    <div style="background:var(--bg,#0d0d1a);border:1px solid #333;border-radius:12px;padding:1.5rem;width:100%;max-width:720px;max-height:85vh;overflow-y:auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
+        <h2 style="margin:0;font-size:1.1rem">🔍 Smart Merge — ${multiGroups.length} grup podobnych nicków</h2>
         <button onclick="document.getElementById('smart-merge-overlay').remove()" style="background:transparent;border:none;color:#888;font-size:1.4rem;cursor:pointer">✕</button>
       </div>
-      <p style="color:#888;font-size:.85rem;margin-bottom:1rem">Wykryto pary nicków które mogą być tym samym graczem. Kliknij "Połącz" aby dodać korektę, lub "Pomiń" aby zignorować.</p>
-      <div id="smart-merge-pairs">${pairsHtml}</div>
-      <button onclick="applyCorrectionsToAll();document.getElementById('smart-merge-overlay').remove()" 
+      <p style="color:#888;font-size:.8rem;margin-bottom:1rem">Żółty = sugerowany poprawny nick (najczęściej grany). Kliknij inny żeby zmienić wybór, potem "Połącz grupę".</p>
+      <div>${groupsHtml}</div>
+      <button onclick="applyCorrectionsToAll();document.getElementById('smart-merge-overlay').remove()"
         style="margin-top:1rem;width:100%;background:#f0c040;color:#000;border:none;border-radius:6px;padding:.6rem;font-weight:700;cursor:pointer;font-size:.9rem">
-        ✅ Zastosuj wszystkie korekty do meczów
+        ✅ Zastosuj wszystkie korekty do meczów i zamknij
       </button>
     </div>`;
+
+  // Store selected targets
+  window._smgTargets = {};
+  multiGroups.forEach((g, gi) => {
+    const freq = {};
+    g.forEach(n => {
+      freq[n] = state.matches.reduce((s,m) =>
+        s + (m.team1_players||[]).filter(p=>p.name===n).length
+          + (m.team2_players||[]).filter(p=>p.name===n).length, 0);
+    });
+    g.sort((a,b) => freq[b]-freq[a]);
+    window._smgTargets[gi] = g[0];
+  });
+  window._smgGroups = multiGroups;
 
   document.body.appendChild(overlay);
 }
 
-function smartMergeApply(wrong, correct, idx) {
-  state.corrections[wrong] = correct;
+function smartMergeSetTarget(gi, name) {
+  window._smgTargets[gi] = name;
+  const group = window._smgGroups[gi];
+  group.forEach(n => {
+    const id = 'smg-'+gi+'-'+n.replace(/[^a-zA-Z0-9]/g,'_');
+    const btn = document.getElementById(id);
+    if(!btn) return;
+    btn.style.background = n===name ? '#f0c040' : 'transparent';
+    btn.style.color = n===name ? '#000' : '#f0c040';
+  });
+}
+
+function smartMergeApplyGroup(gi, namesStr) {
+  const target = window._smgTargets[gi] || namesStr.split('|')[0];
+  const allNames = namesStr.split('|');
+  allNames.forEach(n => {
+    if(n !== target) state.corrections[n] = target;
+  });
   saveState();
-  const el = document.getElementById('smp-'+idx);
+  const el = document.getElementById('smg-'+gi);
   if(el) {
-    el.innerHTML = `<span style="color:#4ade80">✅ Dodano: ${wrong} → ${correct}</span>`;
+    el.innerHTML = `<span style="color:#4ade80">✅ Połączono: ${allNames.filter(n=>n!==target).join(', ')} → ${target}</span>`;
     el.style.background = 'rgba(74,222,128,.1)';
   }
-  notify(`Korekta: ${wrong} → ${correct}`, 'success');
+  notify(`Połączono ${allNames.length} nicków → ${target}`, 'success');
 }
+
+
 
 </script>
 
