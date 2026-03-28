@@ -506,6 +506,7 @@
     </div>
     <div id="corrections-list"></div>
     <button class="btn btn-outline" style="margin-top:12px;" onclick="applyCorrectionsToAll()">🔧 Apply to all saved matches</button>
+    <button class="btn btn-gold" style="margin-top:12px;margin-left:8px;" onclick="openSmartMerge()">🔍 Smart Merge — wykryj podobne nicki</button>
   </div>
 </section>
 
@@ -2856,6 +2857,102 @@ if (savedHero) setHeroImage(savedHero);
 // START
 // ============================================================
 init();
+
+// ============================================================
+// SMART MERGE — auto-detect similar player names
+// ============================================================
+function levenshtein(a, b) {
+  const m = a.length, n = b.length;
+  const dp = Array.from({length: m+1}, (_,i) => Array.from({length: n+1}, (_,j) => i===0?j:j===0?i:0));
+  for(let i=1;i<=m;i++) for(let j=1;j<=n;j++)
+    dp[i][j] = a[i-1]===b[j-1] ? dp[i-1][j-1] : 1+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);
+  return dp[m][n];
+}
+
+function openSmartMerge() {
+  // Build unique player list from all matches
+  const playerNames = new Set();
+  state.matches.forEach(m => {
+    (m.team1_players||[]).forEach(p => { if(p.name) playerNames.add(p.name); });
+    (m.team2_players||[]).forEach(p => { if(p.name) playerNames.add(p.name); });
+  });
+  const names = [...playerNames].sort();
+
+  // Find similar pairs (levenshtein <= 2, or one contains the other)
+  const pairs = [];
+  const seen = new Set();
+  for(let i=0;i<names.length;i++) {
+    for(let j=i+1;j<names.length;j++) {
+      const a = names[i], b = names[j];
+      const key = a+'|'+b;
+      if(seen.has(key)) continue;
+      const dist = levenshtein(a.toLowerCase(), b.toLowerCase());
+      const aContainsB = a.toLowerCase().includes(b.toLowerCase()) || b.toLowerCase().includes(a.toLowerCase());
+      if(dist <= 2 || (aContainsB && Math.abs(a.length-b.length) <= 4)) {
+        // Skip if already in corrections
+        if(state.corrections[a] || state.corrections[b]) continue;
+        pairs.push({a, b, dist});
+        seen.add(key);
+      }
+    }
+  }
+
+  // Build modal HTML
+  const overlay = document.createElement('div');
+  overlay.id = 'smart-merge-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1rem';
+
+  const pairsHtml = pairs.length ? pairs.map((pair,i) => `
+    <div id="smp-${i}" style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--bg2,#1a1a2e);border-radius:6px;margin-bottom:6px;flex-wrap:wrap">
+      <span style="font-weight:700;color:#f0c040">${pair.a}</span>
+      <span style="color:#888">↔</span>
+      <span style="font-weight:700;color:#f0c040">${pair.b}</span>
+      <span style="font-size:.75rem;color:#888;margin-left:4px">dist:${pair.dist}</span>
+      <div style="margin-left:auto;display:flex;gap:6px;flex-wrap:wrap">
+        <button onclick="smartMergeApply('${pair.a.replace(/'/g,"\'")}','${pair.b.replace(/'/g,"\'")}',${i})" 
+          style="background:#f0c040;color:#000;border:none;border-radius:4px;padding:3px 10px;cursor:pointer;font-size:.8rem;font-weight:700">
+          Połącz → ${pair.b}
+        </button>
+        <button onclick="smartMergeApply('${pair.b.replace(/'/g,"\'")}','${pair.a.replace(/'/g,"\'")}',${i})"
+          style="background:#f0c040;color:#000;border:none;border-radius:4px;padding:3px 10px;cursor:pointer;font-size:.8rem;font-weight:700">
+          Połącz → ${pair.a}
+        </button>
+        <button onclick="document.getElementById('smp-${i}').remove()"
+          style="background:transparent;border:1px solid #555;color:#888;border-radius:4px;padding:3px 8px;cursor:pointer;font-size:.8rem">
+          Pomiń
+        </button>
+      </div>
+    </div>`).join('') 
+    : '<p style="color:#888;text-align:center">Nie znaleziono podobnych nicków 🎉</p>';
+
+  overlay.innerHTML = `
+    <div style="background:var(--bg,#0d0d1a);border:1px solid #333;border-radius:12px;padding:1.5rem;width:100%;max-width:700px;max-height:85vh;overflow-y:auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+        <h2 style="margin:0;font-size:1.2rem">🔍 Smart Merge — podobne nicki (${pairs.length})</h2>
+        <button onclick="document.getElementById('smart-merge-overlay').remove()" style="background:transparent;border:none;color:#888;font-size:1.4rem;cursor:pointer">✕</button>
+      </div>
+      <p style="color:#888;font-size:.85rem;margin-bottom:1rem">Wykryto pary nicków które mogą być tym samym graczem. Kliknij "Połącz" aby dodać korektę, lub "Pomiń" aby zignorować.</p>
+      <div id="smart-merge-pairs">${pairsHtml}</div>
+      <button onclick="applyCorrectionsToAll();document.getElementById('smart-merge-overlay').remove()" 
+        style="margin-top:1rem;width:100%;background:#f0c040;color:#000;border:none;border-radius:6px;padding:.6rem;font-weight:700;cursor:pointer;font-size:.9rem">
+        ✅ Zastosuj wszystkie korekty do meczów
+      </button>
+    </div>`;
+
+  document.body.appendChild(overlay);
+}
+
+function smartMergeApply(wrong, correct, idx) {
+  state.corrections[wrong] = correct;
+  saveState();
+  const el = document.getElementById('smp-'+idx);
+  if(el) {
+    el.innerHTML = `<span style="color:#4ade80">✅ Dodano: ${wrong} → ${correct}</span>`;
+    el.style.background = 'rgba(74,222,128,.1)';
+  }
+  notify(`Korekta: ${wrong} → ${correct}`, 'success');
+}
+
 </script>
 
 <!-- SHARE CARD OVERLAY -->
