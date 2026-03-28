@@ -1456,9 +1456,11 @@ function editMatch(id) {
 }
 function deleteMatch(id) {
   if (!isAdmin) return;
-  state.matches = state.matches.filter(m=>m.id!==id);
+  if (!confirm('Usunąć ten mecz?')) return;
+  // Compare as string and number (id may come as string from onclick)
+  state.matches = state.matches.filter(m => String(m.id) !== String(id));
   saveState(); renderBoxScores(); renderStats(); updatePills();
-  notify('Box score deleted', 'info');
+  notify('✅ Mecz usunięty', 'success');
 }
 
 // ============================================================
