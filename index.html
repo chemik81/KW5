@@ -834,7 +834,8 @@ async function loadFromDb() {
   try {
     setDbStatus('⏳ Loading...', 'info');
     const adminToken = localStorage.getItem('kw5_admin_hash') || ADMIN_HASH;
-    const res = await fetch(WORKER_URL + '/kw5-data', {
+    const _kw5url = WORKER_URL.replace(/\/+$/, '') + '/kw5-data';
+    const res = await fetch(_kw5url, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json', 'X-Admin-Token': adminToken },
     });
@@ -856,7 +857,8 @@ async function syncToDb() {
   if (!WORKER_URL) { notify('No worker configured', 'error'); return; }
   try {
     const adminToken = localStorage.getItem('kw5_admin_hash') || ADMIN_HASH;
-    const res = await fetch(WORKER_URL + '/kw5-data', {
+    const _kw5url2 = WORKER_URL.replace(/\/+$/, '') + '/kw5-data';
+    const res = await fetch(_kw5url2, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', 'X-Admin-Token': adminToken },
       body: JSON.stringify({ record: { matches: state.matches, roster: state.roster, corrections: state.corrections } })
