@@ -844,6 +844,10 @@ async function loadFromDb() {
     if (rec && rec.roster)      state.roster      = rec.roster;
     if (rec && rec.corrections) state.corrections = rec.corrections;
     setDbStatus('✅ Connected — data loaded', 'ok');
+    // Re-render after loading
+    if (typeof renderBoxScores === 'function') renderBoxScores();
+    if (typeof renderStats === 'function') renderStats();
+    if (typeof updatePills === 'function') updatePills();
     return true;
   } catch(e) { setDbStatus('❌ ' + e.message, 'error'); return false; }
 }
