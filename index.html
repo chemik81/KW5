@@ -507,8 +507,8 @@
     </div>
     <div id="corrections-list"></div>
     <button class="btn btn-outline" style="margin-top:12px;" onclick="applyCorrectionsToAll()">🔧 Apply to all saved matches</button>
-    <button class="btn btn-gold" style="margin-top:12px;margin-left:8px;" onclick="openSmartMerge()">🔍 Smart Merge — wykryj podobne nicki</button>
-    <button class="btn btn-outline" style="margin-top:12px;margin-left:8px;" onclick="openMergeSplitMatches()">🔗 Połącz przerwane mecze</button>
+    <button class="btn btn-gold" style="margin-top:12px;margin-left:8px;" onclick="openSmartMerge()">🔍 Smart Merge — detect similar nicknames</button>
+    <button class="btn btn-outline" style="margin-top:12px;margin-left:8px;" onclick="openMergeSplitMatches()">🔗 Merge split matches</button>
   </div>
 </section>
 
@@ -1225,7 +1225,7 @@ function getAggregates(matches) {
     p.per = p.ppg + p.rpg*1.2 + p.apg*1.5 + p.spg*2 + p.bpg*2 - p.tpg*1.5;
     // CS — każda statystyka znormalizowana do 0-100, wynik końcowy 0-100
     const gradeNum   = p.grades.length ? p.grades.reduce((s,g) => s + gradeToNum(g), 0) / p.grades.length : 70;
-    const gradeScore = ((gradeNum - 30) / 70) * 100;                  // skala 30-100 → 0-100
+    const gradeScore = ((gradeNum - 30) / 70) * 100;                  // skala 30-100 to 0-100
     const ptsScore   = Math.min((p.ppg / 50)  * 100, 100);            // max referencyjny: 50 PPG
     const stlScore   = Math.min((p.spg / 4)   * 100, 100);            // max: 4 SPG
     const blkScore   = Math.min((p.bpg / 3)   * 100, 100);            // max: 3 BPG
@@ -1611,8 +1611,8 @@ HOW TO READ EACH ROW: Start from the player name, then read each number left to 
 - 4th value = AST (assists, typically 0-15)
 - 5th value = STL (steals, typically 0-3)
 - 6th value = BLK (blocks, typically 0-2, NEVER above 3)
-- 7th value → save as "pf" (typically 0-5). This is the column BETWEEN BLK(6th) and TO(8th). Never skip it even if value is 0.
-- 8th value → save as "to" (typically 0-4). This is the LAST single-number column, immediately before FGM/FGA fraction. CRITICAL: positions 7 and 8 are both small numbers — count carefully from left, never guess.
+- 7th value to save as "pf" (typically 0-5). This is the column BETWEEN BLK(6th) and TO(8th). Never skip it even if value is 0.
+- 8th value to save as "to" (typically 0-4). This is the LAST single-number column, immediately before FGM/FGA fraction. CRITICAL: positions 7 and 8 are both small numbers — count carefully from left, never guess.
 - 9th value = FGM/FGA (fraction, e.g. "11/16")
 - 10th value = 3PM/3PA (fraction, e.g. "7/11")
 - 11th value = FTM/FTA (fraction, e.g. "2/2")
@@ -1637,7 +1637,7 @@ Rules:
 - If a name matches the roster list, use the roster spelling
 - pos: assign positions strictly by row order top to bottom: 1st player = PG, 2nd = SG, 3rd = SF, 4th = PF, 5th = C. Do this for BOTH teams independently.
 - grade is the letter grade shown (A+, A, A-, B+, B, etc)
-- fgm/fga: field goals made/attempted (from FGM/FGA column e.g. "6/15" → fgm:6, fga:15)
+- fgm/fga: field goals made/attempted (from FGM/FGA column e.g. "6/15" to fgm:6, fga:15)
 - tpm/tpa: 3-pointers made/attempted (from 3PM/3PA column)
 - ftm/fta: free throws made/attempted (from FTM/FTA column)
 - All values must be numbers` }
@@ -2025,7 +2025,7 @@ function addCorrection() {
   saveState(); renderCorrections();
   document.getElementById('corr-from').value = '';
   document.getElementById('corr-to').value = '';
-  notify(`Correction added: "${from}" → "${to}"`, 'success');
+  notify(`Correction added: "${from}" to "${to}"`, 'success');
 }
 
 function removeCorrection(key) {
@@ -2949,25 +2949,25 @@ function openSmartMerge() {
     const allNames = group.map(function(n){ return n.replace(/'/g, "'"); }).join('|');
 
     return '<div id="smg-' + gi + '" style="padding:10px;background:rgba(255,255,255,.05);border-radius:8px;margin-bottom:8px">'
-      + '<div style="font-size:.75rem;color:#888;margin-bottom:6px">Wybierz poprawny nick — reszta zostanie przekierowana:</div>'
+      + '<div style="font-size:.75rem;color:#888;margin-bottom:6px">Select the correct nickname — others will be redirected:</div>'
       + '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">' + nickBtns + '</div>'
       + '<div style="display:flex;gap:6px">'
-      + '<button onclick="smartMergeApplyGroup(' + gi + ',\'' + allNames + '\')" style="background:#f0c040;color:#000;border:none;border-radius:4px;padding:4px 14px;cursor:pointer;font-size:.85rem;font-weight:700">Polacz grupe</button>'
-      + '<button onclick="document.getElementById(\'smg-' + gi + '\').remove()" style="background:transparent;border:1px solid #555;color:#888;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:.8rem">Pominaj</button>'
+      + '<button onclick="smartMergeApplyGroup(' + gi + ',\'' + allNames + '\')" style="background:#f0c040;color:#000;border:none;border-radius:4px;padding:4px 14px;cursor:pointer;font-size:.85rem;font-weight:700">Merge group</button>'
+      + '<button onclick="document.getElementById(\'smg-' + gi + '\').remove()" style="background:transparent;border:1px solid #555;color:#888;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:.8rem">Skip</button>'
       + '</div></div>';
   }).join('');
 
-  const title = multiGroups.length + ' grup podobnych nickow';
-  const noData = '<p style="color:#888;text-align:center;padding:2rem">Nie znaleziono podobnych nickow</p>';
+  const title = multiGroups.length + ' groups of similar nicknames';
+  const noData = '<p style="color:#888;text-align:center;padding:2rem">No similar nicknames found</p>';
 
   overlay.innerHTML = '<div style="background:#0d0d1a;border:1px solid #333;border-radius:12px;padding:1.5rem;width:100%;max-width:720px;max-height:85vh;overflow-y:auto">'
     + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">'
     + '<h2 style="margin:0;font-size:1.1rem">Smart Merge — ' + title + '</h2>'
     + '<button onclick="document.getElementById(\'smart-merge-overlay\').remove()" style="background:transparent;border:none;color:#888;font-size:1.4rem;cursor:pointer">x</button>'
     + '</div>'
-    + '<p style="color:#888;font-size:.8rem;margin-bottom:1rem">Zolty = sugerowany poprawny nick. Kliknij inny zeby zmienic wybor, potem Polacz grupe.</p>'
+    + '<p style="color:#888;font-size:.8rem;margin-bottom:1rem">Yellow = suggested correct nickname. Click another to change, then click Merge group.</p>'
     + (multiGroups.length ? groupsHtml : noData)
-    + '<button onclick="applyCorrectionsToAll();document.getElementById(\'smart-merge-overlay\').remove()" style="margin-top:1rem;width:100%;background:#f0c040;color:#000;border:none;border-radius:6px;padding:.6rem;font-weight:700;cursor:pointer;font-size:.9rem">Zastosuj wszystkie korekty do meczow i zamknij</button>'
+    + '<button onclick="applyCorrectionsToAll();document.getElementById(\'smart-merge-overlay\').remove()" style="margin-top:1rem;width:100%;background:#f0c040;color:#000;border:none;border-radius:6px;padding:.6rem;font-weight:700;cursor:pointer;font-size:.9rem">Apply all corrections to matches and close</button>'
     + '</div>';
 
   document.body.appendChild(overlay);
@@ -2994,10 +2994,10 @@ function smartMergeApplyGroup(gi, namesStr) {
   saveState();
   const el = document.getElementById('smg-'+gi);
   if(el) {
-    el.innerHTML = '<span style="color:#4ade80">Polaczono: ' + allNames.filter(function(n){return n!==target;}).join(', ') + ' to ' + target + '</span>';
+    el.innerHTML = '<span style="color:#4ade80">Merged: ' + allNames.filter(function(n){return n!==target;}).join(', ') + ' → ' + target + '</span>';
     el.style.background = 'rgba(74,222,128,.1)';
   }
-  notify('Polaczono ' + allNames.length + ' nickow to ' + target, 'success');
+  notify('Merged ' + allNames.length + ' nickow to ' + target, 'success');
 }
 
 
@@ -3022,10 +3022,15 @@ function openMergeSplitMatches() {
     sameDay.forEach(function(x) {
       var teams1 = [m.team1||'', m.team2||''].map(function(t){return t.toLowerCase();});
       var teams2 = [x.team1||'', x.team2||''].map(function(t){return t.toLowerCase();});
-      var sameTeams = teams1.every(function(t) {
-        return teams2.some(function(t2){ return t2.includes(t.slice(0,4)) || t.includes(t2.slice(0,4)); });
-      });
-      if(!sameTeams) return;
+      var matchCount = teams1.filter(function(t) {
+        return teams2.some(function(t2){
+          var minLen = Math.min(t.length, t2.length);
+          var prefixMatch = minLen >= 3 && (t.slice(0,4) === t2.slice(0,4));
+          var dist = levenshtein(t, t2);
+          return prefixMatch || dist <= 3;
+        });
+      }).length;
+      if(matchCount < 1) return;
 
       var m1players = [...(m.team1_players||[]), ...(m.team2_players||[])].map(function(p){return p.name;});
       var m2players = [...(x.team1_players||[]), ...(x.team2_players||[])].map(function(p){return p.name;});
@@ -3045,43 +3050,138 @@ function openMergeSplitMatches() {
     });
   });
 
+  window._mergeCandidates = candidates;
+
   var overlay = document.createElement('div');
   overlay.id = 'merge-split-overlay';
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1rem';
 
   var itemsHtml = candidates.map(function(c, i) {
     var t1 = c.m1.team1||'Team 1', t2 = c.m1.team2||'Team 2';
-    return '<div style="background:rgba(255,255,255,.05);border-radius:8px;padding:12px;margin-bottom:10px">'
-      + '<div style="font-size:.75rem;color:#888;margin-bottom:6px">' + c.m1.date + '</div>'
-      + '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:8px">'
-      + '<div style="text-align:center"><div style="font-size:.7rem;color:#888">Mecz 1</div>'
-      + '<div style="font-weight:700;color:#f0c040">' + (c.m1.team1||'') + ' ' + (c.m1.score1||0) + ' - ' + (c.m1.score2||0) + ' ' + (c.m1.team2||'') + '</div>'
-      + '<div style="font-size:.7rem;color:#4ade80">wspolni: ' + c.common.slice(0,5).join(', ') + '</div></div>'
-      + '<div style="color:#888;font-size:1.2rem">+</div>'
-      + '<div style="text-align:center"><div style="font-size:.7rem;color:#888">Mecz 2</div>'
-      + '<div style="font-weight:700;color:#f0c040">' + (c.m2.team1||'') + ' ' + (c.m2.score1||0) + ' - ' + (c.m2.score2||0) + ' ' + (c.m2.team2||'') + '</div></div>'
-      + '<div style="color:#888;font-size:1.2rem">=</div>'
-      + '<div style="text-align:center"><div style="font-size:.7rem;color:#4ade80">Polaczony</div>'
-      + '<div style="font-weight:700;color:#4ade80">' + t1 + ' ' + c.mergedS1 + ' - ' + c.mergedS2 + ' ' + t2 + '</div></div>'
+    return '<div id="msc-' + i + '" style="background:rgba(255,255,255,.05);border-radius:8px;padding:12px;margin-bottom:10px">'
+      + '<div style="font-size:.75rem;color:#888;margin-bottom:8px">' + c.m1.date + ' — common players: <span style="color:#4ade80">' + c.common.slice(0,6).join(', ') + '</span></div>'
+      + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px">'
+      + '<button onclick="mergeShowDetail(' + i + ',1)" style="flex:1;min-width:140px;background:rgba(255,255,255,.06);border:1px solid #444;color:#f0c040;border-radius:4px;padding:6px 8px;cursor:pointer;font-size:.85rem;text-align:left">'
+      + '<div style="font-size:.65rem;color:#888;margin-bottom:2px">MATCH 1 (click to view)</div>'
+      + '<strong>' + (c.m1.team1||'') + ' ' + (c.m1.score1||0) + ' — ' + (c.m1.score2||0) + ' ' + (c.m1.team2||'') + '</strong>'
+      + '</button>'
+      + '<div style="display:flex;align-items:center;color:#888;font-size:1.2rem;padding:0 4px">+</div>'
+      + '<button onclick="mergeShowDetail(' + i + ',2)" style="flex:1;min-width:140px;background:rgba(255,255,255,.06);border:1px solid #444;color:#f0c040;border-radius:4px;padding:6px 8px;cursor:pointer;font-size:.85rem;text-align:left">'
+      + '<div style="font-size:.65rem;color:#888;margin-bottom:2px">MATCH 2 (click to view)</div>'
+      + '<strong>' + (c.m2.team1||'') + ' ' + (c.m2.score1||0) + ' — ' + (c.m2.score2||0) + ' ' + (c.m2.team2||'') + '</strong>'
+      + '</button>'
+      + '<div style="display:flex;align-items:center;color:#888;font-size:1.2rem;padding:0 4px">=</div>'
+      + '<button onclick="mergeShowPreview(' + i + ')" style="flex:1;min-width:140px;background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.3);color:#4ade80;border-radius:4px;padding:6px 8px;cursor:pointer;font-size:.85rem;text-align:left">'
+      + '<div style="font-size:.65rem;color:rgba(74,222,128,.6);margin-bottom:2px">MERGED PREVIEW (click)</div>'
+      + '<strong>' + t1 + ' ' + c.mergedS1 + ' — ' + c.mergedS2 + ' ' + t2 + '</strong>'
+      + '</button>'
       + '</div>'
+      + '<div id="msc-detail-' + i + '" style="display:none;margin-bottom:8px"></div>'
       + '<div style="display:flex;gap:8px">'
-      + '<button onclick="executeMerge(' + i + ')" style="background:#4ade80;color:#000;border:none;border-radius:4px;padding:5px 16px;cursor:pointer;font-weight:700;font-size:.85rem">Polacz mecze</button>'
-      + '<button onclick="this.closest(\'div[style]\').remove()" style="background:transparent;border:1px solid #555;color:#888;border-radius:4px;padding:5px 10px;cursor:pointer;font-size:.8rem">Pominaj</button>'
+      + '<button onclick="executeMerge(' + i + ')" style="background:#4ade80;color:#000;border:none;border-radius:4px;padding:5px 16px;cursor:pointer;font-weight:700;font-size:.85rem">Merge and save</button>'
+      + '<button onclick="document.getElementById(\'msc-' + i + '\').remove()" style="background:transparent;border:1px solid #555;color:#888;border-radius:4px;padding:5px 10px;cursor:pointer;font-size:.8rem">Skip</button>'
       + '</div></div>';
   }).join('');
 
-  if(!itemsHtml) itemsHtml = '<p style="color:#888;text-align:center;padding:2rem">Nie znaleziono meczow do polaczenia</p>';
+  if(!itemsHtml) itemsHtml = '<p style="color:#888;text-align:center;padding:2rem">No matches found to merge</p>';
 
-  overlay.innerHTML = '<div style="background:#0d0d1a;border:1px solid #333;border-radius:12px;padding:1.5rem;width:100%;max-width:720px;max-height:85vh;overflow-y:auto">'
+  overlay.innerHTML = '<div style="background:#0d0d1a;border:1px solid #333;border-radius:12px;padding:1.5rem;width:100%;max-width:800px;max-height:90vh;overflow-y:auto">'
     + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">'
-    + '<h2 style="margin:0;font-size:1.1rem">Polacz przerwane mecze (' + candidates.length + ' par)</h2>'
+    + '<h2 style="margin:0;font-size:1.1rem">Merge split matches (' + candidates.length + ' pairs)</h2>'
     + '<button onclick="document.getElementById(\'merge-split-overlay\').remove()" style="background:transparent;border:none;color:#888;font-size:1.4rem;cursor:pointer">x</button>'
     + '</div>'
-    + '<p style="color:#888;font-size:.8rem;margin-bottom:1rem">Mecze z tym samym dniem, podobnymi druzunami i niskim wynikiem (ponizej ' + LOW_SCORE + ' pkt) z min. 3 wspolnymi graczami.</p>'
+    + '<p style="color:#888;font-size:.8rem;margin-bottom:1rem">Click a match to see details, click the merged result to preview before saving.</p>'
     + itemsHtml + '</div>';
 
-  window._mergeCandidates = candidates;
   document.body.appendChild(overlay);
+}
+
+function mergeMakeTable(players) {
+  if(!players || !players.length) return '<p style="color:#888;font-size:.8rem">No players</p>';
+  return '<table style="width:100%;font-size:11px;border-collapse:collapse;margin-top:4px">'
+    + '<thead><tr style="color:#888;border-bottom:1px solid #333">'
+    + '<th style="text-align:left;padding:3px 6px">Nick</th><th>POS</th><th>GRD</th><th>PTS</th><th>REB</th><th>AST</th><th>STL</th><th>BLK</th><th>PF</th><th>TO</th><th>FG</th><th>3P</th><th>FT</th>'
+    + '</tr></thead><tbody>'
+    + players.map(function(p) {
+        var fg = (p.fgm||0) + '/' + (p.fga||0);
+        var tp = (p.tpm||0) + '/' + (p.tpa||0);
+        var ft = (p.ftm||0) + '/' + (p.fta||0);
+        return '<tr style="border-bottom:1px solid rgba(255,255,255,.05)">'
+          + '<td style="padding:3px 6px;color:#f0c040;font-weight:700">' + (p.name||'') + '</td>'
+          + '<td style="text-align:center;color:#888">' + (p.pos||'') + '</td>'
+          + '<td style="text-align:center;color:#d4a843">' + (p.grade||'') + '</td>'
+          + '<td style="text-align:center;font-weight:700">' + (p.pts||0) + '</td>'
+          + '<td style="text-align:center">' + (p.reb||0) + '</td>'
+          + '<td style="text-align:center">' + (p.ast||0) + '</td>'
+          + '<td style="text-align:center">' + (p.stl||0) + '</td>'
+          + '<td style="text-align:center">' + (p.blk||0) + '</td>'
+          + '<td style="text-align:center">' + (p.pf||0) + '</td>'
+          + '<td style="text-align:center">' + (p.to||0) + '</td>'
+          + '<td style="text-align:center;font-size:10px">' + fg + '</td>'
+          + '<td style="text-align:center;font-size:10px">' + tp + '</td>'
+          + '<td style="text-align:center;font-size:10px">' + ft + '</td>'
+          + '</tr>';
+      }).join('')
+    + '</tbody></table>';
+}
+
+function mergeShowDetail(idx, which) {
+  var c = window._mergeCandidates[idx];
+  var m = which === 1 ? c.m1 : c.m2;
+  var el = document.getElementById('msc-detail-' + idx);
+  var key = 'detail-' + which;
+  if(el._showing === key) { el.style.display = 'none'; el._showing = null; return; }
+  el._showing = key;
+  el.style.display = 'block';
+  el.innerHTML = '<div style="background:rgba(255,255,255,.03);border:1px solid #333;border-radius:6px;padding:10px;font-size:.8rem">'
+    + '<div style="font-weight:700;color:#f0c040;margin-bottom:6px">' + (m.team1||'') + ' ' + (m.score1||0) + ' — ' + (m.score2||0) + ' ' + (m.team2||'') + '</div>'
+    + '<div style="color:#888;font-size:.75rem;margin-bottom:4px">' + (m.team1||'Team 1') + '</div>'
+    + mergeMakeTable(m.team1_players)
+    + '<div style="color:#888;font-size:.75rem;margin-top:8px;margin-bottom:4px">' + (m.team2||'Team 2') + '</div>'
+    + mergeMakeTable(m.team2_players)
+    + '</div>';
+}
+
+function mergeShowPreview(idx) {
+  var c = window._mergeCandidates[idx];
+  var el = document.getElementById('msc-detail-' + idx);
+  if(el._showing === 'preview') { el.style.display = 'none'; el._showing = null; return; }
+  el._showing = 'preview';
+  el.style.display = 'block';
+
+  // Build merged players
+  function mergePlayers(p1arr, p2arr) {
+    var merged = JSON.parse(JSON.stringify(p1arr||[]));
+    (p2arr||[]).forEach(function(p2) {
+      var existing = merged.find(function(p){ return p.name === p2.name; });
+      if(existing) {
+        ['pts','reb','ast','stl','blk','to','pf','fgm','fga','tpm','tpa','ftm','fta'].forEach(function(k) {
+          existing[k] = (existing[k]||0) + (p2[k]||0);
+        });
+        var grades = ['F','D-','D','D+','C-','C','C+','B-','B','B+','A-','A','A+'];
+        var g1 = existing.grade||'B', g2 = p2.grade||'B';
+        var avg = Math.round((grades.indexOf(g1)+grades.indexOf(g2))/2);
+        existing.grade = grades[Math.max(0,avg)];
+      } else {
+        merged.push(Object.assign({},p2));
+      }
+    });
+    return merged;
+  }
+
+  var m1 = c.m1, m2 = c.m2;
+  var t2p1 = c.t1match ? m2.team1_players : m2.team2_players;
+  var t2p2 = c.t1match ? m2.team2_players : m2.team1_players;
+  var mp1 = mergePlayers(m1.team1_players, t2p1);
+  var mp2 = mergePlayers(m1.team2_players, t2p2);
+
+  el.innerHTML = '<div style="background:rgba(74,222,128,.05);border:1px solid rgba(74,222,128,.2);border-radius:6px;padding:10px;font-size:.8rem">'
+    + '<div style="font-weight:700;color:#4ade80;margin-bottom:6px">PREVIEW: ' + (m1.team1||'') + ' ' + c.mergedS1 + ' — ' + c.mergedS2 + ' ' + (m1.team2||'') + '</div>'
+    + '<div style="color:#888;font-size:.75rem;margin-bottom:4px">' + (m1.team1||'Team 1') + '</div>'
+    + mergeMakeTable(mp1)
+    + '<div style="color:#888;font-size:.75rem;margin-top:8px;margin-bottom:4px">' + (m1.team2||'Team 2') + '</div>'
+    + mergeMakeTable(mp2)
+    + '</div>';
 }
 
 function executeMerge(idx) {
@@ -3115,7 +3215,7 @@ function executeMerge(idx) {
     score2: mergedS2,
     team1_players: mergePlayers(m1.team1_players, t2p1),
     team2_players: mergePlayers(m1.team2_players, t2p2),
-    note: (m1.note ? m1.note+' ' : '') + '[polaczony mecz]',
+    note: (m1.note ? m1.note+' ' : '') + '[merged match]',
   });
 
   state.matches = state.matches.map(function(m) {
@@ -3127,18 +3227,14 @@ function executeMerge(idx) {
   saveState();
   renderBoxScores();
   renderStats();
-  notify('Mecze polaczone: ' + mergedS1 + '-' + mergedS2, 'success');
+  notify('Matches merged: ' + mergedS1 + '-' + mergedS2, 'success');
 
-  var card = document.querySelector('#merge-split-overlay [onclick="executeMerge(' + idx + ')"]');
+  var card = document.getElementById('msc-' + idx);
   if(card) {
-    var parent = card.closest('div[style]');
-    if(parent) {
-      parent.innerHTML = '<span style="color:#4ade80">Polaczono: ' + m1.team1 + ' ' + mergedS1 + '-' + mergedS2 + ' ' + m1.team2 + '</span>';
-      parent.style.background = 'rgba(74,222,128,.1)';
-    }
+    card.innerHTML = '<span style="color:#4ade80">Merged: ' + m1.team1 + ' ' + mergedS1 + '-' + mergedS2 + ' ' + m1.team2 + '</span>';
+    card.style.background = 'rgba(74,222,128,.1)';
   }
 }
-
 
 function autoFillRoster() {
   // Collect all unique player names from matches
