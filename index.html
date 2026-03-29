@@ -3036,7 +3036,8 @@ function openMergeSplitMatches() {
       var m1players = [...(m.team1_players||[]), ...(m.team2_players||[])].map(function(p){return p.name;});
       var m2players = [...(x.team1_players||[]), ...(x.team2_players||[])].map(function(p){return p.name;});
       var common = m1players.filter(function(n){ return m2players.includes(n); });
-      if(common.length < 3) return;
+      // ALL players from m1 must be present in m2 (and vice versa)
+      if(common.length < m1players.length || common.length < m2players.length) return;
 
       seen.add(String(m.id));
       seen.add(String(x.id));
