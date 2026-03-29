@@ -2878,119 +2878,97 @@ init();
 // ============================================================
 function levenshtein(a, b) {
   const m = a.length, n = b.length;
-  const dp = Array.from({length: m+1}, (_,i) => Array.from({length: n+1}, (_,j) => i===0?j:j===0?i:0));
-  for(let i=1;i<=m;i++) for(let j=1;j<=n;j++)
+  const dp = Array.from({length: m+1}, function(_,i) { return Array.from({length: n+1}, function(_,j) { return i===0?j:j===0?i:0; }); });
+  for(var i=1;i<=m;i++) for(var j=1;j<=n;j++)
     dp[i][j] = a[i-1]===b[j-1] ? dp[i-1][j-1] : 1+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);
   return dp[m][n];
 }
 
 function openSmartMerge() {
-  // Build unique player list from all matches
   const playerNames = new Set();
-  state.matches.forEach(m => {
-    (m.team1_players||[]).forEach(p => { if(p.name) playerNames.add(p.name); });
-    (m.team2_players||[]).forEach(p => { if(p.name) playerNames.add(p.name); });
+  state.matches.forEach(function(m) {
+    (m.team1_players||[]).forEach(function(p) { if(p.name) playerNames.add(p.name); });
+    (m.team2_players||[]).forEach(function(p) { if(p.name) playerNames.add(p.name); });
   });
   const names = [...playerNames].sort();
 
-  // Group similar names using union-find
   const parent = {};
-  names.forEach(n => parent[n] = n);
-
+  names.forEach(function(n) { parent[n] = n; });
   function find(x) { return parent[x] === x ? x : (parent[x] = find(parent[x])); }
   function union(a, b) { parent[find(a)] = find(b); }
 
-  for(let i=0;i<names.length;i++) {
-    for(let j=i+1;j<names.length;j++) {
-      const a = names[i], b = names[j];
-      if(state.corrections[a] || state.corrections[b]) continue;
-      const dist = levenshtein(a.toLowerCase(), b.toLowerCase());
-      const shorter = a.length < b.length ? a : b;
-      const longer  = a.length < b.length ? b : a;
+  for(var i=0;i<names.length;i++) {
+    for(var j=i+1;j<names.length;j++) {
+      const na = names[i], nb = names[j];
+      if(state.corrections[na] || state.corrections[nb]) continue;
+      const dist = levenshtein(na.toLowerCase(), nb.toLowerCase());
+      const shorter = na.length < nb.length ? na : nb;
+      const longer  = na.length < nb.length ? nb : na;
       const contained = longer.toLowerCase().includes(shorter.toLowerCase());
-      if(dist <= 2 || (contained && shorter.length >= 3)) union(a, b);
+      if(dist <= 2 || (contained && shorter.length >= 3)) union(na, nb);
     }
   }
 
-  // Build groups
   const groups = {};
-  names.forEach(n => {
+  names.forEach(function(n) {
     const root = find(n);
     if(!groups[root]) groups[root] = [];
     groups[root].push(n);
   });
 
-  // Only show groups with 2+ members
-  const multiGroups = Object.values(groups).filter(g => g.length > 1);
+  const multiGroups = Object.values(groups).filter(function(g) { return g.length > 1; });
 
-  // Build modal HTML
   const overlay = document.createElement('div');
   overlay.id = 'smart-merge-overlay';
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1rem';
 
-  const groupsHtml = multiGroups.length ? multiGroups.map((group, gi) => {
-    // Sort by frequency (most played = correct name)
-    const freq = {};
-    group.forEach(n => {
-      freq[n] = state.matches.reduce((s,m) =>
-        s + (m.team1_players||[]).filter(p=>p.name===n).length
-          + (m.team2_players||[]).filter(p=>p.name===n).length, 0);
-    });
-    group.sort((a,b) => freq[b]-freq[a]);
-    const suggested = group[0]; // most frequent = likely correct
-
-    const nickBtns = group.map(n =>
-      `<button onclick="smartMergeSetTarget(${gi},'${n.replace(/'/g,"\'")}')"
-        id="smg-${gi}-${n.replace(/[^a-zA-Z0-9]/g,'_')}"
-        style="background:${n===suggested?'#f0c040':'transparent'};color:${n===suggested?'#000':'#f0c040'};border:1px solid #f0c040;border-radius:4px;padding:3px 10px;cursor:pointer;font-size:.85rem;font-weight:700">
-        ${n} <span style="font-size:.7rem;opacity:.7">(${freq[n]}g)</span>
-      </button>`
-    ).join('');
-
-    return `<div id="smg-${gi}" style="padding:10px;background:var(--bg2,#1a1a2e);border-radius:8px;margin-bottom:8px">
-      <div style="font-size:.75rem;color:#888;margin-bottom:6px">Wybierz poprawny nick — reszta zostanie przekierowana:</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">${nickBtns}</div>
-      <div style="display:flex;gap:6px">
-        <button onclick="smartMergeApplyGroup(${gi},'${group.map(n=>n.replace(/'/g,"\'")).join('|')}')"
-          style="background:#f0c040;color:#000;border:none;border-radius:4px;padding:4px 14px;cursor:pointer;font-size:.85rem;font-weight:700">
-          ✅ Połącz grupę
-        </button>
-        <button onclick="document.getElementById('smg-${gi}').remove()"
-          style="background:transparent;border:1px solid #555;color:#888;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:.8rem">
-          Pomiń
-        </button>
-      </div>
-    </div>`;
-  }).join('')
-    : '<p style="color:#888;text-align:center">Nie znaleziono podobnych nicków 🎉</p>';
-
-  overlay.innerHTML = `
-    <div style="background:var(--bg,#0d0d1a);border:1px solid #333;border-radius:12px;padding:1.5rem;width:100%;max-width:720px;max-height:85vh;overflow-y:auto">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
-        <h2 style="margin:0;font-size:1.1rem">🔍 Smart Merge — ${multiGroups.length} grup podobnych nicków</h2>
-        <button onclick="document.getElementById('smart-merge-overlay').remove()" style="background:transparent;border:none;color:#888;font-size:1.4rem;cursor:pointer">✕</button>
-      </div>
-      <p style="color:#888;font-size:.8rem;margin-bottom:1rem">Żółty = sugerowany poprawny nick (najczęściej grany). Kliknij inny żeby zmienić wybór, potem "Połącz grupę".</p>
-      <div>${groupsHtml}</div>
-      <button onclick="applyCorrectionsToAll();document.getElementById('smart-merge-overlay').remove()"
-        style="margin-top:1rem;width:100%;background:#f0c040;color:#000;border:none;border-radius:6px;padding:.6rem;font-weight:700;cursor:pointer;font-size:.9rem">
-        ✅ Zastosuj wszystkie korekty do meczów i zamknij
-      </button>
-    </div>`;
-
-  // Store selected targets
   window._smgTargets = {};
-  multiGroups.forEach((g, gi) => {
-    const freq = {};
-    g.forEach(n => {
-      freq[n] = state.matches.reduce((s,m) =>
-        s + (m.team1_players||[]).filter(p=>p.name===n).length
-          + (m.team2_players||[]).filter(p=>p.name===n).length, 0);
-    });
-    g.sort((a,b) => freq[b]-freq[a]);
-    window._smgTargets[gi] = g[0];
-  });
   window._smgGroups = multiGroups;
+
+  const groupsHtml = multiGroups.map(function(group, gi) {
+    const freq = {};
+    group.forEach(function(n) {
+      freq[n] = state.matches.reduce(function(s,m) {
+        return s + (m.team1_players||[]).filter(function(p){return p.name===n;}).length
+                 + (m.team2_players||[]).filter(function(p){return p.name===n;}).length;
+      }, 0);
+    });
+    group.sort(function(a,b) { return freq[b]-freq[a]; });
+    const suggested = group[0];
+    window._smgTargets[gi] = suggested;
+
+    const nickBtns = group.map(function(n) {
+      const isSug = n === suggested;
+      const safeN = n.replace(/'/g, "'");
+      const btnId = 'smg-' + gi + '-' + n.replace(/[^a-zA-Z0-9]/g,'_');
+      const bg = isSug ? '#f0c040' : 'transparent';
+      const col = isSug ? '#000' : '#f0c040';
+      return '<button onclick="smartMergeSetTarget(' + gi + ',\'' + safeN + '\')" id="' + btnId + '" style="background:' + bg + ';color:' + col + ';border:1px solid #f0c040;border-radius:4px;padding:3px 10px;cursor:pointer;font-size:.85rem;font-weight:700">' + n + ' <span style="font-size:.7rem;opacity:.7">(' + freq[n] + 'g)</span></button>';
+    }).join(' ');
+
+    const allNames = group.map(function(n){ return n.replace(/'/g, "'"); }).join('|');
+
+    return '<div id="smg-' + gi + '" style="padding:10px;background:rgba(255,255,255,.05);border-radius:8px;margin-bottom:8px">'
+      + '<div style="font-size:.75rem;color:#888;margin-bottom:6px">Wybierz poprawny nick — reszta zostanie przekierowana:</div>'
+      + '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">' + nickBtns + '</div>'
+      + '<div style="display:flex;gap:6px">'
+      + '<button onclick="smartMergeApplyGroup(' + gi + ',\'' + allNames + '\')" style="background:#f0c040;color:#000;border:none;border-radius:4px;padding:4px 14px;cursor:pointer;font-size:.85rem;font-weight:700">Polacz grupe</button>'
+      + '<button onclick="document.getElementById(\'smg-' + gi + '\').remove()" style="background:transparent;border:1px solid #555;color:#888;border-radius:4px;padding:4px 10px;cursor:pointer;font-size:.8rem">Pominaj</button>'
+      + '</div></div>';
+  }).join('');
+
+  const title = multiGroups.length + ' grup podobnych nickow';
+  const noData = '<p style="color:#888;text-align:center;padding:2rem">Nie znaleziono podobnych nickow</p>';
+
+  overlay.innerHTML = '<div style="background:#0d0d1a;border:1px solid #333;border-radius:12px;padding:1.5rem;width:100%;max-width:720px;max-height:85vh;overflow-y:auto">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">'
+    + '<h2 style="margin:0;font-size:1.1rem">Smart Merge — ' + title + '</h2>'
+    + '<button onclick="document.getElementById(\'smart-merge-overlay\').remove()" style="background:transparent;border:none;color:#888;font-size:1.4rem;cursor:pointer">x</button>'
+    + '</div>'
+    + '<p style="color:#888;font-size:.8rem;margin-bottom:1rem">Zolty = sugerowany poprawny nick. Kliknij inny zeby zmienic wybor, potem Polacz grupe.</p>'
+    + (multiGroups.length ? groupsHtml : noData)
+    + '<button onclick="applyCorrectionsToAll();document.getElementById(\'smart-merge-overlay\').remove()" style="margin-top:1rem;width:100%;background:#f0c040;color:#000;border:none;border-radius:6px;padding:.6rem;font-weight:700;cursor:pointer;font-size:.9rem">Zastosuj wszystkie korekty do meczow i zamknij</button>'
+    + '</div>';
 
   document.body.appendChild(overlay);
 }
@@ -2998,7 +2976,7 @@ function openSmartMerge() {
 function smartMergeSetTarget(gi, name) {
   window._smgTargets[gi] = name;
   const group = window._smgGroups[gi];
-  group.forEach(n => {
+  group.forEach(function(n) {
     const id = 'smg-'+gi+'-'+n.replace(/[^a-zA-Z0-9]/g,'_');
     const btn = document.getElementById(id);
     if(!btn) return;
@@ -3010,19 +2988,17 @@ function smartMergeSetTarget(gi, name) {
 function smartMergeApplyGroup(gi, namesStr) {
   const target = window._smgTargets[gi] || namesStr.split('|')[0];
   const allNames = namesStr.split('|');
-  allNames.forEach(n => {
+  allNames.forEach(function(n) {
     if(n !== target) state.corrections[n] = target;
   });
   saveState();
   const el = document.getElementById('smg-'+gi);
   if(el) {
-    el.innerHTML = `<span style="color:#4ade80">✅ Połączono: ${allNames.filter(n=>n!==target).join(', ')} → ${target}</span>`;
+    el.innerHTML = '<span style="color:#4ade80">Polaczono: ' + allNames.filter(function(n){return n!==target;}).join(', ') + ' to ' + target + '</span>';
     el.style.background = 'rgba(74,222,128,.1)';
   }
-  notify(`Połączono ${allNames.length} nicków → ${target}`, 'success');
+  notify('Polaczono ' + allNames.length + ' nickow to ' + target, 'success');
 }
-
-
 
 
 // ============================================================
