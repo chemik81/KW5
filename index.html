@@ -3022,15 +3022,16 @@ function openMergeSplitMatches() {
     sameDay.forEach(function(x) {
       var teams1 = [m.team1||'', m.team2||''].map(function(t){return t.toLowerCase();});
       var teams2 = [x.team1||'', x.team2||''].map(function(t){return t.toLowerCase();});
-      var matchCount = teams1.filter(function(t) {
+      // Both teams must match (same set of teams, possibly in different order)
+      var teamsMatch = teams1.every(function(t) {
         return teams2.some(function(t2){
           var minLen = Math.min(t.length, t2.length);
           var prefixMatch = minLen >= 3 && (t.slice(0,4) === t2.slice(0,4));
           var dist = levenshtein(t, t2);
-          return prefixMatch || dist <= 3;
+          return prefixMatch || dist <= 2;
         });
-      }).length;
-      if(matchCount < 1) return;
+      });
+      if(!teamsMatch) return;
 
       var m1players = [...(m.team1_players||[]), ...(m.team2_players||[])].map(function(p){return p.name;});
       var m2players = [...(x.team1_players||[]), ...(x.team2_players||[])].map(function(p){return p.name;});
@@ -3151,22 +3152,21 @@ function mergeShowPreview(idx) {
 
   // Build merged players
   function mergePlayers(p1arr, p2arr) {
+    // Only sum stats for players that exist in BOTH teams — never add new players
     var merged = JSON.parse(JSON.stringify(p1arr||[]));
-    (p2arr||[]).forEach(function(p2) {
-      var existing = merged.find(function(p){ return p.name === p2.name; });
-      if(existing) {
+    merged.forEach(function(p1) {
+      var p2 = (p2arr||[]).find(function(p){ return p.name === p1.name; });
+      if(p2) {
         ['pts','reb','ast','stl','blk','to','pf','fgm','fga','tpm','tpa','ftm','fta'].forEach(function(k) {
-          existing[k] = (existing[k]||0) + (p2[k]||0);
+          p1[k] = (p1[k]||0) + (p2[k]||0);
         });
         var grades = ['F','D-','D','D+','C-','C','C+','B-','B','B+','A-','A','A+'];
-        var g1 = existing.grade||'B', g2 = p2.grade||'B';
+        var g1 = p1.grade||'B', g2 = p2.grade||'B';
         var avg = Math.round((grades.indexOf(g1)+grades.indexOf(g2))/2);
-        existing.grade = grades[Math.max(0,avg)];
-      } else {
-        merged.push(Object.assign({},p2));
+        p1.grade = grades[Math.max(0,avg)];
       }
     });
-    return merged;
+    return merged; // always exactly p1arr.length players
   }
 
   var m1 = c.m1, m2 = c.m2;
@@ -3189,22 +3189,21 @@ function executeMerge(idx) {
   var m1 = c.m1, m2 = c.m2, mergedS1 = c.mergedS1, mergedS2 = c.mergedS2, t1match = c.t1match;
 
   function mergePlayers(p1arr, p2arr) {
+    // Only sum stats for players that exist in BOTH teams — never add new players
     var merged = JSON.parse(JSON.stringify(p1arr||[]));
-    (p2arr||[]).forEach(function(p2) {
-      var existing = merged.find(function(p){ return p.name === p2.name; });
-      if(existing) {
+    merged.forEach(function(p1) {
+      var p2 = (p2arr||[]).find(function(p){ return p.name === p1.name; });
+      if(p2) {
         ['pts','reb','ast','stl','blk','to','pf','fgm','fga','tpm','tpa','ftm','fta'].forEach(function(k) {
-          existing[k] = (existing[k]||0) + (p2[k]||0);
+          p1[k] = (p1[k]||0) + (p2[k]||0);
         });
         var grades = ['F','D-','D','D+','C-','C','C+','B-','B','B+','A-','A','A+'];
-        var g1 = existing.grade||'B', g2 = p2.grade||'B';
+        var g1 = p1.grade||'B', g2 = p2.grade||'B';
         var avg = Math.round((grades.indexOf(g1)+grades.indexOf(g2))/2);
-        existing.grade = grades[Math.max(0,avg)];
-      } else {
-        merged.push(Object.assign({},p2));
+        p1.grade = grades[Math.max(0,avg)];
       }
     });
-    return merged;
+    return merged; // always exactly p1arr.length players
   }
 
   var t2p1 = t1match ? m2.team1_players : m2.team2_players;
