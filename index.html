@@ -3081,7 +3081,6 @@ function openMergeSplitMatches() {
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1rem';
 
   const itemsHtml = candidates.length ? candidates.map((c,i) => { const {m1,m2,mergedS1,mergedS2,t1match,commonPlayers} = c;
-    const {m1,m2,mergedS1,mergedS2,t1match} = c;
     const t1 = m1.team1||'Team 1', t2 = m1.team2||'Team 2';
     return `
     <div style="background:var(--bg2,#1a1a2e);border-radius:8px;padding:12px;margin-bottom:10px">
