@@ -3174,7 +3174,7 @@ function mergeShowPreview(idx) {
       var p2 = (p2arr||[]).find(function(p){ return p.name === p1.name; });
       if(p2) {
         ['pts','reb','ast','stl','blk','to','pf','fgm','fga','tpm','tpa','ftm','fta'].forEach(function(k) {
-          p1[k] = (p1[k]||0) + (p2[k]||0);
+          p1[k] = (+p1[k]||0) + (+p2[k]||0);
         });
         var grades = ['F','D-','D','D+','C-','C','C+','B-','B','B+','A-','A','A+'];
         var g1 = p1.grade||'B', g2 = p2.grade||'B';
@@ -3211,7 +3211,7 @@ function executeMerge(idx) {
       var p2 = (p2arr||[]).find(function(p){ return p.name === p1.name; });
       if(p2) {
         ['pts','reb','ast','stl','blk','to','pf','fgm','fga','tpm','tpa','ftm','fta'].forEach(function(k) {
-          p1[k] = (p1[k]||0) + (p2[k]||0);
+          p1[k] = (+p1[k]||0) + (+p2[k]||0);
         });
         var grades = ['F','D-','D','D+','C-','C','C+','B-','B','B+','A-','A','A+'];
         var g1 = p1.grade||'B', g2 = p2.grade||'B';
