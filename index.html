@@ -860,6 +860,8 @@ async function loadFromDb() {
           team2:        t2.name || 'Team 2',
           score1:       t1.score || 0,
           score2:       t2.score || 0,
+          quarters1:    t1.quarters || [],
+          quarters2:    t2.quarters || [],
           team1_players: (t1.players || []).map(p => ({
             name:  p.name || '',
             pos:   p.pos || '',
@@ -1385,6 +1387,15 @@ function openDetail(id) {
       <div style="font-family:'Bebas Neue';font-size:28px;color:var(--text3);padding-top:20px">VS</div>
       <div><div style="font-size:16px;font-weight:700;color:var(--text2)">${t2}</div><div style="font-family:'Bebas Neue';font-size:56px;color:${s2>s1?'var(--gold)':'var(--text3)'}">${s2}</div></div>
     </div>
+    ${(m.quarters1||[]).length ? `
+    <div style="display:flex;justify-content:center;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+      ${(m.quarters1||[]).map((q,i) => `
+        <div style="text-align:center;background:rgba(255,255,255,.05);border-radius:6px;padding:4px 10px;min-width:48px">
+          <div style="font-size:.65rem;color:#888;font-weight:700">Q${i+1}</div>
+          <div style="font-weight:700;color:${q>(m.quarters2||[])[i]?'var(--gold)':'var(--text2)'}">${q}</div>
+          <div style="font-size:.7rem;color:#888">${(m.quarters2||[])[i]||0}</div>
+        </div>`).join('')}
+    </div>` : ''}
     ${renderPlayerDetailTable(m.team1_players, t1)}
     ${renderPlayerDetailTable(m.team2_players, t2)}
   `;
