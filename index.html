@@ -1876,7 +1876,7 @@ function saveMatch() {
 
   if (isEdit) {
     // Replace existing match
-    const idx = state.matches.findIndex(m => m.id === match.id);
+    const idx = state.matches.findIndex(m => String(m.id) === String(match.id));
     if (idx !== -1) state.matches[idx] = match;
   } else {
     state.matches.push(match);
