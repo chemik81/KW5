@@ -3002,167 +3002,141 @@ function smartMergeApplyGroup(gi, namesStr) {
 
 
 // ============================================================
-// MERGE SPLIT MATCHES — połącz mecze przerwane w połowie
+// MERGE SPLIT MATCHES
 // ============================================================
 function openMergeSplitMatches() {
-  const LOW_SCORE = 40; // próg niskiego wyniku
-  const candidates = [];
+  var LOW_SCORE = 40;
+  var candidates = [];
+  var seen = new Set();
 
-  // Find low-score matches
-  const lowMatches = state.matches.filter(m => {
-    const s1 = +m.score1||0, s2 = +m.score2||0;
-    return (s1 < LOW_SCORE || s2 < LOW_SCORE) && m.date;
+  var lowMatches = state.matches.filter(function(m) {
+    return ((+m.score1||0) < LOW_SCORE || (+m.score2||0) < LOW_SCORE) && m.date;
   });
 
-  // For each low-score match, find potential partner on same date
-  const seen = new Set();
-  lowMatches.forEach(m => {
-    if(seen.has(m.id)) return;
-    const sameDay = state.matches.filter(x =>
-      x.id !== m.id && x.date === m.date && !seen.has(x.id)
-    );
+  lowMatches.forEach(function(m) {
+    if(seen.has(String(m.id))) return;
+    var sameDay = state.matches.filter(function(x) {
+      return String(x.id) !== String(m.id) && x.date === m.date && !seen.has(String(x.id));
+    });
 
-    sameDay.forEach(x => {
-      // Check if teams match (same or similar names)
-      const teams1 = [m.team1||'', m.team2||''].map(t=>t.toLowerCase());
-      const teams2 = [x.team1||'', x.team2||''].map(t=>t.toLowerCase());
-      const sameTeams = teams1.every(t => teams2.some(t2 => t2.includes(t.slice(0,4)) || t.includes(t2.slice(0,4))));
+    sameDay.forEach(function(x) {
+      var teams1 = [m.team1||'', m.team2||''].map(function(t){return t.toLowerCase();});
+      var teams2 = [x.team1||'', x.team2||''].map(function(t){return t.toLowerCase();});
+      var sameTeams = teams1.every(function(t) {
+        return teams2.some(function(t2){ return t2.includes(t.slice(0,4)) || t.includes(t2.slice(0,4)); });
+      });
       if(!sameTeams) return;
 
-      // Check if players overlap (at least 3 common players per team)
-      const m1players = [...(m.team1_players||[]), ...(m.team2_players||[])].map(p=>p.name);
-      const m2players = [...(x.team1_players||[]), ...(x.team2_players||[])].map(p=>p.name);
-      const common = m1players.filter(n => m2players.includes(n));
-      if(common.length < 3) return; // not enough common players
+      var m1players = [...(m.team1_players||[]), ...(m.team2_players||[])].map(function(p){return p.name;});
+      var m2players = [...(x.team1_players||[]), ...(x.team2_players||[])].map(function(p){return p.name;});
+      var common = m1players.filter(function(n){ return m2players.includes(n); });
+      if(common.length < 3) return;
 
-      seen.add(m.id);
-      seen.add(x.id);
+      seen.add(String(m.id));
+      seen.add(String(x.id));
 
-      // Calculate merged scores
-      const ms1 = +m.score1||0, ms2 = +m.score2||0;
-      const xs1 = +x.score1||0, xs2 = +x.score2||0;
+      var ms1 = +m.score1||0, ms2 = +m.score2||0;
+      var xs1 = +x.score1||0, xs2 = +x.score2||0;
+      var t1match = (m.team1||'').toLowerCase() === (x.team1||'').toLowerCase();
+      var mergedS1 = t1match ? ms1+xs1 : ms1+xs2;
+      var mergedS2 = t1match ? ms2+xs2 : ms2+xs1;
 
-      // Figure out team order (team1 of m vs team1 of x)
-      const t1match = (m.team1||'').toLowerCase() === (x.team1||'').toLowerCase();
-      const mergedS1 = t1match ? ms1+xs1 : ms1+xs2;
-      const mergedS2 = t1match ? ms2+xs2 : ms2+xs1;
-
-      const commonPlayers = m1players.filter(n => m2players.includes(n));
-      candidates.push({ m1: m, m2: x, mergedS1, mergedS2, t1match, commonPlayers });
+      candidates.push({m1:m, m2:x, mergedS1:mergedS1, mergedS2:mergedS2, t1match:t1match, common:common});
     });
   });
 
-  const overlay = document.createElement('div');
+  var overlay = document.createElement('div');
   overlay.id = 'merge-split-overlay';
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1rem';
 
-  const itemsHtml = candidates.length ? candidates.map((c,i) => { const {m1,m2,mergedS1,mergedS2,t1match,commonPlayers} = c;
-    const t1 = m1.team1||'Team 1', t2 = m1.team2||'Team 2';
-    return `
-    <div style="background:var(--bg2,#1a1a2e);border-radius:8px;padding:12px;margin-bottom:10px">
-      <div style="font-size:.75rem;color:#888;margin-bottom:6px">📅 ${m1.date}</div>
-      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
-        <div style="text-align:center">
-          <div style="font-size:.7rem;color:#888">Mecz 1</div>
-          <div style="font-weight:700;color:#f0c040">${m1.team1} ${m1.score1||0} — ${m1.score2||0} ${m1.team2}</div>
-          <div style="font-size:.7rem;color:#888">${(m1.team1_players||[]).length + (m1.team2_players||[]).length} graczy</div>
-          <div style="font-size:.7rem;color:#4ade80">wspólni: ${c.commonPlayers.join(', ')}</div>
-        </div>
-        <div style="color:#888;font-size:1.2rem">+</div>
-        <div style="text-align:center">
-          <div style="font-size:.7rem;color:#888">Mecz 2</div>
-          <div style="font-weight:700;color:#f0c040">${m2.team1} ${m2.score1||0} — ${m2.score2||0} ${m2.team2}</div>
-          <div style="font-size:.7rem;color:#888">${(m2.team1_players||[]).length + (m2.team2_players||[]).length} graczy</div>
-        </div>
-        <div style="color:#888;font-size:1.2rem">=</div>
-        <div style="text-align:center">
-          <div style="font-size:.7rem;color:#4ade80">Połączony</div>
-          <div style="font-weight:700;color:#4ade80">${t1} ${mergedS1} — ${mergedS2} ${t2}</div>
-        </div>
-      </div>
-      <div style="display:flex;gap:8px">
-        <button onclick="executeMerge(${i})"
-          style="background:#4ade80;color:#000;border:none;border-radius:4px;padding:5px 16px;cursor:pointer;font-weight:700;font-size:.85rem">
-          ✅ Połącz mecze
-        </button>
-        <button onclick="this.closest('div[style]').remove()"
-          style="background:transparent;border:1px solid #555;color:#888;border-radius:4px;padding:5px 10px;cursor:pointer;font-size:.8rem">
-          Pomiń
-        </button>
-      </div>
-    </div>`;
-  }).join('') : '<p style="color:#888;text-align:center;padding:2rem">Nie znaleziono meczów do połączenia 🎉</p>';
+  var itemsHtml = candidates.map(function(c, i) {
+    var t1 = c.m1.team1||'Team 1', t2 = c.m1.team2||'Team 2';
+    return '<div style="background:rgba(255,255,255,.05);border-radius:8px;padding:12px;margin-bottom:10px">'
+      + '<div style="font-size:.75rem;color:#888;margin-bottom:6px">' + c.m1.date + '</div>'
+      + '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:8px">'
+      + '<div style="text-align:center"><div style="font-size:.7rem;color:#888">Mecz 1</div>'
+      + '<div style="font-weight:700;color:#f0c040">' + (c.m1.team1||'') + ' ' + (c.m1.score1||0) + ' - ' + (c.m1.score2||0) + ' ' + (c.m1.team2||'') + '</div>'
+      + '<div style="font-size:.7rem;color:#4ade80">wspolni: ' + c.common.slice(0,5).join(', ') + '</div></div>'
+      + '<div style="color:#888;font-size:1.2rem">+</div>'
+      + '<div style="text-align:center"><div style="font-size:.7rem;color:#888">Mecz 2</div>'
+      + '<div style="font-weight:700;color:#f0c040">' + (c.m2.team1||'') + ' ' + (c.m2.score1||0) + ' - ' + (c.m2.score2||0) + ' ' + (c.m2.team2||'') + '</div></div>'
+      + '<div style="color:#888;font-size:1.2rem">=</div>'
+      + '<div style="text-align:center"><div style="font-size:.7rem;color:#4ade80">Polaczony</div>'
+      + '<div style="font-weight:700;color:#4ade80">' + t1 + ' ' + c.mergedS1 + ' - ' + c.mergedS2 + ' ' + t2 + '</div></div>'
+      + '</div>'
+      + '<div style="display:flex;gap:8px">'
+      + '<button onclick="executeMerge(' + i + ')" style="background:#4ade80;color:#000;border:none;border-radius:4px;padding:5px 16px;cursor:pointer;font-weight:700;font-size:.85rem">Polacz mecze</button>'
+      + '<button onclick="this.closest(\'div[style]\').remove()" style="background:transparent;border:1px solid #555;color:#888;border-radius:4px;padding:5px 10px;cursor:pointer;font-size:.8rem">Pominaj</button>'
+      + '</div></div>';
+  }).join('');
 
-  overlay.innerHTML = `
-    <div style="background:var(--bg,#0d0d1a);border:1px solid #333;border-radius:12px;padding:1.5rem;width:100%;max-width:720px;max-height:85vh;overflow-y:auto">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
-        <h2 style="margin:0;font-size:1.1rem">🔗 Połącz przerwane mecze (${candidates.length} par)</h2>
-        <button onclick="document.getElementById('merge-split-overlay').remove()" style="background:transparent;border:none;color:#888;font-size:1.4rem;cursor:pointer">✕</button>
-      </div>
-      <p style="color:#888;font-size:.8rem;margin-bottom:1rem">Mecze z tym samym dniem, podobnymi drużynami i niskim wynikiem (&lt;${LOW_SCORE} pkt) — możliwe przerwane mecze.</p>
-      <div>${itemsHtml}</div>
-    </div>`;
+  if(!itemsHtml) itemsHtml = '<p style="color:#888;text-align:center;padding:2rem">Nie znaleziono meczow do polaczenia</p>';
+
+  overlay.innerHTML = '<div style="background:#0d0d1a;border:1px solid #333;border-radius:12px;padding:1.5rem;width:100%;max-width:720px;max-height:85vh;overflow-y:auto">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">'
+    + '<h2 style="margin:0;font-size:1.1rem">Polacz przerwane mecze (' + candidates.length + ' par)</h2>'
+    + '<button onclick="document.getElementById(\'merge-split-overlay\').remove()" style="background:transparent;border:none;color:#888;font-size:1.4rem;cursor:pointer">x</button>'
+    + '</div>'
+    + '<p style="color:#888;font-size:.8rem;margin-bottom:1rem">Mecze z tym samym dniem, podobnymi druzunami i niskim wynikiem (ponizej ' + LOW_SCORE + ' pkt) z min. 3 wspolnymi graczami.</p>'
+    + itemsHtml + '</div>';
 
   window._mergeCandidates = candidates;
   document.body.appendChild(overlay);
 }
 
 function executeMerge(idx) {
-  const {m1, m2, mergedS1, mergedS2, t1match} = window._mergeCandidates[idx];
+  var c = window._mergeCandidates[idx];
+  var m1 = c.m1, m2 = c.m2, mergedS1 = c.mergedS1, mergedS2 = c.mergedS2, t1match = c.t1match;
 
-  // Merge players — sum stats for same player, add unique players
   function mergePlayers(p1arr, p2arr) {
-    const merged = JSON.parse(JSON.stringify(p1arr||[]));
-    (p2arr||[]).forEach(p2 => {
-      const existing = merged.find(p => p.name === p2.name);
+    var merged = JSON.parse(JSON.stringify(p1arr||[]));
+    (p2arr||[]).forEach(function(p2) {
+      var existing = merged.find(function(p){ return p.name === p2.name; });
       if(existing) {
-        // Sum stats
-        ['pts','reb','ast','stl','blk','to','pf','fgm','fga','tpm','tpa','ftm','fta'].forEach(k => {
+        ['pts','reb','ast','stl','blk','to','pf','fgm','fga','tpm','tpa','ftm','fta'].forEach(function(k) {
           existing[k] = (existing[k]||0) + (p2[k]||0);
         });
-        // Average grade
-        const g1 = existing.grade||'B', g2 = p2.grade||'B';
-        const grades = ['F','D-','D','D+','C-','C','C+','B-','B','B+','A-','A','A+'];
-        const avg = Math.round((grades.indexOf(g1)+grades.indexOf(g2))/2);
+        var grades = ['F','D-','D','D+','C-','C','C+','B-','B','B+','A-','A','A+'];
+        var g1 = existing.grade||'B', g2 = p2.grade||'B';
+        var avg = Math.round((grades.indexOf(g1)+grades.indexOf(g2))/2);
         existing.grade = grades[Math.max(0,avg)];
       } else {
-        merged.push({...p2});
+        merged.push(Object.assign({},p2));
       }
     });
     return merged;
   }
 
-  // Build merged match
-  const t2p1 = t1match ? m2.team1_players : m2.team2_players;
-  const t2p2 = t1match ? m2.team2_players : m2.team1_players;
+  var t2p1 = t1match ? m2.team1_players : m2.team2_players;
+  var t2p2 = t1match ? m2.team2_players : m2.team1_players;
 
-  const mergedMatch = {
-    ...m1,
+  var mergedMatch = Object.assign({}, m1, {
     score1: mergedS1,
     score2: mergedS2,
     team1_players: mergePlayers(m1.team1_players, t2p1),
     team2_players: mergePlayers(m1.team2_players, t2p2),
-    note: (m1.note ? m1.note+' ' : '') + '[połączony mecz]',
-  };
+    note: (m1.note ? m1.note+' ' : '') + '[polaczony mecz]',
+  });
 
-  // Replace m1 with merged, remove m2
-  state.matches = state.matches.map(m => String(m.id)===String(m1.id) ? mergedMatch : m)
-    .filter(m => String(m.id) !== String(m2.id));
+  state.matches = state.matches.map(function(m) {
+    return String(m.id)===String(m1.id) ? mergedMatch : m;
+  }).filter(function(m) {
+    return String(m.id) !== String(m2.id);
+  });
 
   saveState();
   renderBoxScores();
   renderStats();
+  notify('Mecze polaczone: ' + mergedS1 + '-' + mergedS2, 'success');
 
-  // Update UI
-  const el = document.querySelector(`#merge-split-overlay [onclick="executeMerge(${idx})"]`);
-  if(el) {
-    const card = el.closest('div[style*="background:var(--bg2"]');
-    if(card) {
-      card.innerHTML = `<span style="color:#4ade80">✅ Połączono: ${m1.team1} ${mergedS1}–${mergedS2} ${m1.team2}</span>`;
-      card.style.background = 'rgba(74,222,128,.1)';
+  var card = document.querySelector('#merge-split-overlay [onclick="executeMerge(' + idx + ')"]');
+  if(card) {
+    var parent = card.closest('div[style]');
+    if(parent) {
+      parent.innerHTML = '<span style="color:#4ade80">Polaczono: ' + m1.team1 + ' ' + mergedS1 + '-' + mergedS2 + ' ' + m1.team2 + '</span>';
+      parent.style.background = 'rgba(74,222,128,.1)';
     }
   }
-  notify(`✅ Mecze połączone: ${mergedS1}–${mergedS2}`, 'success');
 }
 
 
