@@ -1675,6 +1675,18 @@ Rules:
     text=out.replace(/,\s*([}\]])/g,'$1');
     const parsed = JSON.parse(text);
 
+    // Sanitize numeric fields — Gemini sometimes returns strings instead of numbers
+    const numFields = ['pts','reb','ast','stl','blk','to','pf','fgm','fga','tpm','tpa','ftm','fta'];
+    const sanitizePlayers = (players) => (players||[]).map(p => {
+      const s = {...p};
+      numFields.forEach(k => { s[k] = +s[k] || 0; });
+      return s;
+    });
+    parsed.team1_players = sanitizePlayers(parsed.team1_players);
+    parsed.team2_players = sanitizePlayers(parsed.team2_players);
+    parsed.score1 = +parsed.score1 || 0;
+    parsed.score2 = +parsed.score2 || 0;
+
     // Apply saved corrections
     const applyCorr = (players) => (players||[]).map(p => ({
       ...p, name: state.corrections[p.name] || p.name
