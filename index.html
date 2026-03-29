@@ -867,37 +867,37 @@ async function loadFromDb() {
             name:  p.name || '',
             pos:   p.pos || '',
             grade: p.grade || 'B',
-            pts:   p.pts || 0,
-            reb:   p.reb || 0,
-            ast:   p.ast || 0,
-            stl:   p.stl || 0,
-            blk:   p.blk || 0,
-            to:    p.to || 0,
-            pf:    p.fouls || p.pf || 0,
-            fgm:   p.fgm || 0,
-            fga:   p.fga || 0,
-            tpm:   p.tpm || 0,
-            tpa:   p.tpa || 0,
-            ftm:   p.ftm || 0,
-            fta:   p.fta || 0,
+            pts:   +p.pts || 0,
+            reb:   +p.reb || 0,
+            ast:   +p.ast || 0,
+            stl:   +p.stl || 0,
+            blk:   +p.blk || 0,
+            to:    +p.to || 0,
+            pf:    +(p.fouls || p.pf) || 0,
+            fgm:   +p.fgm || 0,
+            fga:   +p.fga || 0,
+            tpm:   +p.tpm || 0,
+            tpa:   +p.tpa || 0,
+            ftm:   +p.ftm || 0,
+            fta:   +p.fta || 0,
           })),
           team2_players: (t2.players || []).map(p => ({
             name:  p.name || '',
             pos:   p.pos || '',
             grade: p.grade || 'B',
-            pts:   p.pts || 0,
-            reb:   p.reb || 0,
-            ast:   p.ast || 0,
-            stl:   p.stl || 0,
-            blk:   p.blk || 0,
-            to:    p.to || 0,
-            pf:    p.fouls || p.pf || 0,
-            fgm:   p.fgm || 0,
-            fga:   p.fga || 0,
-            tpm:   p.tpm || 0,
-            tpa:   p.tpa || 0,
-            ftm:   p.ftm || 0,
-            fta:   p.fta || 0,
+            pts:   +p.pts || 0,
+            reb:   +p.reb || 0,
+            ast:   +p.ast || 0,
+            stl:   +p.stl || 0,
+            blk:   +p.blk || 0,
+            to:    +p.to || 0,
+            pf:    +(p.fouls || p.pf) || 0,
+            fgm:   +p.fgm || 0,
+            fga:   +p.fga || 0,
+            tpm:   +p.tpm || 0,
+            tpa:   +p.tpa || 0,
+            ftm:   +p.ftm || 0,
+            fta:   +p.fta || 0,
           })),
         };
       });
@@ -1860,7 +1860,8 @@ function parseShotInput(teamIdx, pi, type, val) {
 function updateP(teamIdx, pi, field, val) {
   if (!pendingMatch) return;
   const arr = teamIdx===1 ? pendingMatch.team1_players : pendingMatch.team2_players;
-  if (arr && arr[pi]) arr[pi][field] = val;
+  const numFields = ['pts','reb','ast','stl','blk','to','pf','fgm','fga','tpm','tpa','ftm','fta'];
+  if (arr && arr[pi]) arr[pi][field] = numFields.includes(field) ? (+val || 0) : val;
 }
 
 function saveMatch() {
