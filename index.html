@@ -477,6 +477,7 @@
         onkeydown="if(event.key==='Enter')addRosterPlayer()"
         onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--border2)'">
       <button class="btn btn-gold" onclick="addRosterPlayer()">Add Player</button>
+      <button class="btn btn-outline" onclick="autoFillRoster()" title="Uzupełnij roster z meczów w bazie">⚡ Auto-fill z bazy</button>
     </div>
     <div style="margin-bottom:12px;">
       <label style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;display:block;margin-bottom:6px;">Bulk add (one name per line)</label>
@@ -3187,6 +3188,41 @@ function executeMerge(idx) {
     }
   }
   notify(`✅ Mecze połączone: ${mergedS1}–${mergedS2}`, 'success');
+}
+
+
+function autoFillRoster() {
+  // Collect all unique player names from matches
+  const namesInMatches = new Set();
+  state.matches.forEach(m => {
+    (m.team1_players||[]).forEach(p => { if(p.name) namesInMatches.add(p.name); });
+    (m.team2_players||[]).forEach(p => { if(p.name) namesInMatches.add(p.name); });
+  });
+
+  // Apply corrections
+  const corrected = new Set();
+  namesInMatches.forEach(n => {
+    const correct = state.corrections[n] || n;
+    corrected.add(correct);
+  });
+
+  // Add to roster if not already there
+  const existing = new Set(state.roster.map(r => (r.name||r).toLowerCase()));
+  let added = 0;
+  corrected.forEach(name => {
+    if(!existing.has(name.toLowerCase())) {
+      state.roster.push({ name, pos: '' });
+      added++;
+    }
+  });
+
+  if(added > 0) {
+    saveState();
+    renderRoster();
+    notify(`✅ Dodano ${added} graczy do rostera (łącznie ${state.roster.length})`, 'success');
+  } else {
+    notify('Wszyscy gracze z meczów są już w rosterze', 'info');
+  }
 }
 
 </script>
