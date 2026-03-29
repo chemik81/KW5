@@ -2000,13 +2000,15 @@ function renderRoster() {
     el.innerHTML = '<span style="font-size:13px;color:var(--text3);">No players added yet.</span>';
     return;
   }
-  el.innerHTML = [...state.roster].sort().map((name, i) => `
-    <span style="display:inline-flex;align-items:center;gap:6px;background:var(--bg3);border:1px solid var(--border2);border-radius:3px;padding:5px 10px;font-size:13px;font-weight:600;">
+  el.innerHTML = [...state.roster].sort().map((name) => {
+    const realIdx = state.roster.indexOf(name);
+    return `<span style="display:inline-flex;align-items:center;gap:6px;background:var(--bg3);border:1px solid var(--border2);border-radius:3px;padding:5px 10px;font-size:13px;font-weight:600;">
       ${name}
-      <button data-idx="${i}" onclick="removeRosterPlayer(this.dataset.idx)"
+      <button data-idx="${realIdx}" onclick="removeRosterPlayer(this.dataset.idx)"
         style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:14px;line-height:1;padding:0;transition:color .2s;"
         onmouseover="this.style.color='#e74c3c'" onmouseout="this.style.color='var(--text3)'">✕</button>
-    </span>`).join('');
+    </span>`;
+  }).join('');
 }
 
 function removeRosterPlayer(idx) {
