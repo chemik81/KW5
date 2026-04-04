@@ -1674,21 +1674,7 @@ Rules:
       out+=c;
     }
     text=out.replace(/,\s*([}\]])/g,'$1');
-    // Sanitize player name strings — remove chars that break JSON
-    text = text.replace(/"name"\s*:\s*"([^"]*)"/g, (match, name) => {
-      const clean = name.replace(/[\x00-\x1f\x7f]/g, '').replace(/\\/g, '').trim();
-      return `"name":"${clean}"`;
-    });
-    let parsed;
-    try {
-      parsed = JSON.parse(text);
-    } catch(jsonErr) {
-      // Try to recover by removing trailing incomplete elements
-      const recovered = text.replace(/,\s*\{[^{}]*$/,'').replace(/,\s*"[^"]*"\s*:[^,}\]]*$/,'') + (text.trimEnd().endsWith(']') ? '' : text.includes('"team2"') ? ']}' : ']}]}');
-      try { parsed = JSON.parse(recovered); } catch(e2) {
-        throw new Error('Analysis failed: ' + jsonErr.message);
-      }
-    }
+    const parsed = JSON.parse(text);
 
     // Sanitize numeric fields — Gemini sometimes returns strings instead of numbers
     const numFields = ['pts','reb','ast','stl','blk','to','pf','fgm','fga','tpm','tpa','ftm','fta'];
