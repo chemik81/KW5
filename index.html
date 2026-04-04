@@ -1633,7 +1633,8 @@ COMMON MISTAKES TO AVOID:
 
 Rules:
 - team1 and team2: read the actual team name from the screen (look at the team logo/name shown). Do NOT write "Team 1" or "Team 2"
-- Copy player names EXACTLY as shown — including numbers, symbols, capitalisation
+- Copy player names EXACTLY as shown — including numbers, symbols, capitalisation. IMPORTANT: the YOU/YOUR MATCHUP header row contains the captain's gamertag — this is NOT a player, do NOT include it. If you see 6 rows, the first one is the captain — remove it.
+- Player names must be valid JSON strings — never include raw quotes (") or backslashes in a name. If a name contains these characters, remove them.
 - If a name matches the roster list, use the roster spelling
 - pos: assign positions strictly by row order top to bottom: 1st player = PG, 2nd = SG, 3rd = SF, 4th = PF, 5th = C. Do this for BOTH teams independently.
 - grade is the letter grade shown (A+, A, A-, B+, B, etc)
@@ -1673,7 +1674,21 @@ Rules:
       out+=c;
     }
     text=out.replace(/,\s*([}\]])/g,'$1');
-    const parsed = JSON.parse(text);
+    // Sanitize player name strings — remove chars that break JSON
+    text = text.replace(/"name"\s*:\s*"([^"]*)"/g, (match, name) => {
+      const clean = name.replace(/[\x00-\x1f\x7f]/g, '').replace(/\\/g, '').trim();
+      return `"name":"${clean}"`;
+    });
+    let parsed;
+    try {
+      parsed = JSON.parse(text);
+    } catch(jsonErr) {
+      // Try to recover by removing trailing incomplete elements
+      const recovered = text.replace(/,\s*\{[^{}]*$/,'').replace(/,\s*"[^"]*"\s*:[^,}\]]*$/,'') + (text.trimEnd().endsWith(']') ? '' : text.includes('"team2"') ? ']}' : ']}]}');
+      try { parsed = JSON.parse(recovered); } catch(e2) {
+        throw new Error('Analysis failed: ' + jsonErr.message);
+      }
+    }
 
     // Sanitize numeric fields — Gemini sometimes returns strings instead of numbers
     const numFields = ['pts','reb','ast','stl','blk','to','pf','fgm','fga','tpm','tpa','ftm','fta'];
