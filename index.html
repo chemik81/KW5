@@ -1564,6 +1564,9 @@ async function analyzeScreenshot() {
       ? `\n\nKNOWN PLAYER ROSTER — these are the only valid players. The captain shown in the YOU/YOUR MATCHUP header row may also appear in this list, but DO NOT include them as a player — they appear in the header only, not in the player rows. Only extract players from the 5 rows above TOTAL:\n${state.roster.map(r=>`- ${r}`).join('\n')}\n\nIMPORTANT: Player names in NBA 2K are often gamertags with numbers, capital letters and special characters. Read them VERY carefully character by character. If a name closely resembles one from the roster above, use the roster spelling exactly.`
       : `\n\nIMPORTANT: Player names in NBA 2K are often gamertags. Read them VERY carefully — pay attention to numbers (0 vs O, 1 vs I vs l), capital letters, underscores, and special characters. Copy them exactly as shown on screen.`;
 
+    let parsed, lastAnalyzeErr;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
     const res = await fetch(WORKER_URL.replace(/\/+$/, '') + '/gemini', {
       method: 'POST',
       headers: {
@@ -1674,7 +1677,18 @@ Rules:
       out+=c;
     }
     text=out.replace(/,\s*([}\]])/g,'$1');
-    const parsed = JSON.parse(text);
+        parsed = JSON.parse(text);
+        break; // success
+      } catch(retryErr) {
+        lastAnalyzeErr = retryErr;
+        console.warn(`Analyze attempt ${attempt} failed:`, retryErr.message);
+        if (attempt < 3) {
+          notify(`⚠️ Attempt ${attempt} failed (JSON parse error) — retrying...`, 'info');
+          await new Promise(r => setTimeout(r, 2000));
+        }
+      }
+    }
+    if (!parsed) throw lastAnalyzeErr || new Error('Analysis failed after 3 attempts');
 
     // Sanitize numeric fields — Gemini sometimes returns strings instead of numbers
     const numFields = ['pts','reb','ast','stl','blk','to','pf','fgm','fga','tpm','tpa','ftm','fta'];
