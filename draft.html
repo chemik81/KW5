@@ -941,7 +941,7 @@ async function testConnection() {
   WORKER_URL = url;
   localStorage.setItem('draft_worker_url', url);
   try {
-    const hash = await sha256(pass);
+    const hash = await hashPassword(pass);
     const r = await fetch(url + '/auth', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ token: hash, site:'kw5' })
@@ -958,9 +958,15 @@ async function testConnection() {
   } catch(e) { notify('Connection failed: ' + e.message, 'error'); }
 }
 
+const KW5_SALT = 'KW5EliteS3cur3S@lt!2025#x9z';
+
 async function sha256(msg) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(msg));
   return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+async function hashPassword(pw) {
+  return sha256(KW5_SALT + pw);
 }
 
 function goStep(n) {
