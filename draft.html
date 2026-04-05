@@ -1440,7 +1440,8 @@ function discordLogin() {
   if (!w) { notify('Enter Worker URL first', 'error'); return; }
   WORKER_URL = w.replace(/\/+$/,'');
   localStorage.setItem('draft_worker_url', WORKER_URL);
-  location.href = WORKER_URL + '/discord-login';
+  const returnTo = encodeURIComponent(location.origin + location.pathname + '#gm');
+  location.href = WORKER_URL + '/discord-login?return=' + returnTo;
 }
 
 function setGmWorker() {
