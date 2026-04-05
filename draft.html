@@ -659,8 +659,10 @@ window.addEventListener('load', () => {
     try {
       discordUser = JSON.parse(atob(du));
       localStorage.setItem('draft_discord_user', JSON.stringify(discordUser));
-      history.replaceState({}, '', location.pathname + '#gm');
-      switchView('gm');
+      // Check if we should go to a specific view
+      const draftView = params.get('draft_view') || 'gm';
+      history.replaceState({}, '', location.pathname + '#' + draftView);
+      switchView(draftView);
       return;
     } catch(e) {}
   } else {
