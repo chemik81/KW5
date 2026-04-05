@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KW5 Draft Overlay</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: transparent;
+  font-family: 'Barlow Condensed', sans-serif;
+  width: 1920px;
+  height: 250px;
+  overflow: hidden;
+}
+
+:root {
+  --gold: #f0c040;
+  --dark: rgba(13,15,20,0.92);
+  --dark2: rgba(20,23,32,0.95);
+  --border: rgba(240,192,64,0.3);
+  --green: #4ade80;
+  --red: #f87171;
+  --muted: #7a8099;
+  --text: #e8eaf0;
+}
+
+.overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--dark);
+  border-top: 3px solid var(--gold);
+  backdrop-filter: blur(8px);
+}
+
+/* ── TOP ROW ── */
+.top-row {
+  display: flex;
+  align-items: center;
+  padding: 10px 24px;
+  gap: 20px;
+  height: 160px;
+}
+
+.otc-section {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 280px;
+}
+
+.otc-label {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  font-weight: 700;
+}
+
+.otc-team {
+  font-size: 36px;
+  font-weight: 900;
+  color: var(--gold);
+  line-height: 1;
+  letter-spacing: .02em;
+}
+
+.otc-pick {
+  font-size: 14px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.divider {
+  width: 2px;
+  height: 80px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+/* ── LAST PICK ── */
+.last-pick {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 200px;
+  background: rgba(74,222,128,.08);
+  border: 1px solid rgba(74,222,128,.25);
+  border-radius: 8px;
+  padding: 10px 16px;
+}
+
+.last-pick-label {
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  font-weight: 700;
+}
+
+.last-pick-name {
+  font-size: 24px;
+  font-weight: 900;
+  color: var(--green);
+  line-height: 1;
+}
+
+.last-pick-team {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* ── ROUND BADGE ── */
+.round-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.round-badge {
+  background: rgba(240,192,64,.12);
+  border: 1px solid rgba(240,192,64,.3);
+  border-radius: 6px;
+  padding: 6px 16px;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--gold);
+  letter-spacing: .05em;
+}
+
+.picks-count {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+/* ── PROGRESS ── */
+.progress-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.progress-bar-bg {
+  background: rgba(255,255,255,.08);
+  border-radius: 4px;
+  height: 8px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: var(--gold);
+  border-radius: 4px;
+  transition: width .5s ease;
+}
+
+/* ── BEST AVAILABLE ── */
+.best-available {
+  display: flex;
+  gap: 8px;
+  flex: 1;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.best-label {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.best-player {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255,255,255,.05);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 6px;
+  padding: 6px 12px;
+}
+
+.best-pos {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: rgba(96,165,250,.15);
+  color: #93c5fd;
+}
+
+.best-name {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.best-ovr {
+  font-size: 14px;
+  font-weight: 900;
+  color: var(--gold);
+}
+
+/* ── TIMER ── */
+.timer-section {
+  margin-left: auto;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.timer-label {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  font-weight: 700;
+}
+
+.timer {
+  font-size: 64px;
+  font-weight: 900;
+  color: var(--text);
+  line-height: 1;
+  min-width: 120px;
+  text-align: center;
+  letter-spacing: -.02em;
+}
+
+.timer.urgent {
+  color: var(--red);
+  animation: pulse .5s infinite alternate;
+}
+
+@keyframes pulse { to { opacity: .4; } }
+
+/* ── TICKER ── */
+.ticker {
+  background: rgba(0,0,0,.4);
+  border-top: 1px solid rgba(255,255,255,.06);
+  height: 36px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+}
+
+.ticker-inner {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  animation: ticker 40s linear infinite;
+  gap: 0;
+}
+
+@keyframes ticker {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+.ticker-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 28px;
+  font-size: 14px;
+  font-weight: 700;
+  border-right: 1px solid rgba(255,255,255,.08);
+  height: 36px;
+}
+
+.ticker-pos {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: rgba(96,165,250,.15);
+  color: #93c5fd;
+}
+
+.ticker-rank {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.ticker-name {
+  color: var(--text);
+}
+
+.ticker-ovr {
+  color: var(--gold);
+  font-weight: 900;
+}
+
+.ticker-sep {
+  color: var(--gold);
+  font-size: 18px;
+  font-weight: 900;
+  padding: 0 16px;
+}
+
+/* ── STATUS ── */
+.status-idle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: .1em;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+.dot.live {
+  background: var(--green);
+  box-shadow: 0 0 10px var(--green);
+  animation: blink 1s infinite;
+}
+
+@keyframes blink { 50% { opacity: .3; } }
+</style>
+</head>
+<body>
+<div class="overlay" id="overlay">
+  <div class="top-row" id="top-row">
+    <div class="status-idle" id="idle-msg">
+      <div class="dot" id="status-dot"></div>
+      <span id="idle-text">DRAFT STARTING SOON</span>
+    </div>
+  </div>
+  <div class="ticker">
+    <div class="ticker-inner" id="ticker-inner">
+      <span class="ticker-item"><span class="ticker-sep">KW5</span> DRAFT</span>
+    </div>
+  </div>
+</div>
+
+<script>
+const params = new URLSearchParams(location.search);
+const WORKER_URL = (params.get('w') || '').replace(/\/+$/, '');
+
+let draftState = null;
+let timerInterval = null;
+
+// ── LOAD STATE ──
+async function loadState() {
+  if (!WORKER_URL) return;
+  try {
+    const r = await fetch(WORKER_URL + '/draft-data');
+    if (!r.ok) return;
+    const d = await r.json();
+    draftState = d.record || d;
+    render();
+  } catch(e) {}
+}
+
+// ── HELPERS ──
+function buildPickSequence(ds) {
+  const { config, teams, order } = ds;
+  const totalRounds = config.perTeam;
+  const seq = [];
+  for (let r = 0; r < totalRounds; r++) {
+    let rOrder = config.format === 'snake'
+      ? (r % 2 === 0 ? [...order] : [...order].reverse())
+      : [...order];
+    rOrder.forEach(tid => seq.push({ teamId: tid, round: r + 1 }));
+  }
+  return seq;
+}
+
+function getCurrentPick(ds) {
+  if (!ds || ds.status === 'idle') return null;
+  const seq = buildPickSequence(ds);
+  const idx = ds.currentPickNum || 0;
+  if (idx >= seq.length) return null;
+  const { teamId, round } = seq[idx];
+  const team = ds.teams.find(t => t.id === teamId);
+  return { teamId, round, pickNum: idx + 1, totalPicks: seq.length, team };
+}
+
+function getPickedIds(ds) {
+  return new Set((ds.picks || []).map(p => p.playerId));
+}
+
+function ovrColor(ovr) {
+  if (ovr >= 85) return '#ffd700';
+  if (ovr >= 75) return '#4ade80';
+  if (ovr >= 65) return '#60a5fa';
+  return '#9ca3af';
+}
+
+// ── TIMER ──
+function startTimer(endsAt) {
+  clearInterval(timerInterval);
+  const el = document.getElementById('ov-timer');
+  if (!el) return;
+  timerInterval = setInterval(() => {
+    const left = Math.max(0, Math.round((new Date(endsAt) - Date.now()) / 1000));
+    const mm = String(Math.floor(left / 60)).padStart(2, '0');
+    const ss = String(left % 60).padStart(2, '0');
+    el.textContent = `${mm}:${ss}`;
+    el.classList.toggle('urgent', left <= 15);
+  }, 500);
+}
+
+// ── RENDER ──
+function render() {
+  if (!draftState) return;
+  const status = draftState.status || 'idle';
+  const pick = getCurrentPick(draftState);
+  const picks = draftState.picks || [];
+  const lastPick = picks[picks.length - 1];
+  const topRow = document.getElementById('top-row');
+  const dot = document.getElementById('status-dot');
+
+  if (status === 'idle') {
+    dot.className = 'dot';
+    document.getElementById('idle-text').textContent = 'DRAFT STARTING SOON';
+    topRow.innerHTML = `<div class="status-idle"><div class="dot"></div><span>DRAFT STARTING SOON</span></div>`;
+    renderTicker([]);
+    return;
+  }
+
+  if (status === 'done') {
+    topRow.innerHTML = `<div class="status-idle"><div class="dot live"></div><span>DRAFT COMPLETE</span></div>`;
+    renderTicker([]);
+    return;
+  }
+
+  // Live / paused
+  const seq = buildPickSequence(draftState);
+  const made = picks.length;
+  const total = seq.length;
+  const pct = total ? Math.round((made / total) * 100) : 0;
+
+  // Best available per position
+  const pickedIds = getPickedIds(draftState);
+  const available = (draftState.players || [])
+    .filter(p => !p.excluded && !pickedIds.has(p.id))
+    .sort((a, b) => (b.ovr || 0) - (a.ovr || 0));
+
+  const positions = ['PG', 'SG', 'SF', 'PF', 'C'];
+  const bestPerPos = positions.map(pos => {
+    const p = available.find(x => x.pos === pos);
+    return p ? { pos, name: p.name, ovr: p.ovr || 50 } : null;
+  }).filter(Boolean);
+
+  // Last pick team
+  let lastTeamName = '';
+  if (lastPick) {
+    const lt = (draftState.teams || []).find(t => t.id === lastPick.teamId);
+    lastTeamName = lt ? lt.name : '';
+  }
+
+  topRow.innerHTML = `
+    <div class="otc-section">
+      <div class="otc-label">${status === 'paused' ? '⏸ PAUSED — On the Clock' : 'On the Clock'}</div>
+      <div class="otc-team">${pick ? (pick.team?.name || '—') : '—'}</div>
+      <div class="otc-pick">${pick ? `Round ${pick.round} · Pick #${pick.pickNum} of ${pick.totalPicks}` : ''}</div>
+    </div>
+
+    <div class="divider"></div>
+
+    ${lastPick ? `
+    <div class="last-pick">
+      <div class="last-pick-label">Last Pick</div>
+      <div class="last-pick-name">${lastPick.playerId}</div>
+      <div class="last-pick-team">${lastTeamName}</div>
+    </div>
+    <div class="divider"></div>
+    ` : ''}
+
+    <div class="round-section">
+      <div class="round-badge">ROUND ${pick ? pick.round : '—'}</div>
+      <div class="picks-count">${made} / ${total} picks</div>
+      <div class="progress-bar-bg" style="width:120px;margin-top:4px">
+        <div class="progress-bar-fill" style="width:${pct}%"></div>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="best-available">
+      <div class="best-label">Best Available</div>
+      ${bestPerPos.slice(0, 5).map(p => `
+        <div class="best-player">
+          <span class="best-pos">${p.pos}</span>
+          <span class="best-name">${p.name}</span>
+          <span class="best-ovr">${p.ovr}</span>
+        </div>
+      `).join('')}
+    </div>
+
+    <div class="timer-section">
+      <div class="timer-label">Time Left</div>
+      <div class="timer ${status === 'paused' ? '' : ''}" id="ov-timer">—</div>
+    </div>
+  `;
+
+  if (status === 'live' && draftState.timerEnd) {
+    startTimer(draftState.timerEnd);
+  } else {
+    clearInterval(timerInterval);
+    const tEl = document.getElementById('ov-timer');
+    if (tEl) tEl.textContent = status === 'paused' ? 'PAUSED' : '—';
+  }
+
+  renderTicker(available);
+}
+
+function renderTicker(available) {
+  const positions = ['PG', 'SG', 'SF', 'PF', 'C'];
+  let items = [];
+  positions.forEach(pos => {
+    const best = available.filter(p => p.pos === pos).slice(0, 3);
+    best.forEach((p, i) => {
+      items.push(`<span class="ticker-item">
+        <span class="ticker-pos">${pos}</span>
+        <span class="ticker-rank">#${i + 1}</span>
+        <span class="ticker-name">${p.name}</span>
+        <span class="ticker-ovr">${p.ovr}</span>
+      </span>`);
+    });
+    if (best.length) items.push(`<span class="ticker-sep">·</span>`);
+  });
+
+  if (!items.length) {
+    items = ['<span class="ticker-item"><span class="ticker-sep">KW5</span> DRAFT</span>'];
+  }
+
+  // Duplicate for seamless loop
+  const html = items.join('') + items.join('');
+  document.getElementById('ticker-inner').innerHTML = html;
+}
+
+// ── INIT ──
+loadState();
+setInterval(loadState, 3000);
+</script>
+</body>
+</html>
