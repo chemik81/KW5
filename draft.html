@@ -658,8 +658,10 @@ window.addEventListener('load', () => {
     try {
       discordUser = JSON.parse(atob(du));
       localStorage.setItem('draft_discord_user', JSON.stringify(discordUser));
-      // Clean URL
+      // Always redirect to GM panel after Discord login
       history.replaceState({}, '', location.pathname + '#gm');
+      switchView('gm');
+      return;
     } catch(e) {}
   } else {
     const saved = localStorage.getItem('draft_discord_user');
