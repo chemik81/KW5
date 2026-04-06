@@ -308,14 +308,8 @@ body {
 /* ── PICK ANNOUNCEMENT ── */
 .pick-announce {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 250px;
-  display: flex;
-  align-items: flex-start;
-  justify-content: flex-start;
-  padding: 30px;
+  top: 30px;
+  left: 30px;
   pointer-events: none;
   z-index: 100;
 }
@@ -569,10 +563,10 @@ function showPickAnnounce(pick, team, player) {
       <div class="pa-team">${team.name || ''}</div>
       <div class="pa-player">${pick.playerId}</div>
       <div class="pa-stats">
-        <div class="pa-stat"><div class="pa-stat-val">${(player.ppg||0).toFixed(1)}</div><div class="pa-stat-lbl">PPG</div></div>
-        <div class="pa-stat"><div class="pa-stat-val">${(player.rpg||0).toFixed(1)}</div><div class="pa-stat-lbl">RPG</div></div>
-        <div class="pa-stat"><div class="pa-stat-val">${(player.apg||0).toFixed(1)}</div><div class="pa-stat-lbl">APG</div></div>
-        <div class="pa-stat"><div class="pa-stat-val">${player.pos||'?'}</div><div class="pa-stat-lbl">POS</div></div>
+        <div class="pa-stat"><div class="pa-stat-val">${player.ppg!=null?(+player.ppg).toFixed(1):'—'}</div><div class="pa-stat-lbl">PPG</div></div>
+        <div class="pa-stat"><div class="pa-stat-val">${player.rpg!=null?(+player.rpg).toFixed(1):'—'}</div><div class="pa-stat-lbl">RPG</div></div>
+        <div class="pa-stat"><div class="pa-stat-val">${player.apg!=null?(+player.apg).toFixed(1):'—'}</div><div class="pa-stat-lbl">APG</div></div>
+        <div class="pa-stat"><div class="pa-stat-val">${player.gp||'—'}</div><div class="pa-stat-lbl">GP</div></div>
       </div>
     </div>
     <div>
@@ -595,9 +589,12 @@ function render() {
   const topRow = document.getElementById('top-row');
   const dot = document.getElementById('status-dot');
 
-  // Detect new pick and show announcement
+  // Detect new pick and show announcement (skip on first load)
   const latestPick = picks[picks.length - 1];
-  if (latestPick && latestPick.pickNum !== lastSeenPickNum) {
+  if (latestPick && lastSeenPickNum === -1) {
+    // First load — just record current state, don't animate
+    lastSeenPickNum = latestPick.pickNum;
+  } else if (latestPick && latestPick.pickNum !== lastSeenPickNum) {
     lastSeenPickNum = latestPick.pickNum;
     const pickTeam = (draftState.teams || []).find(t => t.id === latestPick.teamId) || {};
     const pickPlayer = (draftState.players || []).find(p => p.id === latestPick.playerId) || {};
