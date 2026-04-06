@@ -1552,10 +1552,27 @@ async function gmMakePick() {
   if (!selectedPlayerId || !myTeamId) return;
   const pick = getCurrentPick(draftState);
   if (!pick || pick.teamId !== myTeamId) { notify('Not your turn', 'error'); return; }
-  await recordPick(myTeamId, selectedPlayerId, false);
-  selectedPlayerId = null;
-  renderGm();
-  notify(`Drafted ${selectedPlayerId || 'player'}!`, 'success');
+
+  try {
+    const r = await fetch(WORKER_URL + '/draft-pick', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        teamId: myTeamId,
+        playerId: selectedPlayerId,
+        discordUserId: discordUser?.id || '',
+      })
+    });
+    const d = await r.json();
+    if (!r.ok) { notify('Pick failed: ' + (d.error || r.status), 'error'); return; }
+    const drafted = selectedPlayerId;
+    selectedPlayerId = null;
+    await loadDraftState();
+    renderGm();
+    notify(`✅ Drafted ${drafted}!`, 'success');
+  } catch(e) {
+    notify('Pick error: ' + e.message, 'error');
+  }
 }
 
 function renderGmMyRoster() {
