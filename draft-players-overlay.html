@@ -234,9 +234,10 @@ async function load() {
 
 // Init
 buildDots();
-renderSlide(0, false);
-startSlideTimer();
-load();
+load().then(() => {
+  renderSlide(0, false);
+  startSlideTimer();
+});
 setInterval(load, 5000);
 </script>
 </body>
