@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>KW5 Pick Announce</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Barlow:wght@400;600&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: transparent;
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+  font-family: 'Barlow Condensed', sans-serif;
+}
+:root {
+  --gold: #f0c040;
+  --dark: rgba(13,15,20,0.94);
+  --green: #4ade80;
+  --muted: #7a8099;
+  --text: #e8eaf0;
+}
+
+.card {
+  position: absolute;
+  top: 30px;
+  left: 30px;
+  background: var(--dark);
+  border: 2px solid var(--gold);
+  border-radius: 12px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 360px;
+  max-width: 460px;
+  backdrop-filter: blur(12px);
+  opacity: 0;
+  transform: translateX(-120%);
+  transition: none;
+}
+
+.card.show {
+  animation: slideIn .4s cubic-bezier(.22,.68,0,1.2) forwards;
+}
+
+.card.hide {
+  animation: slideOut .3s ease-in forwards;
+}
+
+@keyframes slideIn {
+  from { transform: translateX(-120%); opacity: 0; }
+  to   { transform: translateX(0);     opacity: 1; }
+}
+
+@keyframes slideOut {
+  from { transform: translateX(0);     opacity: 1; }
+  to   { transform: translateX(-120%); opacity: 0; }
+}
+
+.logo {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 2px solid var(--gold);
+  overflow: hidden;
+  flex-shrink: 0;
+  background: #1a1e2a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: 900;
+  color: var(--gold);
+}
+.logo img { width: 100%; height: 100%; object-fit: cover; }
+
+.info { flex: 1; min-width: 0; }
+.pick-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .15em; font-weight: 700; }
+.team-name  { font-size: 14px; font-weight: 700; color: var(--gold); margin-bottom: 2px; overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+.player-name{ font-size: 30px; font-weight: 900; color: var(--text); line-height: 1; overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+.stats      { display: flex; gap: 14px; margin-top: 6px; }
+.stat-val   { font-size: 16px; font-weight: 900; color: var(--gold); line-height: 1; }
+.stat-lbl   { font-size: 9px;  color: var(--muted); text-transform: uppercase; letter-spacing: .1em; }
+
+.ovr-wrap   { text-align: center; flex-shrink: 0; }
+.ovr-val    { font-size: 46px; font-weight: 900; color: var(--gold); line-height: 1; }
+.ovr-lbl    { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; }
+</style>
+</head>
+<body>
+<div class="card" id="card"></div>
+
+<script>
+const params = new URLSearchParams(location.search);
+const WORKER_URL = (params.get('w') || '').replace(/\/+$/, '');
+
+let lastPickNum = -1;
+let hideTimeout = null;
+
+async function load() {
+  if (!WORKER_URL) return;
+  try {
+    const r = await fetch(WORKER_URL + '/draft-data');
+    if (!r.ok) return;
+    const d = await r.json();
+    const ds = d.record || d;
+    const picks = ds.picks || [];
+    const latest = picks[picks.length - 1];
+    if (!latest) return;
+
+    if (lastPickNum === -1) { lastPickNum = latest.pickNum; return; } // skip first load
+    if (latest.pickNum === lastPickNum) return;
+    lastPickNum = latest.pickNum;
+
+    const team   = (ds.teams   || []).find(t => t.id === latest.teamId)   || {};
+    const player = (ds.players || []).find(p => p.id === latest.playerId) || {};
+
+    showCard(latest, team, player);
+  } catch(e) {}
+}
+
+function showCard(pick, team, player) {
+  const el = document.getElementById('card');
+  clearTimeout(hideTimeout);
+
+  const logoHtml = team.logoB64
+    ? `<img src="${team.logoB64}" alt="">`
+    : (team.name||'?')[0];
+
+  el.innerHTML = `
+    <div class="logo">${team.logoB64 ? `<img src="${team.logoB64}">` : (team.name||'?')[0]}</div>
+    <div class="info">
+      <div class="pick-label">Pick #${pick.pickNum} · Round ${pick.round}</div>
+      <div class="team-name">${team.name || ''}</div>
+      <div class="player-name">${pick.playerId}</div>
+      <div class="stats">
+        <div><div class="stat-val">${player.ppg != null ? (+player.ppg).toFixed(1) : '—'}</div><div class="stat-lbl">PPG</div></div>
+        <div><div class="stat-val">${player.rpg != null ? (+player.rpg).toFixed(1) : '—'}</div><div class="stat-lbl">RPG</div></div>
+        <div><div class="stat-val">${player.apg != null ? (+player.apg).toFixed(1) : '—'}</div><div class="stat-lbl">APG</div></div>
+        <div><div class="stat-val">${player.pos || '—'}</div><div class="stat-lbl">POS</div></div>
+      </div>
+    </div>
+    <div class="ovr-wrap">
+      <div class="ovr-val">${player.ovr || '?'}</div>
+      <div class="ovr-lbl">OVR</div>
+    </div>
+  `;
+
+  el.className = 'card show';
+  hideTimeout = setTimeout(() => {
+    el.className = 'card hide';
+  }, 7000);
+}
+
+load();
+setInterval(load, 3000);
+</script>
+</body>
+</html>
