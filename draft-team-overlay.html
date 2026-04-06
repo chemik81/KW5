@@ -179,6 +179,7 @@ function renderTeam(team, animate=true) {
       +'<div class="stat-item"><div class="stat-v">'+(pl.apg!=null?(+pl.apg).toFixed(1):'—')+'</div><div class="stat-l">APG</div></div>'
       +'<div class="stat-item"><div class="stat-v">'+(pl.per!=null?(+pl.per).toFixed(1):'—')+'</div><div class="stat-l">PER</div></div>'
       +'<div class="stat-item"><div class="stat-v">'+(pl.gp||'—')+'</div><div class="stat-l">GP</div></div>'
+      +'<div class="stat-item"><div class="stat-v">'+(pl.win_pct!=null?pl.win_pct+'%':'—')+'</div><div class="stat-l">W%</div></div>'
       +'</div></div>'
       +'<div>'
       +'<div class="ovr-big '+ovrClass(pl.ovr||50)+'">'+(pl.ovr||'?')+'</div>'
