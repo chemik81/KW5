@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>KW5 Draft Players Overlay</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--gold:#f0c040;--dark:#0d0f14;--dark2:#13161e;--dark3:#1a1e2a;--dark4:#222736;--border:rgba(240,192,64,0.15);--text:#e8eaf0;--muted:#7a8099;--green:#4ade80;--red:#f87171;--radius:8px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:rgba(13,15,20,.96);color:var(--text);font-family:'Barlow',sans-serif;width:1920px;height:1080px;overflow:hidden}
+
+/* ── HEADER ── */
+.header{background:rgba(13,15,20,.98);border-bottom:3px solid var(--gold);padding:14px 40px;display:flex;align-items:center;gap:20px;height:90px}
+.header-logo{font-family:'Barlow Condensed',sans-serif;font-size:32px;font-weight:900;color:var(--gold);letter-spacing:.05em}
+.header-sub{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
+.pos-badge{font-family:'Barlow Condensed',sans-serif;font-size:60px;font-weight:900;letter-spacing:.05em;margin-left:auto;line-height:1}
+.pos-name{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;color:var(--muted);text-align:right;letter-spacing:.05em}
+
+/* ── PROGRESS DOTS ── */
+.dots{display:flex;gap:8px;align-items:center;margin-left:20px}
+.dot{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.15);transition:all .3s}
+.dot.active{background:var(--gold);width:14px;height:14px}
+.dot.done{background:rgba(74,222,128,.5)}
+
+/* ── TIMER BAR ── */
+.timer-bar-wrap{position:absolute;bottom:0;left:0;right:0;height:4px;background:rgba(255,255,255,.08)}
+.timer-bar{height:100%;background:var(--gold);transition:width .1s linear;transform-origin:left}
+
+/* ── CONTENT ── */
+.content{padding:20px 40px;height:calc(1080px - 90px);display:flex;flex-direction:column}
+
+/* ── PLAYERS TABLE ── */
+.players-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;flex:1;overflow:hidden}
+
+.player-card{background:rgba(19,22,30,.85);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;display:flex;align-items:center;gap:12px;position:relative;transition:all .2s}
+.player-card.picked{opacity:.3;filter:grayscale(.8)}
+.player-card.picked::after{content:'PICKED';position:absolute;right:12px;top:50%;transform:translateY(-50%);font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:12px;color:var(--muted);letter-spacing:.1em}
+
+.rank{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:22px;color:rgba(255,255,255,.15);min-width:32px;text-align:center}
+.rank.top3{color:var(--gold)}
+
+.player-info{flex:1;min-width:0}
+.player-name{font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.player-stats{display:flex;gap:12px;margin-top:3px}
+.stat{text-align:center}
+.stat-val{font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:900;color:var(--gold);line-height:1}
+.stat-lbl{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+
+.ovr-badge{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:30px;min-width:52px;text-align:center;flex-shrink:0}
+.ovr-s{color:#ffd700}.ovr-a{color:#4ade80}.ovr-b{color:#60a5fa}.ovr-c{color:#fb923c}.ovr-d{color:var(--muted)}
+
+/* ── TRANSITION ── */
+.slide{animation:slideInRight .5s cubic-bezier(.22,.68,0,1.2)}
+@keyframes slideInRight{from{opacity:0;transform:translateX(60px)}to{opacity:1;transform:none}}
+.slide-out{animation:slideOutLeft .4s ease forwards}
+@keyframes slideOutLeft{from{opacity:1;transform:none}to{opacity:0;transform:translateX(-60px)}}
+
+/* ── POSITIONS CONFIG ── */
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <div class="header-logo">KW5 DRAFT</div>
+    <div class="header-sub" id="slide-subtitle">Best Available Players</div>
+  </div>
+  <div class="dots" id="dots"></div>
+  <div style="margin-left:auto;text-align:right;position:relative">
+    <div class="pos-badge" id="pos-badge" style="color:var(--gold)">PG</div>
+    <div class="pos-name" id="pos-name">Point Guard</div>
+    <div class="timer-bar-wrap"><div class="timer-bar" id="timer-bar"></div></div>
+  </div>
+</div>
+
+<div class="content">
+  <div class="players-grid" id="players-grid"></div>
+</div>
+
+<script>
+const params = new URLSearchParams(location.search);
+const WORKER_URL = (params.get('w') || '').replace(/\/+$/, '');
+const SLIDE_DURATION = parseInt(params.get('dur') || '10') * 1000; // seconds per slide, default 10
+const TOP_N = parseInt(params.get('top') || '30');
+
+const POSITIONS = [
+  { key: 'PG', name: 'Point Guard',    color: '#93c5fd', bg: 'rgba(96,165,250,.15)' },
+  { key: 'SG', name: 'Shooting Guard', color: '#93c5fd', bg: 'rgba(96,165,250,.15)' },
+  { key: 'SF', name: 'Small Forward',  color: '#c4b5fd', bg: 'rgba(196,181,253,.15)' },
+  { key: 'PF', name: 'Power Forward',  color: '#c4b5fd', bg: 'rgba(196,181,253,.15)' },
+  { key: 'C',  name: 'Center',         color: '#86efac', bg: 'rgba(134,239,172,.15)' },
+];
+
+let ds = null;
+let currentSlide = 0;
+let slideTimer = null;
+let timerStart = 0;
+let timerRAF = null;
+
+function ovrClass(ovr) {
+  if (ovr >= 85) return 'ovr-s';
+  if (ovr >= 75) return 'ovr-a';
+  if (ovr >= 65) return 'ovr-b';
+  if (ovr >= 55) return 'ovr-c';
+  return 'ovr-d';
+}
+
+function buildDots() {
+  const el = document.getElementById('dots');
+  el.innerHTML = POSITIONS.map((p,i) =>
+    '<div class="dot'+(i===0?' active':'')+'" id="dot-'+i+'"></div>'
+  ).join('');
+}
+
+function updateDots(idx) {
+  POSITIONS.forEach((_,i) => {
+    const d = document.getElementById('dot-'+i);
+    if (!d) return;
+    d.className = 'dot' + (i===idx?' active':i<idx?' done':'');
+  });
+}
+
+function getPickedIds() {
+  return new Set((ds?.picks||[]).map(p=>p.playerId));
+}
+
+function getPlayersForPos(posKey) {
+  if (!ds?.players) return [];
+  const picked = getPickedIds();
+  return ds.players
+    .filter(p => !p.excluded && p.pos === posKey)
+    .sort((a,b) => (b.ovr||0)-(a.ovr||0))
+    .slice(0, TOP_N)
+    .map(p => ({ ...p, isPicked: picked.has(p.id) }));
+}
+
+function renderSlide(idx, animate=true) {
+  const pos = POSITIONS[idx];
+  currentSlide = idx;
+  updateDots(idx);
+
+  const badge = document.getElementById('pos-badge');
+  const name  = document.getElementById('pos-name');
+  const sub   = document.getElementById('slide-subtitle');
+  badge.textContent = pos.key;
+  badge.style.color = pos.color;
+  name.textContent  = pos.name;
+  sub.textContent   = 'Top ' + TOP_N + ' Best Available — ' + pos.name;
+
+  const players = getPlayersForPos(pos.key);
+  const grid = document.getElementById('players-grid');
+
+  const html = players.map((p, i) => {
+    const isTop3 = i < 3;
+    return '<div class="player-card'+(p.isPicked?' picked':'')+'">'
+      +'<div class="rank'+(isTop3?' top3':'')">'+(i+1)+'</div>'
+      +'<div class="player-info">'
+      +'<div class="player-name">'+p.name+'</div>'
+      +'<div class="player-stats">'
+      +'<div class="stat"><div class="stat-val">'+(p.ppg!=null?(+p.ppg).toFixed(1):'—')+'</div><div class="stat-lbl">PPG</div></div>'
+      +'<div class="stat"><div class="stat-val">'+(p.rpg!=null?(+p.rpg).toFixed(1):'—')+'</div><div class="stat-lbl">RPG</div></div>'
+      +'<div class="stat"><div class="stat-val">'+(p.apg!=null?(+p.apg).toFixed(1):'—')+'</div><div class="stat-lbl">APG</div></div>'
+      +'<div class="stat"><div class="stat-val">'+(p.per!=null?(+p.per).toFixed(1):'—')+'</div><div class="stat-lbl">PER</div></div>'
+      +'<div class="stat"><div class="stat-val">'+(p.gp||'—')+'</div><div class="stat-lbl">GP</div></div>'
+      +'</div></div>'
+      +'<div class="ovr-badge '+ovrClass(p.ovr||50)+'">'+(p.ovr||'?')+'</div>'
+      +'</div>';
+  }).join('');
+
+  if (animate) {
+    grid.className = 'players-grid slide';
+    grid.innerHTML = html;
+    grid.addEventListener('animationend', () => { grid.className = 'players-grid'; }, { once: true });
+  } else {
+    grid.className = 'players-grid';
+    grid.innerHTML = html;
+  }
+}
+
+function startSlideTimer() {
+  clearTimeout(slideTimer);
+  cancelAnimationFrame(timerRAF);
+  timerStart = performance.now();
+
+  function tick() {
+    const elapsed = performance.now() - timerStart;
+    const pct = Math.min(100, (elapsed / SLIDE_DURATION) * 100);
+    const bar = document.getElementById('timer-bar');
+    if (bar) bar.style.width = (100 - pct) + '%';
+    if (elapsed < SLIDE_DURATION) {
+      timerRAF = requestAnimationFrame(tick);
+    }
+  }
+  timerRAF = requestAnimationFrame(tick);
+
+  slideTimer = setTimeout(() => {
+    const next = (currentSlide + 1) % POSITIONS.length;
+    renderSlide(next, true);
+    startSlideTimer();
+  }, SLIDE_DURATION);
+}
+
+async function load() {
+  if (!WORKER_URL) return;
+  try {
+    const r = await fetch(WORKER_URL + '/draft-data');
+    if (!r.ok) return;
+    const d = await r.json();
+    ds = d.record || d;
+    // Re-render current slide to update picked status
+    renderSlide(currentSlide, false);
+  } catch(e) {}
+}
+
+// Init
+buildDots();
+renderSlide(0, false);
+startSlideTimer();
+load();
+setInterval(load, 5000);
+</script>
+</body>
+</html>
