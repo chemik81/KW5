@@ -591,6 +591,7 @@ select.form-input{width:100%}
      VIEW: BOARD (public)
 ═══════════════════════════════════════════ -->
 <div class="view" id="view-board">
+  <button id="board-exit-obs" onclick="toggleBoardFullscreen()" style="display:none;position:fixed;top:10px;right:10px;z-index:9999;background:rgba(240,192,64,.15);border:1px solid var(--gold);color:var(--gold);border-radius:6px;padding:6px 14px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;cursor:pointer;letter-spacing:.05em">✕ Exit OBS</button>
   <div class="topbar" id="board-topbar">
     <div>
       <div class="topbar-logo" id="board-draft-name">KW5 DRAFT</div>
@@ -2016,13 +2017,15 @@ let boardFullscreen = false;
 function toggleBoardFullscreen() {
   boardFullscreen = !boardFullscreen;
   const topbar = document.getElementById('board-topbar');
-  const otcBar = document.querySelector('#view-board .otc-bar');
+  const exitBtn = document.getElementById('board-exit-obs');
   if (boardFullscreen) {
     topbar.style.display = 'none';
     document.querySelector('#view-board .container').style.paddingTop = '12px';
+    if (exitBtn) exitBtn.style.display = 'block';
   } else {
     topbar.style.display = '';
     document.querySelector('#view-board .container').style.paddingTop = '';
+    if (exitBtn) exitBtn.style.display = 'none';
   }
 }
 
