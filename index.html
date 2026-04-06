@@ -1182,12 +1182,14 @@ function numToGrade(val) {
 function getAggregates(matches) {
   const map = {};
   matches.forEach(m => {
-    const process = (players) => {
+    const process = (players, result) => {
       (players||[]).forEach(p => {
         if (!p.name) return;
-        if (!map[p.name]) map[p.name] = { name:p.name, pos:p.pos||'', gp:0, pts:0, reb:0, ast:0, stl:0, blk:0, to:0, pf:0, grades:[], fgm:0,fga:0,tpm:0,tpa:0,ftm:0,fta:0, posCounts:{} };
+        if (!map[p.name]) map[p.name] = { name:p.name, pos:p.pos||'', gp:0, wins:0, losses:0, pts:0, reb:0, ast:0, stl:0, blk:0, to:0, pf:0, grades:[], fgm:0,fga:0,tpm:0,tpa:0,ftm:0,fta:0, posCounts:{} };
         const pl = map[p.name];
         pl.gp++;
+        if (result === 'W') pl.wins++;
+        else if (result === 'L') pl.losses++;
         pl.pts += +p.pts||0;
         pl.reb += +p.reb||0;
         pl.ast += +p.ast||0;
@@ -1202,8 +1204,9 @@ function getAggregates(matches) {
         if (p.pos) { pl.posCounts[p.pos] = (pl.posCounts[p.pos]||0)+1; }
       });
     };
-    process(m.team1_players);
-    process(m.team2_players);
+    const s1 = +m.score1||0, s2 = +m.score2||0;
+    process(m.team1_players, s1 > s2 ? 'W' : s1 < s2 ? 'L' : 'D');
+    process(m.team2_players, s2 > s1 ? 'W' : s2 < s1 ? 'L' : 'D');
   });
   Object.values(map).forEach(p => {
     if (p.posCounts && Object.keys(p.posCounts).length > 0) {
@@ -1213,6 +1216,7 @@ function getAggregates(matches) {
   const players = Object.values(map).map(p => {
     const g = p.gp || 1;
     p.ppg = p.pts/g; p.rpg = p.reb/g; p.apg = p.ast/g;
+    p.win_pct = p.gp > 0 ? Math.round((p.wins / p.gp) * 100) : 0;
     p.spg = p.stl/g; p.bpg = p.blk/g; p.tpg = p.to/g; p.fpg = p.pf/g;
     p.grd = p.grades.length ? numToGrade(p.grades.reduce((sum,g) => sum + gradeToNum(g), 0) / p.grades.length) : '';
     // Shooting percentages from totals
@@ -1267,6 +1271,9 @@ function renderStats() {
     { key:'name',   label:'Player', sortable:true },
     { key:'pos',    label:'POS',    sortable:true },
     { key:'gp',     label:'GP',     sortable:true },
+    { key:'wins',   label:'W',      sortable:true },
+    { key:'losses', label:'L',      sortable:true },
+    { key:'win_pct',label:'W%',     sortable:true },
     { key:'grd',    label:'GRD',    sortable:true },
     { key:'ppg',    label:'PTS',    sortable:true },
     { key:'rpg',    label:'REB',    sortable:true },
@@ -1297,6 +1304,9 @@ function renderStats() {
         <td class="td-name" style="cursor:pointer;" onclick="openPlayerModal('${p.name.replace(/'/g,"\\'")}')"><span style="border-bottom:1px dashed var(--gold);color:var(--white);transition:color .15s;" onmouseover="this.style.color='var(--gold)'" onmouseout="this.style.color='var(--white)'">${p.name}</span></td>
         <td class="td-pos">${p.pos}</td>
         <td>${p.gp}</td>
+        <td>${p.wins||0}</td>
+        <td>${p.losses||0}</td>
+        <td>${p.win_pct||0}%</td>
         <td class="td-grd ${grdClass}">${p.grd||'—'}</td>
         <td class="td-pts">${(p.ppg||0).toFixed(1)}</td>
         <td>${(p.rpg||0).toFixed(1)}</td>
