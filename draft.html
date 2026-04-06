@@ -526,10 +526,11 @@ select.form-input{width:100%}
             <button class="filter-btn" id="gm-filter-watch" onclick="filterGm('WATCH',this)" style="color:#f87171">♥ Watch</button>
             <input class="search-input" placeholder="Search..." oninput="renderGmPlayers()" id="gm-search" style="margin-left:auto">
           </div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:6px">☐ Check 2 players to compare · ♥ to watchlist</div>
           <div style="overflow-x:auto">
             <table class="player-table" id="gm-player-table">
               <thead><tr>
-                <th>♥</th><th>#</th>
+                <th>♥</th><th>□</th><th>#</th>
                 <th onclick="gmSort('name')" style="cursor:pointer">Player <span id="gsort-name"></span></th>
                 <th onclick="gmSort('pos')" style="cursor:pointer">Pos <span id="gsort-pos"></span></th>
                 <th onclick="gmSort('gp')" style="cursor:pointer">GP <span id="gsort-gp"></span></th>
@@ -671,6 +672,23 @@ let myTeamId = null;
 let discordUser = null;
 let selectedPlayerId = null;
 let watchlist = new Set(JSON.parse(localStorage.getItem('draft_watchlist') || '[]'));
+let compareSet = new Set();
+function toggleCompareSet(id, e) {
+  e.stopPropagation();
+  if (compareSet.has(id)) { compareSet.delete(id); }
+  else {
+    if (compareSet.size >= 2) compareSet.clear();
+    compareSet.add(id);
+    if (compareSet.size === 2) {
+      const [a, b] = [...compareSet];
+      showCompare(a, b);
+      compareSet.clear();
+      renderGmPlayers();
+      return;
+    }
+  }
+  renderGmPlayers();
+}
 function saveWatchlist() { localStorage.setItem('draft_watchlist', JSON.stringify([...watchlist])); }
 function toggleWatch(id, e) {
   e.stopPropagation();
@@ -1663,11 +1681,12 @@ function renderGmPlayers() {
     const isPicked = picked.has(p.id);
     const isSelected = selectedPlayerId === p.id;
     const isWatched = watchlist.has(p.id);
-    return `<tr class="${isPicked?'picked':''} ${isSelected?'my-pick':''}" 
+    const isComparing = compareSet.has(p.id);
+    return `<tr class="${isPicked?'picked':''} ${isSelected?'my-pick':''} ${isComparing?'my-pick':''}" 
       onclick="${isPicked?'':'selectPlayer(\''+p.id+'\')'}"
-      oncontextmenu="openCompareMenu('${p.id}',event);return false;"
       style="${isPicked?'':'cursor:pointer'}">
       <td onclick="toggleWatch('${p.id}',event)" style="cursor:pointer;color:${isWatched?'#f87171':'var(--border)'};font-size:14px;padding:4px 6px">${isWatched?'♥':'♡'}</td>
+      <td onclick="toggleCompareSet('${p.id}',event)" style="cursor:pointer;padding:4px 6px;font-size:13px;color:${isComparing?'var(--gold)':'var(--border)'}">${isComparing?'☑':'☐'}</td>
       <td style="color:var(--muted)">${i+1}</td>
       <td style="font-weight:600">${p.name}</td>
       <td>${posBadge(p.pos)}</td>
@@ -2415,12 +2434,7 @@ function exportDraftResults() {
   </div>
 </div>
 
-<!-- CONTEXT MENU -->
-<div id="compare-ctx" style="display:none;position:fixed;background:var(--dark2);border:1px solid var(--border);border-radius:6px;padding:4px;z-index:3000;min-width:140px">
-  <div id="compare-ctx-name" style="padding:6px 12px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border);margin-bottom:4px"></div>
-  <button onclick="startCompare()" style="display:block;width:100%;text-align:left;padding:6px 12px;background:none;border:none;color:var(--text);font-size:13px;cursor:pointer;border-radius:4px" onmouseover="this.style.background='rgba(255,255,255,.05)'" onmouseout="this.style.background='none'">⚖ Compare player</button>
-  <button onclick="toggleWatch(compareCtxId, {stopPropagation:()=>{}})" style="display:block;width:100%;text-align:left;padding:6px 12px;background:none;border:none;color:var(--text);font-size:13px;cursor:pointer;border-radius:4px" onmouseover="this.style.background='rgba(255,255,255,.05)'" onmouseout="this.style.background='none'" id="ctx-watch-btn">♥ Add to watchlist</button>
-</div>
+
 
 </body>
 </html>
