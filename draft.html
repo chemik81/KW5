@@ -2322,8 +2322,8 @@ function showCompare(id1, id2) {
     + statRow('OVR', p1.ovr, p2.ovr)
     + statRow('GP', p1.gp, p2.gp) + '</div>'
     + '<div style="grid-column:1/-1;display:flex;gap:8px;margin-top:16px;justify-content:center">'
-    + (!picked.has(p1.id) ? '<button class="btn btn-outline" onclick="selectPlayer('' + p1.id + '');document.getElementById('compare-modal').style.display='none'">Select ' + p1.id + '</button>' : '')
-    + (!picked.has(p2.id) ? '<button class="btn btn-outline" onclick="selectPlayer('' + p2.id + '');document.getElementById('compare-modal').style.display='none'">Select ' + p2.id + '</button>' : '')
+    + (!picked.has(p1.id) ? '<button class="btn btn-outline" onclick="selectPlayer(\'' + p1.id + '\');document.getElementById(\'compare-modal\').style.display=\'none\'">Select ' + p1.id + '</button>' : '')
+    + (!picked.has(p2.id) ? '<button class="btn btn-outline" onclick="selectPlayer(\'' + p2.id + '\');document.getElementById(\'compare-modal\').style.display=\'none\'">Select ' + p2.id + '</button>' : '')
     + '</div>';
   modal.style.display = 'flex';
 }
