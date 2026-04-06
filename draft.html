@@ -593,8 +593,8 @@ select.form-input{width:100%}
     <div class="topbar-right">
       <span class="status-dot" id="board-status-dot"></span>
       <span id="board-status-txt" style="font-size:12px;color:var(--muted)">Loading...</span>
-      <input id="board-worker-input" class="form-input" style="width:220px;font-size:12px" placeholder="Worker URL...">
-      <button class="btn btn-outline btn-sm" onclick="setBoardWorker()">Connect</button>
+      <input id="board-worker-input" class="form-input" style="width:180px;font-size:12px;display:none" placeholder="Worker URL...">
+      <button class="btn btn-outline btn-sm" id="board-connect-btn" style="display:none" onclick="setBoardWorker()">Connect</button>
       <div id="board-gm-btn" style="display:none">
         <button class="btn btn-gold btn-sm" onclick="switchView('gm')">🎮 GM Panel</button>
       </div>
@@ -1243,9 +1243,9 @@ function renderLaunchSummary() {
 function updateLinks() {
   const base = location.origin + location.pathname;
   const w = encodeURIComponent(WORKER_URL);
-  document.getElementById('link-gm').textContent      = `${base}#gm`;
-  document.getElementById('link-board').textContent   = `${base}#board`;
-  document.getElementById('link-overlay').textContent = `${base}#overlay?w=${w}`;
+  document.getElementById('link-gm').textContent      = `${base}?w=${w}#gm`;
+  document.getElementById('link-board').textContent   = `${base}?w=${w}#board`;
+  document.getElementById('link-overlay').textContent = `${base}?w=${w}#overlay`;
 }
 
 function copyLink(id) {
@@ -1836,7 +1836,14 @@ async function initBoard() {
   clearInterval(pollInterval);
   const wUrl = new URLSearchParams(location.search).get('w');
   if (wUrl) { WORKER_URL = decodeURIComponent(wUrl); localStorage.setItem('draft_worker_url', WORKER_URL); }
-  document.getElementById('board-worker-input').value = WORKER_URL;
+  const workerInput = document.getElementById('board-worker-input');
+  const connectBtn = document.getElementById('board-connect-btn');
+  if (!WORKER_URL) {
+    // No URL saved — show input to connect
+    workerInput.style.display = 'block';
+    connectBtn.style.display = 'block';
+  }
+  workerInput.value = WORKER_URL;
   // Show GM button if logged in
   const gmBtn = document.getElementById('board-gm-btn');
   if (gmBtn) gmBtn.style.display = discordUser ? 'block' : 'none';
@@ -1847,6 +1854,8 @@ async function initBoard() {
 function setBoardWorker() {
   WORKER_URL = (document.getElementById('board-worker-input')?.value||'').trim().replace(/\/+$/,'');
   localStorage.setItem('draft_worker_url', WORKER_URL);
+  document.getElementById('board-worker-input').style.display = 'none';
+  document.getElementById('board-connect-btn').style.display = 'none';
   loadDraftState().then(() => renderBoard());
 }
 
