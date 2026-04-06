@@ -168,24 +168,33 @@ function renderSlide(idx, animate=true) {
     var apg = p.apg!=null?(+p.apg).toFixed(1):"-";
     var per = p.per!=null?(+p.per).toFixed(1):"-";
     var gp  = p.gp||"-";
-    var teamLogoHtml = "";
-    var pickedOverlay = "";
+    var pickedSection = "";
     if (pickedByTeam) {
-      teamLogoHtml = pickedByTeam.logoB64
-        ? "<img src=\""+pickedByTeam.logoB64+"\" style=\"width:22px;height:22px;border-radius:50%;object-fit:cover;flex-shrink:0;opacity:.7\">"
-        : "<div style=\"width:22px;height:22px;border-radius:50%;background:var(--dark4);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:var(--muted);flex-shrink:0\">"+(pickedByTeam.name||"?")[0]+"</div>";
-      pickedOverlay = "<div style=\"position:absolute;inset:0;display:flex;align-items:center;justify-content:flex-end;padding-right:14px;gap:6px;pointer-events:none\">"
-        + teamLogoHtml
-        + "<div style=\"font-family:Barlow Condensed,sans-serif;font-weight:800;font-size:11px;color:var(--muted);max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap\">"+(pickedByTeam.name||"")+"</div>"
+      var tLogo = pickedByTeam.logoB64
+        ? "<img src=\""+pickedByTeam.logoB64+"\" style=\"width:28px;height:28px;border-radius:50%;object-fit:cover;border:1px solid rgba(240,192,64,.4)\">"
+        : "<div style=\"width:28px;height:28px;border-radius:50%;background:#222736;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:#f0c040;\">"+(pickedByTeam.name||"?")[0]+"</div>";
+      pickedSection = "<div style=\"display:flex;align-items:center;gap:6px;margin-top:4px;padding-top:4px;border-top:1px solid rgba(255,255,255,.06)\">"
+        + tLogo
+        + "<span style=\"font-size:11px;font-weight:700;color:#7a8099;overflow:hidden;text-overflow:ellipsis;white-space:nowrap\">"+(pickedByTeam.name||"")+"</span>"
+        + "<span style=\"font-size:10px;color:#4ade80;margin-left:auto;font-weight:800;letter-spacing:.05em\">PICKED</span>"
         + "</div>";
     }
-    return "<div class=\""+cardClass+"\" style=\"position:relative\">"
+    return "<div class=\""+cardClass+"\">"
       +"<div class=\""+rankClass+"\">"+(i+1)+"</div>"
       +"<div class=\"player-info\">"
       +"<div class=\"player-name\">"+p.name+"</div>"
       +"<div class=\"player-stats\">"
       +"<div class=\"stat\"><div class=\"stat-val\">"+ppg+"</div><div class=\"stat-lbl\">PPG</div></div>"
       +"<div class=\"stat\"><div class=\"stat-val\">"+rpg+"</div><div class=\"stat-lbl\">RPG</div></div>"
+      +"<div class=\"stat\"><div class=\"stat-val\">"+apg+"</div><div class=\"stat-lbl\">APG</div></div>"
+      +"<div class=\"stat\"><div class=\"stat-val\">"+per+"</div><div class=\"stat-lbl\">PER</div></div>"
+      +"<div class=\"stat\"><div class=\"stat-val\">"+gp+"</div><div class=\"stat-lbl\">GP</div></div>"
+      +"</div>"
+      +pickedSection
+      +"</div>"
+      +"<div class=\"ovr-badge "+ovrC+"\">"+(p.ovr||"?")+"</div>"
+      +"</div>";
+  }).join("");
       +"<div class=\"stat\"><div class=\"stat-val\">"+apg+"</div><div class=\"stat-lbl\">APG</div></div>"
       +"<div class=\"stat\"><div class=\"stat-val\">"+per+"</div><div class=\"stat-lbl\">PER</div></div>"
       +"<div class=\"stat\"><div class=\"stat-val\">"+gp+"</div><div class=\"stat-lbl\">GP</div></div>"
