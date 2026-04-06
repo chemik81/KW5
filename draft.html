@@ -591,7 +591,7 @@ select.form-input{width:100%}
      VIEW: BOARD (public)
 ═══════════════════════════════════════════ -->
 <div class="view" id="view-board">
-  <div class="topbar">
+  <div class="topbar" id="board-topbar">
     <div>
       <div class="topbar-logo" id="board-draft-name">KW5 DRAFT</div>
       <div class="topbar-sub">Draft Board</div>
@@ -601,6 +601,7 @@ select.form-input{width:100%}
       <span id="board-status-txt" style="font-size:12px;color:var(--muted)">Loading...</span>
       <input id="board-worker-input" class="form-input" style="width:180px;font-size:12px;display:none" placeholder="Worker URL...">
       <button class="btn btn-outline btn-sm" id="board-connect-btn" style="display:none" onclick="setBoardWorker()">Connect</button>
+      <button class="btn btn-outline btn-sm" onclick="toggleBoardFullscreen()" title="Fullscreen / OBS mode">⛶ OBS</button>
       <div id="board-gm-btn" style="display:none">
         <button class="btn btn-gold btn-sm" onclick="switchView('gm')">🎮 GM Panel</button>
       </div>
@@ -624,6 +625,7 @@ select.form-input{width:100%}
       </div>
     </div>
     <div id="board-grid" class="draft-board"></div>
+  <div id="board-grades" style="display:none;margin-top:20px"></div>
   </div>
 </div>
 
@@ -937,6 +939,28 @@ function autoPickFor(ds, teamId) {
 // ═══════════════════════════════════════════════════════════════
 // TIMER
 // ═══════════════════════════════════════════════════════════════
+// ── AUDIO BEEP ──
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx = null;
+function beep(freq=440, duration=0.15, vol=0.3) {
+  try {
+    if (!audioCtx) audioCtx = new AudioCtx();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+    osc.start(); osc.stop(audioCtx.currentTime + duration);
+  } catch(e) {}
+}
+function alertBeep(secondsLeft) {
+  if (secondsLeft === 30) beep(440, 0.1, 0.2);
+  else if (secondsLeft === 15) { beep(550, 0.15, 0.3); }
+  else if (secondsLeft === 5)  { beep(660, 0.2, 0.4); }
+  else if (secondsLeft <= 3 && secondsLeft > 0) { beep(880, 0.1, 0.5); }
+}
+
 function startLocalTimer(endsAt, elIds, onExpire) {
   clearInterval(timerInterval);
   const els = elIds.map(id => document.getElementById(id)).filter(Boolean);
@@ -949,6 +973,7 @@ function startLocalTimer(endsAt, elIds, onExpire) {
       el.textContent = txt;
       el.classList.toggle('urgent', left <= 15);
     });
+    alertBeep(left);
     if (left === 0) { clearInterval(timerInterval); if (onExpire) onExpire(); }
   }, 500);
 }
@@ -1393,6 +1418,22 @@ async function adminSkipPick() {
   const pl = autoPickFor(draftState, pick.teamId);
   if (!pl) { notify('No players available', 'error'); return; }
   await recordPick(pick.teamId, pl.id, true);
+  // Notify GM via Discord DM that auto-pick was made
+  notifyGmAutoPick(pick.team, pl);
+}
+
+async function notifyGmAutoPick(team, player) {
+  if (!team?.gmDiscordId || !WORKER_URL) return;
+  try {
+    await fetch(WORKER_URL + '/draft-notify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Admin-Token': ADMIN_TOKEN },
+      body: JSON.stringify({
+        discordUserId: team.gmDiscordId,
+        message: `⏰ **Time's up!** Auto-pick made for **${team.name}**: **${player.name}** (OVR: ${player.ovr||'?'}). You were not on time.`
+      })
+    });
+  } catch(e) {}
 }
 
 async function adminUndoPick() {
@@ -1508,6 +1549,15 @@ function setGmWorker() {
 function renderGm() {
   if (!draftState) return;
   resolveMyTeam();
+
+  // Alert if selected player was just picked by someone else
+  if (selectedPlayerId) {
+    const pickedIds = getPickedPlayerIds(draftState);
+    if (pickedIds.has(selectedPlayerId)) {
+      notify(`⚠️ ${selectedPlayerId} was taken! Select another player.`, 'error');
+      selectedPlayerId = null;
+    }
+  }
 
   const pick = getCurrentPick(draftState);
   const status = draftState.status || 'idle';
@@ -1645,6 +1695,9 @@ async function gmMakePick() {
     if (!r.ok) { notify('Pick failed: ' + (d.error || r.status), 'error'); return; }
     const drafted = selectedPlayerId;
     selectedPlayerId = null;
+    // Clear search
+    const searchEl = document.getElementById('gm-search');
+    if (searchEl) searchEl.value = '';
     await loadDraftState();
     renderGm();
     notify(`✅ Drafted ${drafted}!`, 'success');
@@ -1862,6 +1915,117 @@ function renderGmAllTeams() {
 // ═══════════════════════════════════════════════════════════════
 // BOARD VIEW
 // ═══════════════════════════════════════════════════════════════
+function renderDraftGrades() {
+  const el = document.getElementById('board-grades');
+  if (!el || !draftState) return;
+  if (draftState.status !== 'done') { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+
+  const GRADES = ['F','D','D+','C-','C','C+','B-','B','B+','A-','A','A+'];
+
+  // For each team: avg OVR of picks vs avg OVR available at that pick slot
+  const seq = buildPickSequence(draftState);
+  const picks = draftState.picks || [];
+  const allPlayers = draftState.players || [];
+
+  const teamGrades = (draftState.teams || []).map(t => {
+    const myPicks = picks.filter(p => p.teamId === t.id);
+    if (!myPicks.length) return { team: t, grade: '—', avgOvr: 0, steal: null };
+
+    let totalValue = 0;
+    let bestSteal = null;
+
+    myPicks.forEach(p => {
+      const player = allPlayers.find(x => x.id === p.playerId) || {};
+      const ovr = player.ovr || 50;
+      // How many players with higher OVR were still available at this pick?
+      const pickedBefore = new Set(picks.filter(x => x.pickNum < p.pickNum).map(x => x.playerId));
+      const availableOvrs = allPlayers
+        .filter(x => !x.excluded && !pickedBefore.has(x.id))
+        .map(x => x.ovr || 50)
+        .sort((a,b) => b-a);
+      const rank = availableOvrs.indexOf(ovr) + 1;
+      const totalAvail = availableOvrs.length;
+      const value = totalAvail > 0 ? ((totalAvail - rank) / totalAvail) * 100 : 50;
+      totalValue += value;
+      // Best steal = highest OVR relative to pick position
+      if (!bestSteal || ovr > (allPlayers.find(x=>x.id===bestSteal.playerId)?.ovr||0)) {
+        bestSteal = p;
+      }
+    });
+
+    const avgValue = totalValue / myPicks.length;
+    const avgOvr = Math.round(myPicks.reduce((s,p) => s + (allPlayers.find(x=>x.id===p.playerId)?.ovr||50), 0) / myPicks.length);
+
+    // Grade based on avgValue
+    let grade;
+    if (avgValue >= 85) grade = 'A+';
+    else if (avgValue >= 75) grade = 'A';
+    else if (avgValue >= 65) grade = 'A-';
+    else if (avgValue >= 55) grade = 'B+';
+    else if (avgValue >= 45) grade = 'B';
+    else if (avgValue >= 35) grade = 'B-';
+    else if (avgValue >= 25) grade = 'C+';
+    else if (avgValue >= 15) grade = 'C';
+    else grade = 'C-';
+
+    const stealPlayer = bestSteal ? allPlayers.find(x=>x.id===bestSteal.playerId) : null;
+
+    return { team: t, grade, avgOvr, steal: stealPlayer, stealPick: bestSteal };
+  }).sort((a,b) => {
+    const order = ['A+','A','A-','B+','B','B-','C+','C','C-','D+','D','F','—'];
+    return order.indexOf(a.grade) - order.indexOf(b.grade);
+  });
+
+  const gradeColor = g => {
+    if (g.startsWith('A')) return '#4ade80';
+    if (g.startsWith('B')) return '#60a5fa';
+    if (g.startsWith('C')) return '#fb923c';
+    return '#f87171';
+  };
+
+  el.innerHTML = `
+    <div class="card">
+      <div class="card-title" style="font-size:18px;margin-bottom:16px">🏆 DRAFT GRADES</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px">
+        ${teamGrades.map((tg, i) => {
+          const logoHtml = tg.team.logoB64
+            ? `<img src="${tg.team.logoB64}" style="width:36px;height:36px;border-radius:50%;object-fit:cover">`
+            : `<div style="width:36px;height:36px;border-radius:50%;background:var(--dark4);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;color:var(--gold)">${(tg.team.name||'?')[0]}</div>`;
+          const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
+          return `<div style="background:var(--dark3);border:1px solid var(--border);border-radius:var(--radius);padding:12px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+              ${logoHtml}
+              <div style="flex:1;min-width:0">
+                <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${medal} ${tg.team.name}</div>
+                <div style="font-size:11px;color:var(--muted)">${tg.team.gmName||''}</div>
+              </div>
+              <div style="font-family:'Barlow Condensed',sans-serif;font-size:36px;font-weight:900;color:${gradeColor(tg.grade)}">${tg.grade}</div>
+            </div>
+            <div style="display:flex;gap:12px;font-size:12px">
+              <div><span style="color:var(--muted)">Avg OVR:</span> <b>${tg.avgOvr}</b></div>
+              ${tg.steal?`<div><span style="color:var(--muted)">Best pick:</span> <b>${tg.steal.name}</b> (${tg.steal.ovr})</div>`:''}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+}
+
+let boardFullscreen = false;
+function toggleBoardFullscreen() {
+  boardFullscreen = !boardFullscreen;
+  const topbar = document.getElementById('board-topbar');
+  const otcBar = document.querySelector('#view-board .otc-bar');
+  if (boardFullscreen) {
+    topbar.style.display = 'none';
+    document.querySelector('#view-board .container').style.paddingTop = '12px';
+  } else {
+    topbar.style.display = '';
+    document.querySelector('#view-board .container').style.paddingTop = '';
+  }
+}
+
 async function initBoard() {
   clearInterval(pollInterval);
   const wUrl = new URLSearchParams(location.search).get('w');
@@ -1941,6 +2105,9 @@ function renderBoard() {
   } else {
     lastEl.style.display = 'none';
   }
+
+  // Draft grades (shown when done)
+  renderDraftGrades();
 
   // Board grid
   const perTeam = draftState.config?.perTeam||5;
