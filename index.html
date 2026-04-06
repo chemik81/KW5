@@ -1271,9 +1271,6 @@ function renderStats() {
     { key:'name',   label:'Player', sortable:true },
     { key:'pos',    label:'POS',    sortable:true },
     { key:'gp',     label:'GP',     sortable:true },
-    { key:'wins',   label:'W',      sortable:true },
-    { key:'losses', label:'L',      sortable:true },
-    { key:'win_pct',label:'W%',     sortable:true },
     { key:'grd',    label:'GRD',    sortable:true },
     { key:'ppg',    label:'PTS',    sortable:true },
     { key:'rpg',    label:'REB',    sortable:true },
@@ -1285,6 +1282,9 @@ function renderStats() {
     { key:'fg_pct', label:'FG%',    sortable:true },
     { key:'tp_pct', label:'3P%',    sortable:true },
     { key:'ft_pct', label:'FT%',    sortable:true },
+    { key:'wins',   label:'W',      sortable:true },
+    { key:'losses', label:'L',      sortable:true },
+    { key:'win_pct',label:'W%',     sortable:true },
     { key:'csa',    label:'CS ℹ',   sortable:true },
     { key:'per',    label:'PER ℹ',  sortable:true },
   ];
@@ -1304,9 +1304,6 @@ function renderStats() {
         <td class="td-name" style="cursor:pointer;" onclick="openPlayerModal('${p.name.replace(/'/g,"\\'")}')"><span style="border-bottom:1px dashed var(--gold);color:var(--white);transition:color .15s;" onmouseover="this.style.color='var(--gold)'" onmouseout="this.style.color='var(--white)'">${p.name}</span></td>
         <td class="td-pos">${p.pos}</td>
         <td>${p.gp}</td>
-        <td>${p.wins||0}</td>
-        <td>${p.losses||0}</td>
-        <td>${p.win_pct||0}%</td>
         <td class="td-grd ${grdClass}">${p.grd||'—'}</td>
         <td class="td-pts">${(p.ppg||0).toFixed(1)}</td>
         <td>${(p.rpg||0).toFixed(1)}</td>
@@ -1318,6 +1315,9 @@ function renderStats() {
         <td>${p.fg_pct && p.fg_pct!=='—' ? p.fg_pct+'%' : '—'}</td>
         <td>${p.tp_pct && p.tp_pct!=='—' ? p.tp_pct+'%' : '—'}</td>
         <td>${p.ft_pct && p.ft_pct!=='—' ? p.ft_pct+'%' : '—'}</td>
+        <td>${p.wins||0}</td>
+        <td>${p.losses||0}</td>
+        <td>${p.win_pct||0}%</td>
         <td>${p.csa?p.csa.toFixed(1):'—'}</td>
         <td><div class="per-bar"><span class="per-val">${(p.per||0).toFixed(1)}</span><div class="per-bg"><div class="per-fill" style="width:${((p.per||0)/maxPer*100).toFixed(1)}%"></div></div></div></td>
       </tr>`;
