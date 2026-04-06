@@ -83,7 +83,7 @@ body{background:rgba(13,15,20,.96);color:var(--text);font-family:'Barlow',sans-s
 const params = new URLSearchParams(location.search);
 const WORKER_URL = (params.get('w') || '').replace(/\/+$/, '');
 const SLIDE_DURATION = parseInt(params.get('dur') || '10') * 1000; // seconds per slide, default 10
-const TOP_N = parseInt(params.get('top') || '16');
+const TOP_N = parseInt(params.get('top') || '10');
 
 const POSITIONS = [
   { key: 'PG', name: 'Point Guard',    color: '#93c5fd', bg: 'rgba(96,165,250,.15)' },
@@ -169,6 +169,7 @@ function renderSlide(idx, animate=true) {
     var apg = p.apg!=null?(+p.apg).toFixed(1):"-";
     var per = p.per!=null?(+p.per).toFixed(1):"-";
     var gp  = p.gp||"-";
+    var win_pct = p.win_pct!=null ? p.win_pct+"%" : "-";
     var pickedBanner = "";
     if (pickedByTeam) {
       var tLogo = pickedByTeam.logoB64
@@ -192,6 +193,7 @@ function renderSlide(idx, animate=true) {
       +"<div class=\"stat\"><div class=\"stat-val\">"+apg+"</div><div class=\"stat-lbl\">APG</div></div>"
       +"<div class=\"stat\"><div class=\"stat-val\">"+per+"</div><div class=\"stat-lbl\">PER</div></div>"
       +"<div class=\"stat\"><div class=\"stat-val\">"+gp+"</div><div class=\"stat-lbl\">GP</div></div>"
+      +"<div class=\"stat\"><div class=\"stat-val\">"+win_pct+"</div><div class=\"stat-lbl\">W%</div></div>"
       +"</div>"
       +"</div>"
       +"<div class=\"ovr-badge "+ovrC+"\">"+(p.ovr||"?")+"</div>"
