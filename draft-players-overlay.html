@@ -150,9 +150,28 @@ function renderSlide(idx, animate=true) {
   const players = getPlayersForPos(pos.key);
   const grid = document.getElementById('players-grid');
 
+  // Build pick map: playerId -> team
+  const pickMap = {};
+  (ds?.picks||[]).forEach(pk => {
+    const t = (ds?.teams||[]).find(x=>x.id===pk.teamId)||{};
+    pickMap[pk.playerId] = t;
+  });
+
   const html = players.map((p, i) => {
     const isTop3 = i < 3;
-    return '<div class="player-card'+(p.isPicked?' picked':'')+'">'
+    const pickedByTeam = p.isPicked ? (pickMap[p.id]||{}) : null;
+    const teamLogoHtml = pickedByTeam
+      ? (pickedByTeam.logoB64
+          ? '<img src="'+pickedByTeam.logoB64+'" style="width:22px;height:22px;border-radius:50%;object-fit:cover;flex-shrink:0;opacity:.7">'
+          : '<div style="width:22px;height:22px;border-radius:50%;background:var(--dark4);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:var(--muted);flex-shrink:0">'+((pickedByTeam.name||'?')[0])+'</div>')
+      : '';
+    const pickedOverlay = pickedByTeam
+      ? '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:flex-end;padding-right:14px;gap:6px;pointer-events:none">'
+        + teamLogoHtml
+        + '<div style="font-family:Barlow Condensed,sans-serif;font-weight:800;font-size:11px;color:var(--muted);letter-spacing:.08em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:90px">'+(pickedByTeam.name||'')+'</div>'
+        + '</div>'
+      : '';
+    return '<div class="player-card'+(p.isPicked?' picked':'')+'" style="position:relative">'
       +'<div class="rank'+(isTop3?' top3':'')">'+(i+1)+'</div>'
       +'<div class="player-info">'
       +'<div class="player-name">'+p.name+'</div>'
@@ -164,6 +183,7 @@ function renderSlide(idx, animate=true) {
       +'<div class="stat"><div class="stat-val">'+(p.gp||'—')+'</div><div class="stat-lbl">GP</div></div>'
       +'</div></div>'
       +'<div class="ovr-badge '+ovrClass(p.ovr||50)+'">'+(p.ovr||'?')+'</div>'
+      +pickedOverlay
       +'</div>';
   }).join('');
 
