@@ -437,17 +437,19 @@ select.form-input{width:100%}
       <div style="font-size:12px;color:var(--muted);margin-top:4px" id="admin-progress-txt">0 / 0 picks made</div>
     </div>
 
-    <div class="grid-2">
-      <!-- Draft Board (compact) -->
-      <div class="card">
-        <div class="card-title">Draft Board</div>
-        <div id="admin-board" style="overflow-y:auto;max-height:500px"></div>
-      </div>
-      <!-- Recent picks + log -->
-      <div class="card">
-        <div class="card-title">Pick Log</div>
-        <div id="admin-log" style="overflow-y:auto;max-height:500px;display:flex;flex-direction:column;gap:4px"></div>
-      </div>
+    <div class="tabs" style="margin-bottom:0">
+      <button class="tab active" onclick="adminTab('board',this)">Draft Board</button>
+      <button class="tab" onclick="adminTab('log',this)">Pick Log</button>
+      <button class="tab" onclick="adminTab('order',this)">Draft Order</button>
+    </div>
+    <div id="admin-tab-board" class="card" style="border-radius:0 0 var(--radius) var(--radius)">
+      <div id="admin-board" style="overflow-y:auto;max-height:500px"></div>
+    </div>
+    <div id="admin-tab-log" class="card" style="display:none;border-radius:0 0 var(--radius) var(--radius)">
+      <div id="admin-log" style="overflow-y:auto;max-height:500px;display:flex;flex-direction:column;gap:4px"></div>
+    </div>
+    <div id="admin-tab-order" class="card" style="display:none;border-radius:0 0 var(--radius) var(--radius)">
+      <div id="admin-order" style="overflow-y:auto;max-height:500px"></div>
     </div>
   </div>
 </div>
@@ -506,9 +508,19 @@ select.form-input{width:100%}
     </div>
 
     <!-- My turn banner -->
-    <div id="gm-my-turn-banner" style="display:none;background:rgba(240,192,64,.1);border:2px solid var(--gold);border-radius:var(--radius);padding:12px 16px;margin-bottom:16px;text-align:center">
-      <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:900;color:var(--gold)">🏀 YOU ARE ON THE CLOCK!</div>
-      <div style="font-size:13px;color:var(--muted);margin-top:2px">Select a player below and click PICK to draft them.</div>
+    <!-- My turn banner -->
+    <div id="gm-my-turn-banner" style="display:none;background:rgba(240,192,64,.1);border:2px solid var(--gold);border-radius:var(--radius);padding:12px 16px;margin-bottom:16px">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:900;color:var(--gold);text-align:center">🏀 YOU ARE ON THE CLOCK!</div>
+      <div style="font-size:13px;color:var(--muted);margin-top:2px;text-align:center">Select a player below and click PICK to draft them.</div>
+      <div id="gm-best-suggestion" style="display:none;margin-top:10px;padding:8px 12px;background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.2);border-radius:6px">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Suggested pick for your needs</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:4px">
+          <span id="gm-suggest-name" style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;color:var(--green)"></span>
+          <span id="gm-suggest-badge"></span>
+          <span id="gm-suggest-ovr" style="font-family:'Barlow Condensed',sans-serif;font-weight:900;color:var(--gold)"></span>
+          <button onclick="selectSuggested()" class="btn btn-outline btn-sm" style="margin-left:auto;font-size:11px">Select →</button>
+        </div>
+      </div>
     </div>
 
     <div class="gm-layout">
@@ -575,6 +587,8 @@ select.form-input{width:100%}
             <button class="btn btn-outline btn-sm" onclick="browseTeam(1)" style="padding:4px 10px">▶</button>
           </div>
           <button class="btn btn-outline btn-sm" onclick="browseMyTeam()" id="browse-home-btn" style="width:100%;margin-bottom:10px;display:none;font-size:12px">⭐ Back to My Team</button>
+          <!-- Needs indicator -->
+          <div id="gm-needs" style="display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap"></div>
           <div id="gm-my-roster" style="display:flex;flex-direction:column;gap:6px"></div>
         </div>
 
@@ -1345,6 +1359,52 @@ async function initAdmin() {
   }, 3000);
 }
 
+function adminTab(tab, btn) {
+  ['board','log','order'].forEach(t => {
+    document.getElementById('admin-tab-'+t).style.display = t===tab?'block':'none';
+  });
+  document.querySelectorAll('#view-admin .tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  if (tab==='order') renderAdminOrder();
+}
+
+function renderAdminOrder() {
+  const el = document.getElementById('admin-order');
+  if (!el || !draftState?.config) return;
+  const seq = buildPickSequence(draftState);
+  const picks = draftState.picks || [];
+  const currentIdx = draftState.currentPickNum || 0;
+
+  // Group by round
+  const rounds = {};
+  seq.forEach((s, i) => {
+    if (!rounds[s.round]) rounds[s.round] = [];
+    rounds[s.round].push({ ...s, idx: i, pickNum: i+1 });
+  });
+
+  el.innerHTML = Object.entries(rounds).map(([round, items]) => {
+    const rowItems = items.map(item => {
+      const t = (draftState.teams||[]).find(x=>x.id===item.teamId)||{};
+      const pick = picks.find(p=>p.pickNum===item.pickNum);
+      const isCurrent = item.idx === currentIdx && draftState.status==='live';
+      const isDone = pick != null;
+      const logoHtml = t.logoB64
+        ? '<img src="'+t.logoB64+'" style="width:20px;height:20px;border-radius:50%;object-fit:cover">'
+        : '<div style="width:20px;height:20px;border-radius:50%;background:var(--dark4);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:var(--gold)">'+((t.name||'?')[0])+'</div>';
+      return '<div style="display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 8px;border-radius:6px;border:1px solid '+(isCurrent?'var(--gold)':isDone?'rgba(74,222,128,.2)':'var(--border)')+';background:'+(isCurrent?'rgba(240,192,64,.1)':isDone?'rgba(74,222,128,.05)':'var(--dark3)')+';min-width:70px;max-width:90px">'
+        +'<div style="font-size:9px;color:var(--muted)">#'+item.pickNum+'</div>'
+        +logoHtml
+        +'<div style="font-size:10px;font-weight:700;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%;max-width:80px">'+(isDone?pick.playerId:t.name)+'</div>'
+        +(isDone?'<div style="font-size:9px;color:var(--green)">✓</div>':isCurrent?'<div style="font-size:9px;color:var(--gold);font-weight:800">NOW</div>':'')
+        +'</div>';
+    }).join('');
+    return '<div style="margin-bottom:12px">'
+      +'<div style="font-family:Barlow Condensed,sans-serif;font-weight:800;font-size:13px;color:var(--gold);margin-bottom:6px">ROUND '+round+'</div>'
+      +'<div style="display:flex;gap:4px;flex-wrap:wrap">'+rowItems+'</div>'
+      +'</div>';
+  }).join('');
+}
+
 function renderAdmin() {
   if (!draftState) return;
   const pick = getCurrentPick(draftState);
@@ -1386,6 +1446,8 @@ function renderAdmin() {
 
   renderAdminBoard();
   renderAdminLog();
+  // Refresh order tab if visible
+  if (document.getElementById('admin-tab-order')?.style.display !== 'none') renderAdminOrder();
   // Update mock btn
   const mockBtn = document.getElementById('mock-btn');
   if (mockBtn) {
@@ -1583,6 +1645,45 @@ function setGmWorker() {
   discordLogin();
 }
 
+let suggestedPlayerId = null;
+function selectSuggested() {
+  if (suggestedPlayerId) selectPlayer(suggestedPlayerId);
+}
+
+function renderBestSuggestion() {
+  if (!draftState || !myTeamId) return;
+  const sugEl = document.getElementById('gm-best-suggestion');
+  if (!sugEl) return;
+
+  const SLOTS = ['PG','SG','LCK','PF','C'];
+  const myPicks = getTeamPicks(draftState, myTeamId);
+  const filledPos = new Set(myPicks.map(p => {
+    const pl = (draftState.players||[]).find(x=>x.id===p.playerId)||{};
+    return pl.pos==='SF'?'LCK':pl.pos||'';
+  }));
+  const neededPos = SLOTS.filter(s => !filledPos.has(s)).map(s => s==='LCK'?'SF':s);
+
+  const pickedIds = getPickedPlayerIds(draftState);
+  const available = (draftState.players||[])
+    .filter(p => !p.excluded && !pickedIds.has(p.id))
+    .sort((a,b) => (b.ovr||0)-(a.ovr||0));
+
+  // Find best player at needed position
+  let best = null;
+  for (const pos of neededPos) {
+    best = available.find(p => p.pos === pos);
+    if (best) break;
+  }
+  if (!best) best = available[0]; // fallback: overall best
+
+  if (!best) { sugEl.style.display='none'; return; }
+  suggestedPlayerId = best.id;
+  sugEl.style.display = 'block';
+  document.getElementById('gm-suggest-name').textContent = best.name;
+  document.getElementById('gm-suggest-badge').innerHTML = posBadge(best.pos||'?');
+  document.getElementById('gm-suggest-ovr').textContent = 'OVR ' + (best.ovr||'?');
+}
+
 function renderGm() {
   if (!draftState) return;
   resolveMyTeam();
@@ -1626,6 +1727,7 @@ function renderGm() {
 
   // My turn banner
   document.getElementById('gm-my-turn-banner').style.display = isMyTurn ? 'block' : 'none';
+  if (isMyTurn) renderBestSuggestion();
 
   // Pick button
   const pickBtn = document.getElementById('gm-pick-btn');
@@ -1769,6 +1871,27 @@ function renderGmRecentPicks() {
   }).join('');
 }
 
+function renderNeedsIndicator(myPicks, allPlayers) {
+  const el = document.getElementById('gm-needs');
+  if (!el) return;
+  const SLOTS = ['PG','SG','LCK','PF','C'];
+  const filled = new Set();
+  myPicks.forEach(p => {
+    const pl = allPlayers.find(x=>x.id===p.playerId)||{};
+    const sp = pl.pos==='SF'?'LCK':pl.pos||'';
+    if (SLOTS.includes(sp) && !filled.has(sp)) filled.add(sp);
+  });
+  el.innerHTML = SLOTS.map(slot => {
+    const have = filled.has(slot);
+    const colors = {'PG':'#93c5fd','SG':'#93c5fd','LCK':'#c4b5fd','PF':'#c4b5fd','C':'#86efac'};
+    const bg = {'PG':'rgba(96,165,250,.15)','SG':'rgba(96,165,250,.15)','LCK':'rgba(196,181,253,.15)','PF':'rgba(196,181,253,.15)','C':'rgba(134,239,172,.15)'};
+    return '<div style="display:flex;align-items:center;gap:4px;padding:3px 8px;border-radius:4px;border:1px solid '+(have?'rgba(74,222,128,.3)':'rgba(248,113,113,.3)')+';background:'+(have?'rgba(74,222,128,.08)':'rgba(248,113,113,.08)')+'">'
+      +'<span style="font-family:Barlow Condensed,sans-serif;font-weight:800;font-size:11px;color:'+colors[slot]+'">'+slot+'</span>'
+      +'<span style="font-size:12px">'+(have?'✓':'✗')+'</span>'
+      +'</div>';
+  }).join('');
+}
+
 function renderGmMyRoster() {
   if (!draftState) return;
   const teams = draftState.teams || [];
@@ -1799,6 +1922,13 @@ function renderGmMyRoster() {
 
   const picks = viewTeam ? getTeamPicks(draftState, viewTeam.id) : [];
   const el = document.getElementById('gm-my-roster');
+  // Show needs indicator only for my own team
+  if (!browseTeamIdx || viewTeam?.id === myTeamId) {
+    renderNeedsIndicator(picks, draftState.players||[]);
+  } else {
+    const needsEl = document.getElementById('gm-needs');
+    if (needsEl) needsEl.innerHTML = '';
+  }
 
   if (!picks.length) {
     el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px 0">No picks yet</div>';
