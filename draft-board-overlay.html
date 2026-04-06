@@ -2,97 +2,254 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>KW5 Draft Board Overlay</title>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<title>KW5 Draft Board</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-:root{--gold:#f0c040;--dark:#0d0f14;--dark2:#13161e;--dark3:#1a1e2a;--dark4:#222736;--border:rgba(240,192,64,0.15);--text:#e8eaf0;--muted:#7a8099;--green:#4ade80;--red:#f87171;--radius:8px}
+:root{
+  --gold:#f0c040;
+  --dark:#0d0f14;
+  --dark2:#13161e;
+  --dark3:#1a1e2a;
+  --dark4:#222736;
+  --border:rgba(255,255,255,0.07);
+  --text:#e8eaf0;
+  --muted:#7a8099;
+  --green:#4ade80;
+  --red:#f87171;
+}
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:transparent;color:var(--text);font-family:'Barlow',sans-serif;font-size:13px;width:1920px;height:1080px;overflow:hidden}
-.condensed{font-family:'Barlow Condensed',sans-serif;letter-spacing:.02em}
+body{
+  background:#0d0f14;
+  color:var(--text);
+  font-family:'Barlow',sans-serif;
+  width:1920px;
+  height:1080px;
+  overflow:hidden;
+}
 
-.otc-bar{background:rgba(13,15,20,.95);border-bottom:2px solid var(--gold);padding:8px 20px;display:flex;align-items:center;gap:16px;height:80px;flex-shrink:0}
-.otc-logo{width:52px;height:52px;border-radius:50%;border:2px solid var(--gold);overflow:hidden;background:var(--dark4);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:20px;color:var(--gold)}
-.otc-logo img{width:100%;height:100%;object-fit:cover}
-.otc-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;font-weight:700}
-.otc-team{font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:900;color:var(--gold);line-height:1.1}
-.otc-pick{font-size:12px;color:var(--muted)}
-.timer{font-family:'Barlow Condensed',sans-serif;font-size:48px;font-weight:900;color:var(--text);min-width:100px;text-align:right}
-.timer.urgent{color:var(--red);animation:pulse .5s infinite alternate}
-@keyframes pulse{to{opacity:.4}}
-.last-picks{display:flex;gap:6px;flex-shrink:0}
-.lp{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:6px;padding:5px 10px;min-width:110px}
-.lp.latest{background:rgba(74,222,128,.08);border-color:rgba(74,222,128,.25)}
-.lp-meta{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:2px}
-.lp-name{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px}
-.lp-team{font-size:10px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px;display:flex;align-items:center;gap:4px}
+/* ── HEADER ── */
+.header{
+  background:linear-gradient(180deg,#1a1e2a 0%,#13161e 100%);
+  border-bottom:3px solid var(--gold);
+  padding:0 32px;
+  height:64px;
+  display:flex;
+  align-items:center;
+  gap:16px;
+}
+.header-logo{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:28px;font-weight:900;
+  color:var(--gold);letter-spacing:.08em;
+}
+.header-sub{
+  font-size:12px;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.12em;
+  border-left:2px solid var(--border);
+  padding-left:16px;margin-left:4px;
+}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:24px}
+.header-stat{text-align:center}
+.header-stat-val{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:var(--gold);line-height:1}
+.header-stat-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
 
-.board-wrap{display:flex;flex-direction:column;height:calc(1080px - 80px);background:rgba(13,15,20,.88);overflow:hidden}
-.board-grid{display:grid;gap:6px;padding:8px 12px;flex:1;overflow:hidden}
-.team-col{background:rgba(19,22,30,.9);border:1px solid var(--border);border-radius:6px;overflow:hidden;display:flex;flex-direction:column}
-.team-col.otc{border-color:var(--gold);box-shadow:0 0 14px rgba(240,192,64,.2)}
-.team-col-header{padding:7px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:7px;flex-shrink:0;background:rgba(0,0,0,.2)}
-.team-logo{width:24px;height:24px;border-radius:50%;object-fit:cover;flex-shrink:0}
-.team-logo-placeholder{width:24px;height:24px;border-radius:50%;background:var(--dark4);display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:11px;color:var(--gold);flex-shrink:0}
-.team-name{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
-.team-gm{font-size:10px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.otc-badge{background:rgba(240,192,64,.15);border:1px solid rgba(240,192,64,.4);border-radius:3px;padding:1px 5px;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:9px;color:var(--gold);flex-shrink:0;letter-spacing:.05em}
-.pick-slot{padding:4px 8px;display:flex;align-items:center;gap:5px;border-bottom:1px solid rgba(255,255,255,.03);flex:1;min-height:28px}
-.pick-slot.empty{opacity:.3}
-.slot-pos{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:9px;padding:1px 4px;border-radius:3px;min-width:28px;text-align:center;flex-shrink:0}
-.slot-name{font-size:11px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.slot-ovr{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:12px;flex-shrink:0}
+/* ── BOARD ── */
+.board{
+  display:grid;
+  gap:5px;
+  padding:8px 12px;
+  height:calc(1080px - 64px - 72px);
+}
+
+/* ── TEAM CARD ── */
+.team-card{
+  background:#13161e;
+  border:1px solid var(--border);
+  border-radius:6px;
+  overflow:hidden;
+}
+.team-card.otc{
+  border-color:var(--gold);
+  box-shadow:0 0 16px rgba(240,192,64,.2);
+}
+.team-header{
+  padding:6px 10px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  background:rgba(0,0,0,.25);
+  border-bottom:1px solid var(--border);
+}
+.team-logo{width:22px;height:22px;border-radius:50%;object-fit:cover;flex-shrink:0}
+.team-logo-ph{
+  width:22px;height:22px;border-radius:50%;
+  background:var(--dark4);display:flex;align-items:center;justify-content:center;
+  font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:10px;color:var(--gold);flex-shrink:0;
+}
+.team-name-text{
+  font-family:'Barlow Condensed',sans-serif;
+  font-weight:800;font-size:13px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;
+}
+.team-abbr{font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.05em;flex-shrink:0}
+.otc-dot{width:7px;height:7px;border-radius:50%;background:var(--gold);flex-shrink:0;animation:blink 1s infinite alternate}
+@keyframes blink{to{opacity:.2}}
+
+/* ── PICK ROWS ── */
+.pick-row{
+  padding:3px 10px;
+  display:flex;
+  align-items:center;
+  gap:7px;
+  border-bottom:1px solid rgba(255,255,255,.03);
+  min-height:0;
+  flex:1;
+}
+.pick-row.empty{opacity:.35}
+.pick-num{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:11px;color:var(--muted);
+  min-width:22px;flex-shrink:0;
+}
+.pick-pos{
+  font-family:'Barlow Condensed',sans-serif;
+  font-weight:800;font-size:10px;
+  padding:1px 4px;border-radius:3px;
+  min-width:28px;text-align:center;flex-shrink:0;
+}
+.pick-name{
+  font-family:'Barlow Condensed',sans-serif;
+  font-weight:700;font-size:13px;
+  flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.pick-ovr{
+  font-family:'Barlow Condensed',sans-serif;
+  font-weight:900;font-size:14px;
+  flex-shrink:0;min-width:26px;text-align:right;
+}
+.pick-pos-tag{
+  font-size:9px;color:var(--muted);
+  flex-shrink:0;min-width:40px;text-align:right;
+  font-weight:700;letter-spacing:.04em;
+}
 .ovr-s{color:#ffd700}.ovr-a{color:#4ade80}.ovr-b{color:#60a5fa}.ovr-c{color:#fb923c}.ovr-d{color:var(--muted)}
 
-.round-splash{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:200;background:rgba(13,15,20,.75);animation:splashIn .3s ease,splashOut .4s ease 2.5s forwards}
-@keyframes splashIn{from{opacity:0}to{opacity:1}}
-@keyframes splashOut{from{opacity:1}to{opacity:0}}
-.round-splash-text{font-family:'Barlow Condensed',sans-serif;font-size:130px;font-weight:900;color:var(--gold);letter-spacing:.05em;text-shadow:0 0 60px rgba(240,192,64,.5);animation:scaleIn .4s cubic-bezier(.22,.68,0,1.2)}
-@keyframes scaleIn{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
+/* ── BOTTOM PICK BAR ── */
+.pick-bar{
+  position:fixed;bottom:0;left:0;right:0;
+  height:72px;
+  background:linear-gradient(90deg,#0d1520 0%,#13161e 60%,#0d0f14 100%);
+  border-top:3px solid var(--gold);
+  display:flex;align-items:center;
+  padding:0 32px;gap:24px;
+  z-index:100;
+}
+.pick-bar-logo{
+  width:48px;height:48px;border-radius:50%;
+  border:2px solid var(--gold);overflow:hidden;
+  background:var(--dark4);display:flex;align-items:center;justify-content:center;
+  font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:18px;color:var(--gold);
+  flex-shrink:0;
+}
+.pick-bar-logo img{width:100%;height:100%;object-fit:cover}
+.pick-bar-left{display:flex;flex-direction:column}
+.pick-bar-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;font-weight:700}
+.pick-bar-team{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:var(--gold);line-height:1.1}
+.pick-bar-round{font-size:11px;color:var(--muted)}
+.pick-bar-mid{flex:1;display:flex;align-items:center;justify-content:center;gap:32px}
+.pick-bar-player{font-family:'Barlow Condensed',sans-serif;font-size:38px;font-weight:900;color:var(--text);letter-spacing:.02em}
+.pick-bar-pos{font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800;padding:3px 10px;border-radius:5px}
+.pick-bar-ovr{font-family:'Barlow Condensed',sans-serif;font-size:42px;font-weight:900;color:var(--gold)}
+.pick-bar-num{font-family:'Barlow Condensed',sans-serif;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
+.pick-bar-timer{font-family:'Barlow Condensed',sans-serif;font-size:42px;font-weight:900;color:var(--text);min-width:90px;text-align:right}
+.pick-bar-timer.urgent{color:var(--red);animation:pulse .5s infinite alternate}
+@keyframes pulse{to{opacity:.3}}
 
-.pick-announce{position:fixed;top:88px;left:20px;z-index:100;pointer-events:none}
-.pa-card{background:rgba(13,15,20,.96);border:2px solid var(--gold);border-radius:10px;padding:12px 18px;display:flex;align-items:center;gap:12px;min-width:300px;max-width:400px;animation:slideIn .4s cubic-bezier(.22,.68,0,1.2)}
-@keyframes slideIn{from{transform:translateX(-120%);opacity:0}to{transform:translateX(0);opacity:1}}
-.pa-logo{width:50px;height:50px;border-radius:50%;border:2px solid var(--gold);overflow:hidden;background:var(--dark4);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:18px;color:var(--gold)}
-.pa-logo img{width:100%;height:100%;object-fit:cover}
-.pa-pick-label{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em}
-.pa-team{font-size:12px;font-weight:700;color:var(--gold)}
-.pa-player{font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.pa-stats{display:flex;gap:10px;margin-top:4px}
-.pa-sv{font-size:14px;font-weight:900;color:var(--gold);line-height:1}
-.pa-sl{font-size:9px;color:var(--muted);text-transform:uppercase}
-.pa-ovr-v{font-family:'Barlow Condensed',sans-serif;font-size:38px;font-weight:900;color:var(--gold);line-height:1}
-.pa-ovr-l{font-size:9px;color:var(--muted);text-transform:uppercase}
+/* ── ROUND SPLASH ── */
+.round-splash{
+  position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+  background:rgba(13,15,20,.82);z-index:200;pointer-events:none;
+  animation:sIn .3s ease, sOut .4s 2.5s ease forwards;
+}
+@keyframes sIn{from{opacity:0}to{opacity:1}}
+@keyframes sOut{from{opacity:1}to{opacity:0}}
+.round-text{
+  font-family:'Barlow Condensed',sans-serif;
+  font-size:150px;font-weight:900;color:var(--gold);letter-spacing:.06em;
+  text-shadow:0 0 80px rgba(240,192,64,.5);
+  animation:scl .4s cubic-bezier(.22,.68,0,1.2);
+}
+@keyframes scl{from{transform:scale(.3);opacity:0}to{transform:scale(1);opacity:1}}
+
+/* ── PICK ANNOUNCE (new pick flash) ── */
+.pa-flash{
+  position:fixed;bottom:72px;left:0;right:0;
+  background:rgba(240,192,64,.12);border-top:1px solid rgba(240,192,64,.3);
+  padding:8px 32px;display:flex;align-items:center;gap:16px;
+  animation:paIn .3s ease;z-index:50;
+}
+@keyframes paIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.pa-flash-label{font-size:10px;color:var(--gold);text-transform:uppercase;letter-spacing:.15em;font-weight:800}
+.pa-flash-player{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900}
+.pa-flash-team{font-size:13px;color:var(--muted)}
 </style>
 </head>
 <body>
 
-<div id="round-splash-wrap"></div>
-<div id="pick-announce" class="pick-announce" style="display:none"></div>
-
-<div class="otc-bar">
-  <div id="otc-logo" class="otc-logo"></div>
-  <div>
-    <div class="otc-label">On the Clock</div>
-    <div class="otc-team" id="otc-team">—</div>
-    <div class="otc-pick" id="otc-pick">Waiting...</div>
-  </div>
-  <div class="last-picks" id="last-picks"></div>
-  <div style="margin-left:auto;text-align:right">
-    <div class="otc-label">Time Left</div>
-    <div class="timer" id="timer">—</div>
+<!-- HEADER -->
+<div class="header">
+  <div class="header-logo" id="draft-name">KW5 DRAFT</div>
+  <div class="header-sub">Draft Board</div>
+  <div class="header-right">
+    <div class="header-stat">
+      <div class="header-stat-val" id="hdr-picks">0</div>
+      <div class="header-stat-lbl">Picks Made</div>
+    </div>
+    <div class="header-stat">
+      <div class="header-stat-val" id="hdr-round">—</div>
+      <div class="header-stat-lbl">Round</div>
+    </div>
+    <div class="header-stat">
+      <div class="header-stat-val" id="hdr-remaining">—</div>
+      <div class="header-stat-lbl">Remaining</div>
+    </div>
   </div>
 </div>
 
-<div class="board-wrap">
-  <div class="board-grid" id="board-grid"></div>
+<!-- BOARD -->
+<div class="board" id="board"></div>
+
+<!-- BOTTOM BAR -->
+<div class="pick-bar" id="pick-bar">
+  <div class="pick-bar-logo" id="pb-logo"></div>
+  <div class="pick-bar-left">
+    <div class="pick-bar-label" id="pb-label">ON THE CLOCK</div>
+    <div class="pick-bar-team" id="pb-team">—</div>
+    <div class="pick-bar-round" id="pb-round"></div>
+  </div>
+  <div class="pick-bar-mid" id="pb-mid">
+    <div style="text-align:center">
+      <div class="pick-bar-num">Waiting for draft to start...</div>
+    </div>
+  </div>
+  <div style="text-align:right">
+    <div class="pick-bar-label">TIME LEFT</div>
+    <div class="pick-bar-timer" id="pb-timer">—</div>
+  </div>
 </div>
+
+<!-- ROUND SPLASH -->
+<div id="splash-wrap"></div>
+<!-- PICK ANNOUNCE FLASH -->
+<div id="pa-flash-wrap"></div>
 
 <script>
 const params = new URLSearchParams(location.search);
 const WORKER_URL = (params.get('w') || '').replace(/\/+$/, '');
 
-let ds = null, timerInterval = null, lastPickNum = -1, paTimeout = null, lastRound = 0;
+let ds = null, timerInterval = null, lastPickNum = -1, lastRound = 0, paFlashTimeout = null;
 
+// ── HELPERS ──
 function buildSeq(ds) {
   const seq = [];
   for (let r = 0; r < ds.config.perTeam; r++) {
@@ -122,14 +279,26 @@ function ovrClass(ovr) {
 }
 
 function posStyle(pos) {
-  const bg = {'PG':'rgba(96,165,250,.2)','SG':'rgba(96,165,250,.2)','SF':'rgba(196,181,253,.2)','LCK':'rgba(196,181,253,.2)','PF':'rgba(196,181,253,.2)','C':'rgba(134,239,172,.2)'}[pos]||'rgba(255,255,255,.1)';
-  const tc = {'PG':'#93c5fd','SG':'#93c5fd','SF':'#c4b5fd','LCK':'#c4b5fd','PF':'#c4b5fd','C':'#86efac'}[pos]||'var(--muted)';
-  return { bg, tc };
+  const styles = {
+    'PG': {bg:'rgba(96,165,250,.2)',  tc:'#93c5fd'},
+    'SG': {bg:'rgba(96,165,250,.2)',  tc:'#93c5fd'},
+    'SF': {bg:'rgba(196,181,253,.2)', tc:'#c4b5fd'},
+    'LCK':{bg:'rgba(196,181,253,.2)', tc:'#c4b5fd'},
+    'PF': {bg:'rgba(196,181,253,.2)', tc:'#c4b5fd'},
+    'C':  {bg:'rgba(134,239,172,.2)', tc:'#86efac'},
+  };
+  return styles[pos] || {bg:'rgba(255,255,255,.1)', tc:'var(--muted)'};
 }
 
+function logoHtml(team, size=22) {
+  if (team.logoB64) return '<img src="'+team.logoB64+'" style="width:'+size+'px;height:'+size+'px;border-radius:50%;object-fit:cover;flex-shrink:0">';
+  return '<div style="width:'+size+'px;height:'+size+'px;border-radius:50%;background:var(--dark4);display:flex;align-items:center;justify-content:center;font-family:Barlow Condensed,sans-serif;font-weight:900;font-size:'+(size*0.45|0)+'px;color:var(--gold);flex-shrink:0">'+((team.name||'?')[0])+'</div>';
+}
+
+// ── TIMER ──
 function startTimer(endsAt) {
   clearInterval(timerInterval);
-  const el = document.getElementById('timer');
+  const el = document.getElementById('pb-timer');
   timerInterval = setInterval(() => {
     const left = Math.max(0, Math.round((new Date(endsAt) - Date.now()) / 1000));
     el.textContent = String(Math.floor(left/60)).padStart(2,'0')+':'+String(left%60).padStart(2,'0');
@@ -137,104 +306,106 @@ function startTimer(endsAt) {
   }, 500);
 }
 
+// ── PICK ANNOUNCE FLASH ──
 function checkNewPick(ds) {
   const picks = ds.picks || [];
-  const latest = picks[picks.length - 1];
+  const latest = picks[picks.length-1];
   if (!latest) return;
   if (lastPickNum === -1) { lastPickNum = latest.pickNum; return; }
   if (latest.pickNum === lastPickNum) return;
   lastPickNum = latest.pickNum;
   const team   = ds.teams.find(t=>t.id===latest.teamId)||{};
   const player = (ds.players||[]).find(p=>p.id===latest.playerId)||{};
-  const el = document.getElementById('pick-announce');
-  clearTimeout(paTimeout);
-  el.innerHTML = '<div class="pa-card">'
-    +'<div class="pa-logo">'+(team.logoB64?'<img src="'+team.logoB64+'">':((team.name||'?')[0]))+'</div>'
-    +'<div style="flex:1;min-width:0">'
-    +'<div class="pa-pick-label">Pick #'+latest.pickNum+' · Round '+latest.round+'</div>'
-    +'<div class="pa-team">'+(team.name||'')+'</div>'
-    +'<div class="pa-player">'+latest.playerId+'</div>'
-    +'<div class="pa-stats">'
-    +'<div><div class="pa-sv">'+(player.ppg!=null?(+player.ppg).toFixed(1):'—')+'</div><div class="pa-sl">PPG</div></div>'
-    +'<div><div class="pa-sv">'+(player.rpg!=null?(+player.rpg).toFixed(1):'—')+'</div><div class="pa-sl">RPG</div></div>'
-    +'<div><div class="pa-sv">'+(player.pos||'?')+'</div><div class="pa-sl">POS</div></div>'
-    +'</div></div>'
-    +'<div style="text-align:center;flex-shrink:0"><div class="pa-ovr-v">'+(player.ovr||'?')+'</div><div class="pa-ovr-l">OVR</div></div>'
-    +'</div>';
-  el.style.display = 'block';
-  paTimeout = setTimeout(() => { el.style.display = 'none'; }, 7000);
+  showPickFlash(latest, team, player);
 }
 
+function showPickFlash(pick, team, player) {
+  clearTimeout(paFlashTimeout);
+  const wrap = document.getElementById('pa-flash-wrap');
+  const { bg, tc } = posStyle(player.pos||'');
+  wrap.innerHTML = '<div class="pa-flash">'
+    +logoHtml(team, 32)
+    +'<div>'
+    +'<div class="pa-flash-label">Pick #'+pick.pickNum+'</div>'
+    +'<div class="pa-flash-player">'+pick.playerId+' <span class="pick-pos" style="background:'+bg+';color:'+tc+';font-size:12px;padding:1px 6px;border-radius:3px">'+(player.pos||'?')+'</span></div>'
+    +'</div>'
+    +'<div class="pa-flash-team">'+team.name+'</div>'
+    +'<div style="margin-left:auto;font-family:Barlow Condensed,sans-serif;font-size:32px;font-weight:900;color:var(--gold)">'+(player.ovr||'?')+'</div>'
+    +'</div>';
+  paFlashTimeout = setTimeout(() => { wrap.innerHTML = ''; }, 6000);
+}
+
+// ── ROUND SPLASH ──
 function checkRound(ds) {
   const seq = ds.status==='live' ? buildSeq(ds) : [];
   const idx = ds.currentPickNum||0;
   if (!seq.length) return;
-  const cur = idx < seq.length ? seq[idx]?.round : null;
+  const cur  = idx < seq.length ? seq[idx]?.round : null;
   const prev = idx > 0 ? seq[idx-1]?.round : 0;
   if (cur && prev && cur !== prev && cur !== lastRound) {
     lastRound = cur;
-    const wrap = document.getElementById('round-splash-wrap');
-    wrap.innerHTML = '<div class="round-splash"><div class="round-splash-text">ROUND '+cur+'</div></div>';
+    const wrap = document.getElementById('splash-wrap');
+    wrap.innerHTML = '<div class="round-splash"><div class="round-text">ROUND '+cur+'</div></div>';
     setTimeout(() => { wrap.innerHTML = ''; }, 3200);
   }
 }
 
+// ── RENDER ──
 function render() {
   if (!ds) return;
   checkNewPick(ds);
   checkRound(ds);
 
-  const pick = getCurrentPick(ds);
+  const pick   = getCurrentPick(ds);
   const status = ds.status || 'idle';
-  const picks = ds.picks || [];
+  const picks  = ds.picks || [];
+  const seq    = buildSeq(ds);
 
-  // OTC
+  // Header
+  document.getElementById('draft-name').textContent = ds.config?.name || 'KW5 DRAFT';
+  document.getElementById('hdr-picks').textContent = picks.length;
+  document.getElementById('hdr-round').textContent = pick ? pick.round : (status==='done'?'—':'—');
+  document.getElementById('hdr-remaining').textContent = pick ? (pick.totalPicks - picks.length) : 0;
+
+  // Bottom bar
   if (pick) {
-    document.getElementById('otc-team').textContent = pick.team?.name || '—';
-    document.getElementById('otc-pick').textContent = 'Round '+pick.round+' · Pick #'+pick.pickNum+' of '+pick.totalPicks;
-    const logoEl = document.getElementById('otc-logo');
-    if (pick.team?.logoB64) logoEl.innerHTML = '<img src="'+pick.team.logoB64+'" style="width:100%;height:100%;object-fit:cover">';
-    else logoEl.textContent = (pick.team?.name||'?')[0];
+    const pbLogo = document.getElementById('pb-logo');
+    if (pick.team?.logoB64) pbLogo.innerHTML = '<img src="'+pick.team.logoB64+'" style="width:100%;height:100%;object-fit:cover">';
+    else pbLogo.textContent = (pick.team?.name||'?')[0];
+    document.getElementById('pb-team').textContent  = pick.team?.name || '—';
+    document.getElementById('pb-round').textContent = 'Round '+pick.round+' · Pick #'+pick.pickNum+' of '+pick.totalPicks;
+    document.getElementById('pb-label').textContent = 'ON THE CLOCK';
+    document.getElementById('pb-mid').innerHTML = '<div style="font-family:Barlow Condensed,sans-serif;font-size:16px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Waiting for pick...</div>';
     if (status==='live' && ds.timerEnd) startTimer(ds.timerEnd);
-    else { clearInterval(timerInterval); document.getElementById('timer').textContent = '—'; }
-  } else {
-    document.getElementById('otc-team').textContent = status==='done'?'DRAFT COMPLETE':'—';
-    document.getElementById('otc-pick').textContent = '';
+    else { clearInterval(timerInterval); document.getElementById('pb-timer').textContent='—'; }
+  } else if (status==='done') {
+    document.getElementById('pb-label').textContent = '';
+    document.getElementById('pb-team').textContent  = 'DRAFT COMPLETE';
+    document.getElementById('pb-round').textContent = picks.length + ' total picks';
+    document.getElementById('pb-logo').textContent  = '';
+    document.getElementById('pb-mid').innerHTML     = '';
+    document.getElementById('pb-timer').textContent = '—';
     clearInterval(timerInterval);
-    document.getElementById('timer').textContent = '—';
   }
 
-  // Last 4 picks
-  const lpEl = document.getElementById('last-picks');
-  lpEl.innerHTML = picks.slice(-4).reverse().map((p,i) => {
-    const t = ds.teams.find(x=>x.id===p.teamId)||{};
-    const logoHtml = t.logoB64
-      ? '<img src="'+t.logoB64+'" style="width:14px;height:14px;border-radius:50%;object-fit:cover">'
-      : '<div style="width:14px;height:14px;border-radius:50%;background:var(--dark4);display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:800;color:var(--gold)">'+((t.name||'?')[0])+'</div>';
-    return '<div class="lp'+(i===0?' latest':'')+'">'
-      +'<div class="lp-meta">#'+p.pickNum+' · R'+p.round+'</div>'
-      +'<div class="lp-name">'+p.playerId+'</div>'
-      +'<div class="lp-team">'+logoHtml+'<span>'+t.name+'</span></div>'
-      +'</div>';
-  }).join('');
-
-  // Board grid
-  const perTeam = ds.config?.perTeam || 5;
+  // Board
   const SLOTS = ['PG','SG','LCK','PF','C'];
+  const perTeam = ds.config?.perTeam || 5;
   const extraSlots = Math.max(0, perTeam - SLOTS.length);
   const slots = [...SLOTS, ...Array.from({length:extraSlots},(_,i)=>'F'+(i+1))];
-  const pickedIds = new Set(picks.map(p=>p.playerId));
 
-  const grid = document.getElementById('board-grid');
-  grid.style.gridTemplateColumns = 'repeat('+ds.teams.length+',1fr)';
+  const cols = ds.teams.length;
+  const board = document.getElementById('board');
+  board.style.gridTemplateColumns = 'repeat('+cols+',1fr)';
 
-  grid.innerHTML = ds.teams.map(t => {
+  board.innerHTML = ds.teams.map(t => {
     const teamPicks = picks.filter(p=>p.teamId===t.id);
     const isOtc = pick && pick.teamId === t.id;
-    const logoHtml = t.logoB64
+    const logoEl = t.logoB64
       ? '<img src="'+t.logoB64+'" class="team-logo">'
-      : '<div class="team-logo-placeholder">'+((t.name||'?')[0])+'</div>';
+      : '<div class="team-logo-ph">'+((t.name||'?')[0])+'</div>';
 
+    // Fill position slots
     const filled = {}, flexQ = [];
     teamPicks.forEach(p => {
       const pl = (ds.players||[]).find(x=>x.id===p.playerId)||{};
@@ -243,18 +414,36 @@ function render() {
       else flexQ.push({ p, pl });
     });
 
-    const pickSlots = slots.map(slot => {
+    const pickRows = slots.map(slot => {
       const entry = filled[slot] || (slot.startsWith('F') && flexQ.length ? { p:flexQ.shift(), pl:{} } : null);
-      const { bg, tc } = posStyle(slot==='LCK'?'SF':slot);
-      if (!entry) return '<div class="pick-slot empty"><span class="slot-pos" style="background:'+bg+';color:'+tc+'">'+slot+'</span><span style="font-size:10px;color:var(--muted)">—</span></div>';
-      return '<div class="pick-slot"><span class="slot-pos" style="background:'+bg+';color:'+tc+'">'+slot+'</span><span class="slot-name">'+entry.p.playerId+'</span><span class="slot-ovr '+ovrClass(entry.pl.ovr||50)+'">'+( entry.pl.ovr||'')+'</span></div>';
+      const posKey = slot === 'LCK' ? 'SF' : slot;
+      const { bg, tc } = posStyle(posKey);
+      if (!entry) {
+        return '<div class="pick-row empty">'
+          +'<span class="pick-pos" style="background:'+bg+';color:'+tc+'">'+slot+'</span>'
+          +'<span class="pick-name" style="color:var(--muted)">—</span>'
+          +'</div>';
+      }
+      const { p, pl } = entry;
+      return '<div class="pick-row">'
+        +'<span class="pick-num">#'+p.pickNum+'</span>'
+        +'<span class="pick-pos" style="background:'+bg+';color:'+tc+'">'+slot+'</span>'
+        +'<span class="pick-name">'+p.playerId+'</span>'
+        +'<span class="pick-ovr '+ovrClass(pl.ovr||50)+'">'+(pl.ovr||'')+'</span>'
+        +'</div>';
     }).join('');
 
-    return '<div class="team-col'+(isOtc?' otc':'')+'">'
-      +'<div class="team-col-header">'+logoHtml
-      +'<div style="flex:1;min-width:0"><div class="team-name">'+t.name+'</div><div class="team-gm">'+(t.gmName||'')+'</div></div>'
-      +(isOtc?'<span class="otc-badge">ON CLOCK</span>':'')+'</div>'
-      +pickSlots+'</div>';
+    return '<div class="team-card'+(isOtc?' otc':'')+'">'
+      +'<div class="team-header">'
+      +(isOtc?'<div class="otc-dot"></div>':'')
+      +logoEl
+      +'<div class="team-name-text">'+t.name+'</div>'
+      +'<div class="team-abbr">'+teamPicks.length+'/'+perTeam+'</div>'
+      +'</div>'
+      +'<div style="display:flex;flex-direction:column;flex:1;overflow:hidden">'
+      +pickRows
+      +'</div>'
+      +'</div>';
   }).join('');
 }
 
