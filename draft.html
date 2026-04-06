@@ -595,6 +595,9 @@ select.form-input{width:100%}
       <span id="board-status-txt" style="font-size:12px;color:var(--muted)">Loading...</span>
       <input id="board-worker-input" class="form-input" style="width:220px;font-size:12px" placeholder="Worker URL...">
       <button class="btn btn-outline btn-sm" onclick="setBoardWorker()">Connect</button>
+      <div id="board-gm-btn" style="display:none">
+        <button class="btn btn-gold btn-sm" onclick="switchView('gm')">🎮 GM Panel</button>
+      </div>
     </div>
   </div>
   <div class="container">
@@ -1834,6 +1837,9 @@ async function initBoard() {
   const wUrl = new URLSearchParams(location.search).get('w');
   if (wUrl) { WORKER_URL = decodeURIComponent(wUrl); localStorage.setItem('draft_worker_url', WORKER_URL); }
   document.getElementById('board-worker-input').value = WORKER_URL;
+  // Show GM button if logged in
+  const gmBtn = document.getElementById('board-gm-btn');
+  if (gmBtn) gmBtn.style.display = discordUser ? 'block' : 'none';
   if (WORKER_URL) { await loadDraftState(); renderBoard(); }
   pollInterval = setInterval(async () => { await loadDraftState(); renderBoard(); }, 3000);
 }
