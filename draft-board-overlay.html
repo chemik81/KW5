@@ -55,7 +55,8 @@ body{
 
 /* ── BOARD ── */
 .board{
-  display:grid;
+  display:flex;
+  flex-direction:column;
   gap:5px;
   padding:8px 12px;
   height:calc(1080px - 64px - 72px);
@@ -394,11 +395,18 @@ function render() {
   const extraSlots = Math.max(0, perTeam - SLOTS.length);
   const slots = [...SLOTS, ...Array.from({length:extraSlots},(_,i)=>'F'+(i+1))];
 
-  const cols = ds.teams.length;
+  const teamsPerRow = 6;
   const board = document.getElementById('board');
-  board.style.gridTemplateColumns = 'repeat('+cols+',1fr)';
+  board.style.gridTemplateColumns = '1fr';
+  board.style.gridTemplateRows = 'repeat(2,1fr)';
 
-  board.innerHTML = ds.teams.map(t => {
+  // Split teams into two rows
+  const rows = [ds.teams.slice(0, teamsPerRow), ds.teams.slice(teamsPerRow)];
+
+  board.innerHTML = rows.map(rowTeams => {
+    if (!rowTeams.length) return '';
+    return '<div style="display:grid;grid-template-columns:repeat('+rowTeams.length+',1fr);gap:5px;flex:1;min-height:0">'
+      + rowTeams.map(t => {
     const teamPicks = picks.filter(p=>p.teamId===t.id);
     const isOtc = pick && pick.teamId === t.id;
     const logoEl = t.logoB64
@@ -444,6 +452,8 @@ function render() {
       +pickRows
       +'</div>'
       +'</div>';
+    }).join('')
+    + '</div>';
   }).join('');
 }
 
