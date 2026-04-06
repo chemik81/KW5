@@ -305,6 +305,31 @@ body {
   padding: 0 16px;
 }
 
+/* ── ROUND ANIMATION ── */
+.round-splash {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 200;
+  background: rgba(13,15,20,.7);
+  animation: splashIn .3s ease, splashOut .4s ease 2.5s forwards;
+}
+@keyframes splashIn  { from { opacity:0; } to { opacity:1; } }
+@keyframes splashOut { from { opacity:1; } to { opacity:0; } }
+.round-splash-text {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 120px;
+  font-weight: 900;
+  color: var(--gold);
+  letter-spacing: .05em;
+  text-shadow: 0 0 60px rgba(240,192,64,.5);
+  animation: scaleIn .4s cubic-bezier(.22,.68,0,1.2);
+}
+@keyframes scaleIn { from { transform: scale(.5); opacity:0; } to { transform: scale(1); opacity:1; } }
+
 /* ── STATUS ── */
 .status-idle {
   display: flex;
@@ -335,6 +360,7 @@ body {
 </style>
 </head>
 <body>
+<div id="round-splash" style="display:none"></div>
 <div class="overlay" id="overlay">
   <div class="top-row" id="top-row">
     <div class="status-idle" id="idle-msg">
@@ -519,23 +545,52 @@ function render() {
     if (tEl) tEl.textContent = status === 'paused' ? 'PAUSED' : '—';
   }
 
-  renderTicker(available);
+  // Check round change
+  const seq2 = draftState.status === 'live' ? buildPickSequence(draftState) : [];
+  checkRoundChange(picks, seq2, draftState.currentPickNum||0);
+
+  // Ticker with picked player stats
+  const pickedPlayerStats = picks.map(p => {
+    const pl = (draftState.players||[]).find(x=>x.id===p.playerId)||{};
+    return { ...pl, name: p.playerId };
+  });
+  renderTicker(available, pickedPlayerStats);
 }
 
-function renderTicker(available) {
-  const positions = ['PG', 'SG', 'SF', 'PF', 'C'];
+let lastRound = 0;
+function checkRoundChange(picks, seq, currentIdx) {
+  if (!picks.length || !seq.length) return;
+  const currentRound = currentIdx < seq.length ? seq[currentIdx]?.round : null;
+  const prevRound = currentIdx > 0 ? seq[currentIdx-1]?.round : 0;
+  if (currentRound && prevRound && currentRound !== prevRound && currentRound !== lastRound) {
+    lastRound = currentRound;
+    showRoundSplash(currentRound);
+  }
+}
+
+function showRoundSplash(round) {
+  const el = document.getElementById('round-splash');
+  el.innerHTML = '<div class="round-splash"><div class="round-splash-text">ROUND ' + round + '</div></div>';
+  el.style.display = 'block';
+  setTimeout(() => { el.style.display = 'none'; }, 3000);
+}
+
+function renderTicker(available, picked) {
   let items = [];
-  positions.forEach(pos => {
-    const best = available.filter(p => p.pos === pos).slice(0, 3);
-    best.forEach((p, i) => {
-      items.push(`<span class="ticker-item">
-        <span class="ticker-pos">${pos}</span>
-        <span class="ticker-rank">#${i + 1}</span>
-        <span class="ticker-name">${p.name}</span>
-        <span class="ticker-ovr">${p.ovr}</span>
-      </span>`);
+  // Recent picked player stats
+  if (picked && picked.length) {
+    picked.slice(-6).reverse().forEach(p => {
+      items.push('<span class="ticker-item"><span class="ticker-pos" style="background:rgba(74,222,128,.15);color:var(--green)">PICK</span><span class="ticker-name">' + p.name + '</span><span class="ticker-ovr">' + (p.ovr||'') + '</span><span style="color:var(--muted);font-size:11px;margin-left:4px">' + (p.ppg!=null?(+p.ppg).toFixed(1):'—') + 'pts ' + (p.rpg!=null?(+p.rpg).toFixed(1):'—') + 'reb</span></span>');
     });
-    if (best.length) items.push(`<span class="ticker-sep">·</span>`);
+    items.push('<span class="ticker-sep">·</span>');
+  }
+  const positions = ['PG', 'SG', 'SF', 'PF', 'C'];
+  positions.forEach(pos => {
+    const best = available.filter(p => p.pos === pos).slice(0, 2);
+    best.forEach((p, i) => {
+      items.push('<span class="ticker-item"><span class="ticker-pos">' + pos + '</span><span class="ticker-rank">#' + (i+1) + '</span><span class="ticker-name">' + p.name + '</span><span class="ticker-ovr">' + p.ovr + '</span></span>');
+    });
+    if (best.length) items.push('<span class="ticker-sep">·</span>');
   });
 
   if (!items.length) {
