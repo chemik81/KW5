@@ -157,35 +157,43 @@ function renderSlide(idx, animate=true) {
     pickMap[pk.playerId] = t;
   });
 
-  const html = players.map((p, i) => {
-    const isTop3 = i < 3;
-    const pickedByTeam = p.isPicked ? (pickMap[p.id]||{}) : null;
-    const teamLogoHtml = pickedByTeam
-      ? (pickedByTeam.logoB64
-          ? '<img src="'+pickedByTeam.logoB64+'" style="width:22px;height:22px;border-radius:50%;object-fit:cover;flex-shrink:0;opacity:.7">'
-          : '<div style="width:22px;height:22px;border-radius:50%;background:var(--dark4);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:var(--muted);flex-shrink:0">'+((pickedByTeam.name||'?')[0])+'</div>')
-      : '';
-    const pickedOverlay = pickedByTeam
-      ? '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:flex-end;padding-right:14px;gap:6px;pointer-events:none">'
+  const html = players.map(function(p, i) {
+    var isTop3 = i < 3;
+    var pickedByTeam = p.isPicked ? (pickMap[p.id]||{}) : null;
+    var rankClass = isTop3 ? "rank top3" : "rank";
+    var cardClass = p.isPicked ? "player-card picked" : "player-card";
+    var ovrC = ovrClass(p.ovr||50);
+    var ppg = p.ppg!=null?(+p.ppg).toFixed(1):"-";
+    var rpg = p.rpg!=null?(+p.rpg).toFixed(1):"-";
+    var apg = p.apg!=null?(+p.apg).toFixed(1):"-";
+    var per = p.per!=null?(+p.per).toFixed(1):"-";
+    var gp  = p.gp||"-";
+    var teamLogoHtml = "";
+    var pickedOverlay = "";
+    if (pickedByTeam) {
+      teamLogoHtml = pickedByTeam.logoB64
+        ? "<img src=\""+pickedByTeam.logoB64+"\" style=\"width:22px;height:22px;border-radius:50%;object-fit:cover;flex-shrink:0;opacity:.7\">"
+        : "<div style=\"width:22px;height:22px;border-radius:50%;background:var(--dark4);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:var(--muted);flex-shrink:0\">"+(pickedByTeam.name||"?")[0]+"</div>";
+      pickedOverlay = "<div style=\"position:absolute;inset:0;display:flex;align-items:center;justify-content:flex-end;padding-right:14px;gap:6px;pointer-events:none\">"
         + teamLogoHtml
-        + '<div style="font-family:Barlow Condensed,sans-serif;font-weight:800;font-size:11px;color:var(--muted);letter-spacing:.08em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:90px">'+(pickedByTeam.name||'')+'</div>'
-        + '</div>'
-      : '';
-    return '<div class="player-card'+(p.isPicked?' picked':'')+'" style="position:relative">'
-      +'<div class="rank'+(isTop3?' top3':'')">'+(i+1)+'</div>'
-      +'<div class="player-info">'
-      +'<div class="player-name">'+p.name+'</div>'
-      +'<div class="player-stats">'
-      +'<div class="stat"><div class="stat-val">'+(p.ppg!=null?(+p.ppg).toFixed(1):'-')+'</div><div class="stat-lbl">PPG</div></div>'
-      +'<div class="stat"><div class="stat-val">'+(p.rpg!=null?(+p.rpg).toFixed(1):'-')+'</div><div class="stat-lbl">RPG</div></div>'
-      +'<div class="stat"><div class="stat-val">'+(p.apg!=null?(+p.apg).toFixed(1):'-')+'</div><div class="stat-lbl">APG</div></div>'
-      +'<div class="stat"><div class="stat-val">'+(p.per!=null?(+p.per).toFixed(1):'-')+'</div><div class="stat-lbl">PER</div></div>'
-      +'<div class="stat"><div class="stat-val">'+(p.gp||'-')+'</div><div class="stat-lbl">GP</div></div>'
-      +'</div></div>'
-      +'<div class="ovr-badge '+ovrClass(p.ovr||50)+'">'+(p.ovr||'?')+'</div>'
+        + "<div style=\"font-family:Barlow Condensed,sans-serif;font-weight:800;font-size:11px;color:var(--muted);max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap\">"+(pickedByTeam.name||"")+"</div>"
+        + "</div>";
+    }
+    return "<div class=\""+cardClass+"\" style=\"position:relative\">"
+      +"<div class=\""+rankClass+"\">"+(i+1)+"</div>"
+      +"<div class=\"player-info\">"
+      +"<div class=\"player-name\">"+p.name+"</div>"
+      +"<div class=\"player-stats\">"
+      +"<div class=\"stat\"><div class=\"stat-val\">"+ppg+"</div><div class=\"stat-lbl\">PPG</div></div>"
+      +"<div class=\"stat\"><div class=\"stat-val\">"+rpg+"</div><div class=\"stat-lbl\">RPG</div></div>"
+      +"<div class=\"stat\"><div class=\"stat-val\">"+apg+"</div><div class=\"stat-lbl\">APG</div></div>"
+      +"<div class=\"stat\"><div class=\"stat-val\">"+per+"</div><div class=\"stat-lbl\">PER</div></div>"
+      +"<div class=\"stat\"><div class=\"stat-val\">"+gp+"</div><div class=\"stat-lbl\">GP</div></div>"
+      +"</div></div>"
+      +"<div class=\"ovr-badge "+ovrC+"\">"+(p.ovr||"?")+"</div>"
       +pickedOverlay
-      +'</div>';
-  }).join('');
+      +"</div>";
+  }).join("");
 
   if (animate) {
     grid.className = 'players-grid slide';
