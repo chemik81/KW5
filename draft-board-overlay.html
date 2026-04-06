@@ -130,6 +130,48 @@ body {
 .slot-name { font-size: 12px; font-weight: 600; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .slot-ovr  { font-family: 'Barlow Condensed', sans-serif; font-weight: 900; font-size: 13px; flex-shrink: 0; }
 
+/* ── PICK ANNOUNCE ── */
+.pick-announce {
+  position: fixed;
+  top: 100px;
+  left: 20px;
+  z-index: 100;
+  pointer-events: none;
+}
+.pa-card {
+  background: rgba(13,15,20,.96);
+  border: 2px solid var(--gold);
+  border-radius: 12px;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 340px;
+  max-width: 420px;
+  animation: slideIn .4s cubic-bezier(.22,.68,0,1.2);
+}
+@keyframes slideIn {
+  from { transform: translateX(-120%); opacity: 0; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+.pa-logo {
+  width: 56px; height: 56px; border-radius: 50%;
+  border: 2px solid var(--gold); overflow: hidden;
+  background: var(--dark4); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Barlow Condensed', sans-serif; font-weight: 900; font-size: 20px; color: var(--gold);
+}
+.pa-logo img { width: 100%; height: 100%; object-fit: cover; }
+.pa-label { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: .15em; font-weight: 700; }
+.pa-team  { font-size: 13px; font-weight: 700; color: var(--gold); }
+.pa-player{ font-size: 26px; font-weight: 900; color: var(--text); line-height: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pa-stats { display: flex; gap: 12px; margin-top: 5px; }
+.pa-stat-val { font-size: 15px; font-weight: 900; color: var(--gold); line-height: 1; }
+.pa-stat-lbl { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; }
+.pa-ovr { text-align: center; flex-shrink: 0; }
+.pa-ovr-val { font-size: 40px; font-weight: 900; color: var(--gold); line-height: 1; }
+.pa-ovr-lbl { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; }
+
 /* ── TICKER ── */
 .ticker {
   position: fixed; bottom: 0; left: 0; right: 0;
@@ -161,6 +203,9 @@ body {
     <div class="timer" id="timer">—</div>
   </div>
 </div>
+
+<!-- PICK ANNOUNCE -->
+<div class="pick-announce" id="pa" style="display:none"></div>
 
 <!-- BOARD -->
 <div class="board" id="board"></div>
@@ -227,6 +272,7 @@ function startTimer(endsAt) {
 // ── RENDER ──
 function render() {
   if (!ds) return;
+  checkNewPick(ds);
   const pick = getCurrentPick(ds);
   const status = ds.status || 'idle';
   const picks = ds.picks || [];
@@ -312,6 +358,46 @@ function render() {
   });
   const html = items.join('') + items.join('');
   document.getElementById('ticker').innerHTML = html || '<span class="ticker-item">KW5 DRAFT</span>';
+}
+
+// ── PICK ANNOUNCE ──
+let lastPickNum = -1;
+let paTimeout = null;
+
+function showPickAnnounce(pick, team, player) {
+  const el = document.getElementById('pa');
+  clearTimeout(paTimeout);
+  const logoHtml = team.logoB64
+    ? '<img src="' + team.logoB64 + '">'
+    : (team.name||'?')[0];
+  el.innerHTML = '<div class="pa-card">'
+    + '<div class="pa-logo">' + (team.logoB64 ? '<img src="' + team.logoB64 + '">' : (team.name||'?')[0]) + '</div>'
+    + '<div style="flex:1;min-width:0">'
+    + '<div class="pa-label">Pick #' + pick.pickNum + ' · Round ' + pick.round + '</div>'
+    + '<div class="pa-team">' + (team.name||'') + '</div>'
+    + '<div class="pa-player">' + pick.playerId + '</div>'
+    + '<div class="pa-stats">'
+    + '<div><div class="pa-stat-val">' + (player.ppg!=null?(+player.ppg).toFixed(1):'—') + '</div><div class="pa-stat-lbl">PPG</div></div>'
+    + '<div><div class="pa-stat-val">' + (player.rpg!=null?(+player.rpg).toFixed(1):'—') + '</div><div class="pa-stat-lbl">RPG</div></div>'
+    + '<div><div class="pa-stat-val">' + (player.apg!=null?(+player.apg).toFixed(1):'—') + '</div><div class="pa-stat-lbl">APG</div></div>'
+    + '<div><div class="pa-stat-val">' + (player.pos||'?') + '</div><div class="pa-stat-lbl">POS</div></div>'
+    + '</div></div>'
+    + '<div class="pa-ovr"><div class="pa-ovr-val">' + (player.ovr||'?') + '</div><div class="pa-ovr-lbl">OVR</div></div>'
+    + '</div>';
+  el.style.display = 'block';
+  paTimeout = setTimeout(() => { el.style.display = 'none'; }, 7000);
+}
+
+function checkNewPick(ds) {
+  const picks = ds.picks || [];
+  const latest = picks[picks.length - 1];
+  if (!latest) return;
+  if (lastPickNum === -1) { lastPickNum = latest.pickNum; return; }
+  if (latest.pickNum === lastPickNum) return;
+  lastPickNum = latest.pickNum;
+  const team   = (ds.teams  ||[]).find(t=>t.id===latest.teamId)  ||{};
+  const player = (ds.players||[]).find(p=>p.id===latest.playerId)||{};
+  showPickAnnounce(latest, team, player);
 }
 
 // ── LOAD ──
