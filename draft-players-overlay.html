@@ -195,14 +195,6 @@ function renderSlide(idx, animate=true) {
       +"<div class=\"ovr-badge "+ovrC+"\">"+(p.ovr||"?")+"</div>"
       +"</div>";
   }).join("");
-      +"<div class=\"stat\"><div class=\"stat-val\">"+apg+"</div><div class=\"stat-lbl\">APG</div></div>"
-      +"<div class=\"stat\"><div class=\"stat-val\">"+per+"</div><div class=\"stat-lbl\">PER</div></div>"
-      +"<div class=\"stat\"><div class=\"stat-val\">"+gp+"</div><div class=\"stat-lbl\">GP</div></div>"
-      +"</div></div>"
-      +"<div class=\"ovr-badge "+ovrC+"\">"+(p.ovr||"?")+"</div>"
-      +pickedOverlay
-      +"</div>";
-  }).join("");
 
   if (animate) {
     grid.className = 'players-grid slide';
