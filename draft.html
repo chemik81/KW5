@@ -497,6 +497,12 @@ select.form-input{width:100%}
       </div>
     </div>
 
+    <!-- Recent picks -->
+    <div class="card" style="margin-bottom:12px;padding:10px 14px" id="gm-recent-picks-card">
+      <div class="card-title" style="margin-bottom:8px">Recent Picks</div>
+      <div id="gm-recent-picks" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+    </div>
+
     <!-- My turn banner -->
     <div id="gm-my-turn-banner" style="display:none;background:rgba(240,192,64,.1);border:2px solid var(--gold);border-radius:var(--radius);padding:12px 16px;margin-bottom:16px;text-align:center">
       <div style="font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:900;color:var(--gold)">🏀 YOU ARE ON THE CLOCK!</div>
@@ -603,10 +609,13 @@ select.form-input{width:100%}
   <div class="container">
     <!-- OTC -->
     <div class="otc-bar" style="margin-bottom:16px">
-      <div>
-        <div class="otc-label">On the Clock</div>
-        <div class="otc-team" id="board-otc-team">—</div>
-        <div class="otc-pick" id="board-otc-pick">Waiting...</div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div id="board-otc-logo" style="width:52px;height:52px;border-radius:50%;overflow:hidden;background:var(--dark4);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:20px;color:var(--gold);flex-shrink:0"></div>
+        <div>
+          <div class="otc-label">On the Clock</div>
+          <div class="otc-team" id="board-otc-team">—</div>
+          <div class="otc-pick" id="board-otc-pick">Waiting...</div>
+        </div>
       </div>
       <div style="margin-left:8px" id="board-last-pick" style="display:none"></div>
       <div class="timer-wrap">
@@ -1550,6 +1559,7 @@ function renderGm() {
   renderGmPlayers();
   renderGmMyRoster();
   renderGmAllTeams();
+  renderGmRecentPicks();
 }
 
 function gmSort(key) {
@@ -1641,6 +1651,26 @@ async function gmMakePick() {
   } catch(e) {
     notify('Pick error: ' + e.message, 'error');
   }
+}
+
+function renderGmRecentPicks() {
+  const el = document.getElementById('gm-recent-picks');
+  if (!el || !draftState) return;
+  const picks = (draftState.picks || []).slice(-5).reverse();
+  if (!picks.length) { el.innerHTML = '<span style="color:var(--muted);font-size:12px">No picks yet</span>'; return; }
+  el.innerHTML = picks.map((p, i) => {
+    const t = (draftState.teams||[]).find(x=>x.id===p.teamId)||{};
+    const pl = (draftState.players||[]).find(x=>x.id===p.playerId)||{};
+    const isLatest = i === 0;
+    const logoHtml = t.logoB64
+      ? `<img src="${t.logoB64}" style="width:16px;height:16px;border-radius:50%;object-fit:cover">`
+      : `<div style="width:16px;height:16px;border-radius:50%;background:var(--dark4);display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:800;color:var(--gold)">${(t.name||'?')[0]}</div>`;
+    return `<div style="background:${isLatest?'rgba(74,222,128,.08)':'rgba(255,255,255,.04)'};border:1px solid ${isLatest?'rgba(74,222,128,.2)':'rgba(255,255,255,.06)'};border-radius:6px;padding:5px 8px;min-width:100px">
+      <div style="font-size:9px;color:var(--muted);margin-bottom:2px">#${p.pickNum} · R${p.round}</div>
+      <div style="font-size:13px;font-weight:800;color:${isLatest?'var(--green)':'var(--text)'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px">${p.playerId}</div>
+      <div style="display:flex;align-items:center;gap:4px;margin-top:2px">${logoHtml}<span style="font-size:10px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:80px">${t.name||''}</span></div>
+    </div>`;
+  }).join('');
 }
 
 function renderGmMyRoster() {
@@ -1872,8 +1902,15 @@ function renderBoard() {
   if (pick) {
     document.getElementById('board-otc-team').textContent = pick.team?.name || '—';
     document.getElementById('board-otc-pick').textContent = `Round ${pick.round} · Pick #${pick.pickNum} of ${pick.totalPicks}`;
+    const logoEl = document.getElementById('board-otc-logo');
+    if (logoEl) {
+      if (pick.team?.logoB64) logoEl.innerHTML = `<img src="${pick.team.logoB64}" style="width:100%;height:100%;object-fit:cover">`;
+      else logoEl.textContent = (pick.team?.name||'?')[0];
+    }
   } else {
     document.getElementById('board-otc-team').textContent = status==='done'?'DRAFT COMPLETE':'—';
+    const logoEl = document.getElementById('board-otc-logo');
+    if (logoEl) logoEl.textContent = '';
   }
 
   if (status==='live' && draftState.timerEnd) {
