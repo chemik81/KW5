@@ -841,12 +841,14 @@ async function loadKw5Players() {
 function computeAggregates(matches) {
   const map = {};
   matches.forEach(m => {
-    const process = (players) => {
+    const process = (players, result) => {
       (players||[]).forEach(p => {
         if (!p.name) return;
-        if (!map[p.name]) map[p.name] = { name:p.name, gp:0, pts:0,reb:0,ast:0,stl:0,blk:0,to:0,pf:0,fgm:0,fga:0,tpm:0,tpa:0,ftm:0,fta:0, grades:[], posCounts:{} };
+        if (!map[p.name]) map[p.name] = { name:p.name, gp:0, wins:0, losses:0, pts:0,reb:0,ast:0,stl:0,blk:0,to:0,pf:0,fgm:0,fga:0,tpm:0,tpa:0,ftm:0,fta:0, grades:[], posCounts:{} };
         const pl = map[p.name];
         pl.gp++;
+        if (result==='W') pl.wins++;
+        else if (result==='L') pl.losses++;
         pl.pts += +p.pts||0; pl.reb += +p.reb||0; pl.ast += +p.ast||0;
         pl.stl += +p.stl||0; pl.blk += +p.blk||0; pl.to  += +p.to ||0;
         pl.pf  += +p.pf ||0; pl.fgm += +p.fgm||0; pl.fga += +p.fga||0;
@@ -855,7 +857,9 @@ function computeAggregates(matches) {
         if (p.pos)   pl.posCounts[p.pos] = (pl.posCounts[p.pos]||0)+1;
       });
     };
-    process(m.team1_players); process(m.team2_players);
+    const s1 = +m.score1||0, s2 = +m.score2||0;
+    process(m.team1_players, s1>s2?'W':s1<s2?'L':'D');
+    process(m.team2_players, s2>s1?'W':s2<s1?'L':'D');
   });
 
   const players = Object.values(map).map(pl => {
@@ -863,6 +867,7 @@ function computeAggregates(matches) {
     pl.ppg = pl.pts/g; pl.rpg = pl.reb/g; pl.apg = pl.ast/g;
     pl.spg = pl.stl/g; pl.bpg = pl.blk/g; pl.tpg = pl.to/g;
     pl.per = pl.ppg + pl.rpg*1.2 + pl.apg*1.5 + pl.spg*2 + pl.bpg*2 - pl.tpg*1.5;
+    pl.win_pct = pl.gp > 0 ? Math.round((pl.wins / pl.gp) * 100) : 0;
 
     // CS
     const GRADES = ['F','D-','D','D+','C-','C','C+','B-','B','B+','A-','A','A+'];
@@ -1260,6 +1265,7 @@ function savePlayers() {
     id: p.name, name: p.name, pos: p.pos,
     gp: p.gp, ppg: p.ppg, rpg: p.rpg, apg: p.apg,
     per: p.per, cs: p.cs, ovr: p.ovr,
+    wins: p.wins||0, losses: p.losses||0, win_pct: p.win_pct||0,
     excluded: excMap[p.name] || false
   }));
   notify('Players saved', 'success');
