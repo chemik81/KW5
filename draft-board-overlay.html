@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>KW5 Draft Board Overlay</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --gold: #f0c040;
+  --dark: #0d0f14;
+  --dark2: #13161e;
+  --dark3: #1a1e2a;
+  --dark4: #222736;
+  --border: rgba(240,192,64,0.15);
+  --text: #e8eaf0;
+  --muted: #7a8099;
+  --green: #4ade80;
+  --red: #f87171;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: transparent;
+  color: var(--text);
+  font-family: 'Barlow', sans-serif;
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+}
+
+/* ── OTC BAR ── */
+.otc-bar {
+  background: rgba(13,15,20,.92);
+  border-bottom: 3px solid var(--gold);
+  padding: 10px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 90px;
+}
+.otc-logo {
+  width: 60px; height: 60px; border-radius: 50%;
+  border: 2px solid var(--gold); overflow: hidden;
+  background: var(--dark4);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Barlow Condensed', sans-serif; font-weight: 900; font-size: 22px; color: var(--gold);
+  flex-shrink: 0;
+}
+.otc-logo img { width: 100%; height: 100%; object-fit: cover; }
+.otc-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .12em; font-weight: 700; }
+.otc-team  { font-family: 'Barlow Condensed', sans-serif; font-size: 28px; font-weight: 900; color: var(--gold); line-height: 1; }
+.otc-pick  { font-size: 13px; color: var(--muted); font-weight: 600; }
+
+.last-picks { display: flex; gap: 8px; margin-left: 16px; }
+.last-pick-card {
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 6px; padding: 6px 12px; min-width: 120px;
+}
+.last-pick-card.latest {
+  background: rgba(74,222,128,.08);
+  border-color: rgba(74,222,128,.25);
+}
+.lp-meta   { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; margin-bottom: 2px; }
+.lp-name   { font-family: 'Barlow Condensed', sans-serif; font-size: 15px; font-weight: 900; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lp-team   { font-size: 10px; color: var(--muted); }
+
+.timer-wrap { margin-left: auto; text-align: right; }
+.timer {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 52px; font-weight: 900; color: var(--text); line-height: 1;
+}
+.timer.urgent { color: var(--red); animation: pulse .5s infinite alternate; }
+@keyframes pulse { to { opacity: .4; } }
+
+/* ── BOARD GRID ── */
+.board {
+  display: grid;
+  gap: 6px;
+  padding: 10px 16px;
+  height: calc(1080px - 90px);
+  overflow: hidden;
+}
+.team-col {
+  background: rgba(13,15,20,.85);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.team-col.otc {
+  border-color: var(--gold);
+  box-shadow: 0 0 16px rgba(240,192,64,.2);
+}
+.team-header {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.team-logo {
+  width: 28px; height: 28px; border-radius: 50%;
+  object-fit: cover; flex-shrink: 0;
+}
+.team-logo-ph {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--dark4); display: flex; align-items: center; justify-content: center;
+  font-family: 'Barlow Condensed', sans-serif; font-weight: 900; font-size: 12px; color: var(--gold);
+  flex-shrink: 0;
+}
+.team-name { font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.team-gm   { font-size: 10px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.otc-badge { background: rgba(240,192,64,.15); border: 1px solid rgba(240,192,64,.4); border-radius: 4px; padding: 1px 6px; font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 10px; color: var(--gold); flex-shrink: 0; }
+
+.pick-slot {
+  padding: 4px 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-bottom: 1px solid rgba(255,255,255,.03);
+  flex: 1;
+}
+.pick-slot.empty { opacity: .3; }
+.slot-pos {
+  font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 10px;
+  padding: 1px 5px; border-radius: 3px; min-width: 30px; text-align: center; flex-shrink: 0;
+}
+.slot-name { font-size: 12px; font-weight: 600; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slot-ovr  { font-family: 'Barlow Condensed', sans-serif; font-weight: 900; font-size: 13px; flex-shrink: 0; }
+
+/* ── TICKER ── */
+.ticker {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: rgba(13,15,20,.9);
+  border-top: 1px solid var(--border);
+  height: 32px; overflow: hidden;
+  display: flex; align-items: center;
+}
+.ticker-inner { display: inline-flex; align-items: center; animation: ticker 35s linear infinite; }
+@keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.ticker-item { display: inline-flex; align-items: center; gap: 6px; padding: 0 20px; font-size: 12px; font-weight: 700; border-right: 1px solid rgba(255,255,255,.06); height: 32px; white-space: nowrap; }
+.ticker-pos  { font-size: 10px; font-weight: 800; padding: 1px 5px; border-radius: 3px; background: rgba(96,165,250,.15); color: #93c5fd; }
+.ticker-ovr  { color: var(--gold); font-weight: 900; }
+</style>
+</head>
+<body>
+
+<!-- OTC BAR -->
+<div class="otc-bar">
+  <div id="otc-logo" class="otc-logo"></div>
+  <div>
+    <div class="otc-label">On the Clock</div>
+    <div class="otc-team" id="otc-team">—</div>
+    <div class="otc-pick" id="otc-pick">Waiting...</div>
+  </div>
+  <div class="last-picks" id="last-picks"></div>
+  <div class="timer-wrap">
+    <div class="otc-label">Time Left</div>
+    <div class="timer" id="timer">—</div>
+  </div>
+</div>
+
+<!-- BOARD -->
+<div class="board" id="board"></div>
+
+<!-- TICKER -->
+<div class="ticker"><div class="ticker-inner" id="ticker"></div></div>
+
+<script>
+const params = new URLSearchParams(location.search);
+const WORKER_URL = (params.get('w') || '').replace(/\/+$/, '');
+
+let ds = null;
+let timerInterval = null;
+
+// ── HELPERS ──
+function buildSeq(ds) {
+  const seq = [];
+  for (let r = 0; r < ds.config.perTeam; r++) {
+    let ord = ds.config.format === 'snake'
+      ? (r%2===0 ? [...ds.order] : [...ds.order].reverse())
+      : [...ds.order];
+    ord.forEach(tid => seq.push({ teamId: tid, round: r+1 }));
+  }
+  return seq;
+}
+
+function getCurrentPick(ds) {
+  if (!ds || ds.status === 'idle') return null;
+  const seq = buildSeq(ds);
+  const idx = ds.currentPickNum || 0;
+  if (idx >= seq.length) return null;
+  const { teamId, round } = seq[idx];
+  return { teamId, round, pickNum: idx+1, totalPicks: seq.length, team: ds.teams.find(t=>t.id===teamId) };
+}
+
+function getPickedIds(ds) { return new Set((ds.picks||[]).map(p=>p.playerId)); }
+
+function posStyle(pos) {
+  const bg = {'PG':'rgba(96,165,250,.2)','SG':'rgba(96,165,250,.2)','SF':'rgba(196,181,253,.2)','PF':'rgba(196,181,253,.2)','C':'rgba(134,239,172,.2)'}[pos]||'rgba(255,255,255,.1)';
+  const tc = {'PG':'#93c5fd','SG':'#93c5fd','SF':'#c4b5fd','PF':'#c4b5fd','C':'#86efac'}[pos]||'var(--muted)';
+  return { bg, tc };
+}
+
+function ovrColor(ovr) {
+  if (ovr >= 85) return '#ffd700';
+  if (ovr >= 75) return '#4ade80';
+  if (ovr >= 65) return '#60a5fa';
+  return '#9ca3af';
+}
+
+// ── TIMER ──
+function startTimer(endsAt) {
+  clearInterval(timerInterval);
+  const el = document.getElementById('timer');
+  timerInterval = setInterval(() => {
+    const left = Math.max(0, Math.round((new Date(endsAt) - Date.now()) / 1000));
+    const mm = String(Math.floor(left/60)).padStart(2,'0');
+    const ss = String(left%60).padStart(2,'0');
+    el.textContent = mm + ':' + ss;
+    el.classList.toggle('urgent', left <= 15);
+  }, 500);
+}
+
+// ── RENDER ──
+function render() {
+  if (!ds) return;
+  const pick = getCurrentPick(ds);
+  const status = ds.status || 'idle';
+  const picks = ds.picks || [];
+
+  // OTC
+  if (pick) {
+    document.getElementById('otc-team').textContent = pick.team?.name || '—';
+    document.getElementById('otc-pick').textContent = 'Round ' + pick.round + ' · Pick #' + pick.pickNum + ' of ' + pick.totalPicks;
+    const logoEl = document.getElementById('otc-logo');
+    if (pick.team?.logoB64) logoEl.innerHTML = '<img src="' + pick.team.logoB64 + '">';
+    else logoEl.textContent = (pick.team?.name||'?')[0];
+    if (status === 'live' && ds.timerEnd) startTimer(ds.timerEnd);
+    else { clearInterval(timerInterval); document.getElementById('timer').textContent = '—'; }
+  } else {
+    document.getElementById('otc-team').textContent = status==='done' ? 'DRAFT COMPLETE' : '—';
+    document.getElementById('otc-pick').textContent = '';
+    clearInterval(timerInterval);
+    document.getElementById('timer').textContent = '—';
+  }
+
+  // Last 3 picks
+  const recentPicks = picks.slice(-3).reverse();
+  const lpEl = document.getElementById('last-picks');
+  lpEl.innerHTML = recentPicks.map((p, i) => {
+    const t = ds.teams.find(x=>x.id===p.teamId)||{};
+    return '<div class="last-pick-card' + (i===0?' latest':'') + '">'
+      + '<div class="lp-meta">#' + p.pickNum + ' · R' + p.round + '</div>'
+      + '<div class="lp-name">' + p.playerId + '</div>'
+      + '<div class="lp-team">' + (t.name||'') + '</div>'
+      + '</div>';
+  }).join('');
+
+  // Board
+  const SLOTS = ['PG','SG','LCK','PF','C'];
+  const perTeam = ds.config?.perTeam || 5;
+  const extraSlots = Math.max(0, perTeam - SLOTS.length);
+  const slots = [...SLOTS, ...Array.from({length:extraSlots},(_,i)=>'F'+(i+1))];
+  const pickedIds = getPickedIds(ds);
+
+  const cols = ds.teams.length;
+  const boardEl = document.getElementById('board');
+  boardEl.style.gridTemplateColumns = 'repeat(' + cols + ',1fr)';
+
+  boardEl.innerHTML = ds.teams.map(t => {
+    const teamPicks = picks.filter(p => p.teamId === t.id);
+    const isOtc = pick && pick.teamId === t.id;
+    const logoHtml = t.logoB64
+      ? '<img src="' + t.logoB64 + '" class="team-logo">'
+      : '<div class="team-logo-ph">' + (t.name||'?')[0] + '</div>';
+
+    // Fill slots
+    const filled = {};
+    const flexQ = [];
+    teamPicks.forEach(p => {
+      const pl = (ds.players||[]).find(x=>x.id===p.playerId)||{};
+      const sp = pl.pos==='SF'?'LCK':pl.pos||'';
+      if (slots.includes(sp) && !filled[sp]) filled[sp] = { p, pl };
+      else flexQ.push({ p, pl });
+    });
+
+    const pickSlots = slots.map(slot => {
+      const entry = filled[slot] || (slot.startsWith('F') && flexQ.length ? { p: flexQ.shift(), pl: {} } : null);
+      const { bg, tc } = posStyle(slot==='LCK'?'SF':slot);
+      if (!entry) return '<div class="pick-slot empty"><span class="slot-pos" style="background:' + bg + ';color:' + tc + '">' + slot + '</span><span style="color:var(--muted);font-size:11px">—</span></div>';
+      return '<div class="pick-slot"><span class="slot-pos" style="background:' + bg + ';color:' + tc + '">' + slot + '</span><span class="slot-name">' + entry.p.playerId + '</span><span class="slot-ovr" style="color:' + ovrColor(entry.pl.ovr||50) + '">' + (entry.pl.ovr||'') + '</span></div>';
+    }).join('');
+
+    return '<div class="team-col' + (isOtc?' otc':'') + '">'
+      + '<div class="team-header">' + logoHtml
+      + '<div style="flex:1;min-width:0"><div class="team-name">' + t.name + '</div><div class="team-gm">' + (t.gmName||'') + '</div></div>'
+      + (isOtc ? '<span class="otc-badge">ON CLOCK</span>' : '') + '</div>'
+      + pickSlots + '</div>';
+  }).join('');
+
+  // Ticker — best available
+  const available = (ds.players||[]).filter(p=>!p.excluded&&!pickedIds.has(p.id)).sort((a,b)=>(b.ovr||0)-(a.ovr||0));
+  const positions = ['PG','SG','SF','PF','C'];
+  let items = [];
+  positions.forEach(pos => {
+    available.filter(p=>p.pos===pos).slice(0,3).forEach((p,i) => {
+      items.push('<span class="ticker-item"><span class="ticker-pos">' + pos + ' #' + (i+1) + '</span><span>' + p.name + '</span><span class="ticker-ovr">' + p.ovr + '</span></span>');
+    });
+  });
+  const html = items.join('') + items.join('');
+  document.getElementById('ticker').innerHTML = html || '<span class="ticker-item">KW5 DRAFT</span>';
+}
+
+// ── LOAD ──
+async function load() {
+  if (!WORKER_URL) return;
+  try {
+    const r = await fetch(WORKER_URL + '/draft-data');
+    if (!r.ok) return;
+    const d = await r.json();
+    ds = d.record || d;
+    render();
+  } catch(e) {}
+}
+
+load();
+setInterval(load, 3000);
+</script>
+</body>
+</html>
