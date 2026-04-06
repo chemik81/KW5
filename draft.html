@@ -403,6 +403,8 @@ select.form-input{width:100%}
       <span id="admin-status-txt" style="font-size:13px;color:var(--muted)">Idle</span>
       <button class="btn btn-outline btn-sm" onclick="switchView('setup')">⚙ Setup</button>
       <button class="btn btn-outline btn-sm" onclick="switchView('board')">📋 Board</button>
+      <button class="btn btn-outline btn-sm" onclick="toggleMockMode()" id="mock-btn">🎭 Mock Draft</button>
+      <button class="btn btn-outline btn-sm" onclick="exportDraftResults()">📄 Export</button>
     </div>
   </div>
   <div class="container">
@@ -521,12 +523,13 @@ select.form-input{width:100%}
             <button class="filter-btn" onclick="filterGm('SF',this)">SF</button>
             <button class="filter-btn" onclick="filterGm('PF',this)">PF</button>
             <button class="filter-btn" onclick="filterGm('C',this)">C</button>
+            <button class="filter-btn" id="gm-filter-watch" onclick="filterGm('WATCH',this)" style="color:#f87171">♥ Watch</button>
             <input class="search-input" placeholder="Search..." oninput="renderGmPlayers()" id="gm-search" style="margin-left:auto">
           </div>
           <div style="overflow-x:auto">
             <table class="player-table" id="gm-player-table">
               <thead><tr>
-                <th></th><th>#</th>
+                <th>♥</th><th>#</th>
                 <th onclick="gmSort('name')" style="cursor:pointer">Player <span id="gsort-name"></span></th>
                 <th onclick="gmSort('pos')" style="cursor:pointer">Pos <span id="gsort-pos"></span></th>
                 <th onclick="gmSort('gp')" style="cursor:pointer">GP <span id="gsort-gp"></span></th>
@@ -667,6 +670,14 @@ let gmSortAsc = false;
 let myTeamId = null;
 let discordUser = null;
 let selectedPlayerId = null;
+let watchlist = new Set(JSON.parse(localStorage.getItem('draft_watchlist') || '[]'));
+function saveWatchlist() { localStorage.setItem('draft_watchlist', JSON.stringify([...watchlist])); }
+function toggleWatch(id, e) {
+  e.stopPropagation();
+  if (watchlist.has(id)) watchlist.delete(id); else watchlist.add(id);
+  saveWatchlist();
+  renderGmPlayers();
+}
 let timerInterval = null;
 let pollInterval = null;
 let currentView = '';
@@ -1357,6 +1368,13 @@ function renderAdmin() {
 
   renderAdminBoard();
   renderAdminLog();
+  // Update mock btn
+  const mockBtn = document.getElementById('mock-btn');
+  if (mockBtn) {
+    mockBtn.textContent = mockMode ? '🎭 Exit Mock' : '🎭 Mock Draft';
+    mockBtn.style.color = mockMode ? 'var(--gold)' : '';
+    mockBtn.style.borderColor = mockMode ? 'var(--gold)' : '';
+  }
 }
 
 function renderAdminBoard() {
@@ -1630,7 +1648,8 @@ function renderGmPlayers() {
   const picked = getPickedPlayerIds(draftState);
   const players = (draftState.players||[]).filter(p => {
     if (p.excluded) return false;
-    if (gmFilter !== 'ALL' && p.pos !== gmFilter) return false;
+    if (gmFilter === 'WATCH') { if (!watchlist.has(p.id)) return false; }
+    else if (gmFilter !== 'ALL' && p.pos !== gmFilter) return false;
     if (search && !p.name.toLowerCase().includes(search)) return false;
     return true;
   }).sort((a, b) => {
@@ -1643,8 +1662,12 @@ function renderGmPlayers() {
   body.innerHTML = players.map((p,i) => {
     const isPicked = picked.has(p.id);
     const isSelected = selectedPlayerId === p.id;
-    return `<tr class="${isPicked?'picked':''} ${isSelected?'my-pick':''}" onclick="${isPicked?'':'selectPlayer(\''+p.id+'\')'}" style="${isPicked?'':'cursor:pointer'}">
-      <td>${isSelected?'✓':''}</td>
+    const isWatched = watchlist.has(p.id);
+    return `<tr class="${isPicked?'picked':''} ${isSelected?'my-pick':''}" 
+      onclick="${isPicked?'':'selectPlayer(\''+p.id+'\')'}"
+      oncontextmenu="openCompareMenu('${p.id}',event);return false;"
+      style="${isPicked?'':'cursor:pointer'}">
+      <td onclick="toggleWatch('${p.id}',event)" style="cursor:pointer;color:${isWatched?'#f87171':'var(--border)'};font-size:14px;padding:4px 6px">${isWatched?'♥':'♡'}</td>
       <td style="color:var(--muted)">${i+1}</td>
       <td style="font-weight:600">${p.name}</td>
       <td>${posBadge(p.pos)}</td>
@@ -2229,6 +2252,175 @@ function renderOverlay() {
   const inner = tickerItems.join('') + tickerItems.join('');
   document.getElementById('ov-ticker-inner').innerHTML = inner;
 }
+
+// ── COMPARE ──────────────────────────────────────────────────
+let compareCtxId = null;
+let compareP1 = null;
+
+function openCompareMenu(id, e) {
+  compareCtxId = id;
+  const ctx = document.getElementById('compare-ctx');
+  const nameEl = document.getElementById('compare-ctx-name');
+  const watchBtn = document.getElementById('ctx-watch-btn');
+  nameEl.textContent = id;
+  watchBtn.textContent = watchlist.has(id) ? '♥ Remove from watchlist' : '♡ Add to watchlist';
+  ctx.style.display = 'block';
+  ctx.style.left = Math.min(e.clientX, window.innerWidth - 160) + 'px';
+  ctx.style.top = Math.min(e.clientY, window.innerHeight - 100) + 'px';
+  setTimeout(() => document.addEventListener('click', closeCtx, {once:true}), 10);
+}
+
+function closeCtx() { document.getElementById('compare-ctx').style.display = 'none'; }
+
+function startCompare() {
+  closeCtx();
+  if (!compareCtxId) return;
+  if (!compareP1) {
+    compareP1 = compareCtxId;
+    notify('Selected ' + compareP1 + ' — right-click another player to compare', 'info');
+  } else {
+    showCompare(compareP1, compareCtxId);
+    compareP1 = null;
+  }
+}
+
+function showCompare(id1, id2) {
+  const players = draftState?.players || [];
+  const p1 = players.find(p => p.id === id1) || { id: id1 };
+  const p2 = players.find(p => p.id === id2) || { id: id2 };
+  const picked = getPickedPlayerIds(draftState);
+
+  const statRow = (label, v1, v2) => {
+    const n1 = +v1||0, n2 = +v2||0;
+    const b1 = n1>n2, b2 = n2>n1;
+    const fmt = v => typeof v === 'number' ? v.toFixed(1) : (v||'—');
+    return '<div style="padding:5px 0;text-align:right;font-weight:' + (b1?'800':'400') + ';color:' + (b1?'var(--gold)':'var(--text)') + '">' + fmt(v1) + '</div>'
+      + '<div style="padding:5px 0;text-align:center;font-size:11px;color:var(--muted)">' + label + '</div>'
+      + '<div style="padding:5px 0;font-weight:' + (b2?'800':'400') + ';color:' + (b2?'var(--gold)':'var(--text)') + '">' + fmt(v2) + '</div>';
+  };
+
+  const playerCard = (p) => {
+    const isPicked = picked.has(p.id);
+    return '<div style="text-align:center">'
+      + '<div style="font-family:Barlow Condensed,sans-serif;font-size:22px;font-weight:900;color:' + (isPicked?'var(--muted)':'var(--text)') + ';' + (isPicked?'text-decoration:line-through':'') + '">' + p.id + '</div>'
+      + '<div style="margin:4px 0">' + posBadge(p.pos||'?') + '</div>'
+      + '<div style="font-size:36px;font-weight:900;color:var(--gold)">' + (p.ovr||'?') + '</div>'
+      + '<div style="font-size:11px;color:var(--muted)">OVR</div>'
+      + (isPicked ? '<div style="font-size:11px;color:var(--red);margin-top:4px">Already picked</div>' : '') + '</div>';
+  };
+
+  const modal = document.getElementById('compare-modal');
+  document.getElementById('compare-content').innerHTML =
+    '<div style="grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:12px;border-bottom:1px solid var(--border);padding-bottom:12px">'
+    + playerCard(p1) + playerCard(p2) + '</div>'
+    + '<div style="grid-column:1/-1;display:grid;grid-template-columns:1fr 80px 1fr;gap:4px;align-items:center">'
+    + statRow('PPG', p1.ppg, p2.ppg)
+    + statRow('RPG', p1.rpg, p2.rpg)
+    + statRow('APG', p1.apg, p2.apg)
+    + statRow('PER', p1.per, p2.per)
+    + statRow('CS', p1.cs, p2.cs)
+    + statRow('OVR', p1.ovr, p2.ovr)
+    + statRow('GP', p1.gp, p2.gp) + '</div>'
+    + '<div style="grid-column:1/-1;display:flex;gap:8px;margin-top:16px;justify-content:center">'
+    + (!picked.has(p1.id) ? '<button class="btn btn-outline" onclick="selectPlayer('' + p1.id + '');document.getElementById('compare-modal').style.display='none'">Select ' + p1.id + '</button>' : '')
+    + (!picked.has(p2.id) ? '<button class="btn btn-outline" onclick="selectPlayer('' + p2.id + '');document.getElementById('compare-modal').style.display='none'">Select ' + p2.id + '</button>' : '')
+    + '</div>';
+  modal.style.display = 'flex';
+}
+
+// ── MOCK DRAFT MODE ───────────────────────────────────────────
+let mockMode = false;
+let mockState = null;
+
+function toggleMockMode() {
+  if (!draftState) { notify('Load draft data first', 'error'); return; }
+  if (!mockMode) {
+    mockState = JSON.parse(JSON.stringify(draftState));
+    mockState.picks = [];
+    mockState.currentPickNum = 0;
+    mockState.status = 'live';
+    mockState.timerEnd = new Date(Date.now() + (mockState.config?.timerSecs||120)*1000).toISOString();
+    mockMode = true;
+    draftState = mockState;
+    notify('🎭 Mock Draft mode — picks will NOT be saved', 'info');
+    renderAdmin();
+  } else {
+    mockMode = false;
+    draftState = mockState = null;
+    loadDraftState().then(() => renderAdmin());
+    notify('Mock Draft ended', 'info');
+  }
+}
+
+// Override saveDraftState in mock mode
+const _realSave = saveDraftState;
+saveDraftState = async function() {
+  if (mockMode) { console.log('[Mock] save skipped'); return; }
+  return _realSave();
+};
+
+// ── EXPORT DRAFT RESULTS ──────────────────────────────────────
+function exportDraftResults() {
+  if (!draftState?.teams) { notify('No draft data to export', 'error'); return; }
+  const picks = draftState.picks || [];
+  const allPlayers = draftState.players || [];
+  const gradeColor = g => g&&g.startsWith('A')?'#4ade80':g&&g.startsWith('B')?'#60a5fa':g&&g.startsWith('C')?'#fb923c':'#f87171';
+
+  const teamData = (draftState.teams || []).map(t => {
+    const myPicks = picks.filter(p => p.teamId === t.id);
+    let totalValue = 0, grade = '—', avgOvr = 0;
+    myPicks.forEach(p => {
+      const player = allPlayers.find(x => x.id === p.playerId) || {};
+      const ovr = player.ovr || 50;
+      const pickedBefore = new Set(picks.filter(x => x.pickNum < p.pickNum).map(x => x.playerId));
+      const avail = allPlayers.filter(x => !x.excluded && !pickedBefore.has(x.id)).map(x=>x.ovr||50).sort((a,b)=>b-a);
+      const rank = avail.indexOf(ovr)+1;
+      totalValue += avail.length>0 ? ((avail.length-rank)/avail.length)*100 : 50;
+    });
+    if (myPicks.length) {
+      const avg = totalValue/myPicks.length;
+      grade = avg>=85?'A+':avg>=75?'A':avg>=65?'A-':avg>=55?'B+':avg>=45?'B':avg>=35?'B-':avg>=25?'C+':avg>=15?'C':'C-';
+      avgOvr = Math.round(myPicks.reduce((s,p)=>s+(allPlayers.find(x=>x.id===p.playerId)?.ovr||50),0)/myPicks.length);
+    }
+    return { team: t, picks: myPicks, grade, avgOvr };
+  });
+
+  const rows = teamData.map(td => {
+    const logoHtml = td.team.logoB64 ? '<img src="' + td.team.logoB64 + '" class="logo">' : '<div class="logo-ph">' + (td.team.name||'?')[0] + '</div>';
+    const pickRows = td.picks.map(p => {
+      const pl = allPlayers.find(x=>x.id===p.playerId)||{};
+      const pc = {'PG':'rgba(96,165,250,.2)','SG':'rgba(96,165,250,.2)','SF':'rgba(196,181,253,.2)','PF':'rgba(196,181,253,.2)','C':'rgba(134,239,172,.2)'}[pl.pos||'']||'rgba(255,255,255,.1)';
+      const pt = {'PG':'#93c5fd','SG':'#93c5fd','SF':'#c4b5fd','PF':'#c4b5fd','C':'#86efac'}[pl.pos||'']||'#9ca3af';
+      const oc = pl.ovr>=85?'#ffd700':pl.ovr>=75?'#4ade80':pl.ovr>=65?'#60a5fa':'#9ca3af';
+      return '<div class="pick"><span class="pick-num">#' + p.pickNum + '</span><span class="pick-name">' + p.playerId + '</span><span class="pos" style="background:' + pc + ';color:' + pt + '">' + (pl.pos||'?') + '</span><span class="ovr" style="color:' + oc + '">' + (pl.ovr||'') + '</span></div>';
+    }).join('');
+    return '<div class="team"><div class="team-header">' + logoHtml + '<div><div class="team-name">' + td.team.name + '</div><div class="gm-name">' + (td.team.gmName||'') + '</div></div><div class="grade" style="color:' + gradeColor(td.grade) + '">' + td.grade + '</div></div>' + pickRows + (td.avgOvr?'<div class="avg-ovr">Avg OVR: ' + td.avgOvr + '</div>':'') + '</div>';
+  }).join('');
+
+  const html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800;900&family=Barlow:wght@400;600&display=swap" rel="stylesheet"><style>body{background:#0d0f14;color:#e8eaf0;font-family:Barlow,sans-serif;padding:32px;margin:0}h1{font-family:Barlow Condensed,sans-serif;font-size:36px;font-weight:900;color:#f0c040;margin-bottom:4px}.sub{color:#7a8099;font-size:14px;margin-bottom:32px}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}.team{background:#13161e;border:1px solid rgba(240,192,64,.15);border-radius:8px;padding:16px;break-inside:avoid}.team-header{display:flex;align-items:center;gap:10px;margin-bottom:12px;border-bottom:1px solid rgba(255,255,255,.06);padding-bottom:10px}.logo{width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid rgba(240,192,64,.3)}.logo-ph{width:40px;height:40px;border-radius:50%;background:#222736;display:flex;align-items:center;justify-content:center;font-family:Barlow Condensed,sans-serif;font-weight:900;font-size:16px;color:#f0c040;border:2px solid rgba(240,192,64,.3)}.team-name{font-family:Barlow Condensed,sans-serif;font-weight:800;font-size:16px}.gm-name{font-size:11px;color:#7a8099}.grade{font-family:Barlow Condensed,sans-serif;font-size:32px;font-weight:900;margin-left:auto}.pick{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px}.pick:last-child{border:none}.pick-num{color:#7a8099;min-width:28px;font-size:11px}.pick-name{flex:1;font-weight:600}.pos{font-size:10px;font-weight:800;padding:1px 5px;border-radius:3px}.ovr{font-family:Barlow Condensed,sans-serif;font-weight:900;font-size:14px;min-width:32px;text-align:right}.avg-ovr{font-size:11px;color:#7a8099;margin-top:8px;text-align:right}@media print{body{background:#fff;color:#000}}</style></head><body><h1>' + (draftState.config?.name||'KW5 Draft') + ' — Results</h1><div class="sub">' + new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}) + ' · ' + picks.length + ' picks made</div><div class="grid">' + rows + '</div><div style="margin-top:24px;text-align:center;color:#7a8099;font-size:12px">Generated by KW5 Draft System</div></body></html>';
+
+  const w = window.open('', '_blank');
+  w.document.write(html);
+  w.document.close();
+  setTimeout(() => w.print(), 800);
+}
 </script>
+
+<!-- COMPARE MODAL -->
+<div id="compare-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:2000;display:none;align-items:center;justify-content:center">
+  <div style="background:var(--dark2);border:1px solid var(--border);border-radius:var(--radius);padding:24px;width:700px;max-width:95vw;position:relative">
+    <button onclick="document.getElementById('compare-modal').style.display='none'" style="position:absolute;top:10px;right:14px;background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer">✕</button>
+    <div style="font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:20px;color:var(--gold);margin-bottom:16px">PLAYER COMPARISON</div>
+    <div id="compare-content" style="display:grid;grid-template-columns:1fr 1fr;gap:16px"></div>
+  </div>
+</div>
+
+<!-- CONTEXT MENU -->
+<div id="compare-ctx" style="display:none;position:fixed;background:var(--dark2);border:1px solid var(--border);border-radius:6px;padding:4px;z-index:3000;min-width:140px">
+  <div id="compare-ctx-name" style="padding:6px 12px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border);margin-bottom:4px"></div>
+  <button onclick="startCompare()" style="display:block;width:100%;text-align:left;padding:6px 12px;background:none;border:none;color:var(--text);font-size:13px;cursor:pointer;border-radius:4px" onmouseover="this.style.background='rgba(255,255,255,.05)'" onmouseout="this.style.background='none'">⚖ Compare player</button>
+  <button onclick="toggleWatch(compareCtxId, {stopPropagation:()=>{}})" style="display:block;width:100%;text-align:left;padding:6px 12px;background:none;border:none;color:var(--text);font-size:13px;cursor:pointer;border-radius:4px" onmouseover="this.style.background='rgba(255,255,255,.05)'" onmouseout="this.style.background='none'" id="ctx-watch-btn">♥ Add to watchlist</button>
+</div>
+
 </body>
 </html>
