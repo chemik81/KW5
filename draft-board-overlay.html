@@ -74,64 +74,59 @@ body{
   box-shadow:0 0 16px rgba(240,192,64,.2);
 }
 .team-header{
-  padding:6px 10px;
+  padding:8px 12px;
   display:flex;
   align-items:center;
-  gap:8px;
-  background:rgba(0,0,0,.25);
+  gap:10px;
+  background:rgba(0,0,0,.3);
   border-bottom:1px solid var(--border);
+  flex-shrink:0;
 }
-.team-logo{width:22px;height:22px;border-radius:50%;object-fit:cover;flex-shrink:0}
+.team-logo{width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0}
 .team-logo-ph{
-  width:22px;height:22px;border-radius:50%;
+  width:28px;height:28px;border-radius:50%;
   background:var(--dark4);display:flex;align-items:center;justify-content:center;
-  font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:10px;color:var(--gold);flex-shrink:0;
+  font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:12px;color:var(--gold);flex-shrink:0;
 }
 .team-name-text{
   font-family:'Barlow Condensed',sans-serif;
-  font-weight:800;font-size:13px;
+  font-weight:800;font-size:16px;
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;
 }
-.team-abbr{font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.05em;flex-shrink:0}
+.team-abbr{font-size:12px;color:var(--muted);font-weight:700;letter-spacing:.05em;flex-shrink:0}
 .otc-dot{width:7px;height:7px;border-radius:50%;background:var(--gold);flex-shrink:0;animation:blink 1s infinite alternate}
 @keyframes blink{to{opacity:.2}}
 
 /* ── PICK ROWS ── */
 .pick-row{
-  padding:3px 10px;
+  padding:6px 12px;
   display:flex;
   align-items:center;
-  gap:7px;
-  border-bottom:1px solid rgba(255,255,255,.03);
-  min-height:0;
+  gap:10px;
+  border-bottom:1px solid rgba(255,255,255,.04);
   flex:1;
 }
-.pick-row.empty{opacity:.35}
+.pick-row.empty{opacity:.3}
 .pick-num{
   font-family:'Barlow Condensed',sans-serif;
-  font-size:11px;color:var(--muted);
-  min-width:22px;flex-shrink:0;
+  font-size:13px;color:var(--muted);
+  min-width:28px;flex-shrink:0;
 }
 .pick-pos{
   font-family:'Barlow Condensed',sans-serif;
-  font-weight:800;font-size:10px;
-  padding:1px 4px;border-radius:3px;
-  min-width:28px;text-align:center;flex-shrink:0;
+  font-weight:800;font-size:12px;
+  padding:2px 6px;border-radius:3px;
+  min-width:36px;text-align:center;flex-shrink:0;
 }
 .pick-name{
   font-family:'Barlow Condensed',sans-serif;
-  font-weight:700;font-size:13px;
+  font-weight:700;font-size:17px;
   flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
 .pick-ovr{
   font-family:'Barlow Condensed',sans-serif;
-  font-weight:900;font-size:14px;
-  flex-shrink:0;min-width:26px;text-align:right;
-}
-.pick-pos-tag{
-  font-size:9px;color:var(--muted);
-  flex-shrink:0;min-width:40px;text-align:right;
-  font-weight:700;letter-spacing:.04em;
+  font-weight:900;font-size:20px;
+  flex-shrink:0;min-width:32px;text-align:right;
 }
 .ovr-s{color:#ffd700}.ovr-a{color:#4ade80}.ovr-b{color:#60a5fa}.ovr-c{color:#fb923c}.ovr-d{color:var(--muted)}
 
