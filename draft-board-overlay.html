@@ -172,6 +172,31 @@ body {
 .pa-ovr-val { font-size: 40px; font-weight: 900; color: var(--gold); line-height: 1; }
 .pa-ovr-lbl { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; }
 
+/* ── ROUND SPLASH ── */
+.round-splash {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 200;
+  background: rgba(13,15,20,.75);
+  animation: splashFade .3s ease, splashFadeOut .4s ease 2.5s forwards;
+}
+@keyframes splashFade    { from{opacity:0} to{opacity:1} }
+@keyframes splashFadeOut { from{opacity:1} to{opacity:0} }
+.round-splash-text {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 140px;
+  font-weight: 900;
+  color: var(--gold);
+  letter-spacing: .05em;
+  text-shadow: 0 0 80px rgba(240,192,64,.4);
+  animation: scaleUp .4s cubic-bezier(.22,.68,0,1.2);
+}
+@keyframes scaleUp { from{transform:scale(.4);opacity:0} to{transform:scale(1);opacity:1} }
+
 /* ── TICKER ── */
 .ticker {
   position: fixed; bottom: 0; left: 0; right: 0;
@@ -189,6 +214,7 @@ body {
 </head>
 <body>
 
+<div id="round-splash" style="display:none"></div>
 <!-- OTC BAR -->
 <div class="otc-bar">
   <div id="otc-logo" class="otc-logo"></div>
@@ -273,6 +299,7 @@ function startTimer(endsAt) {
 function render() {
   if (!ds) return;
   checkNewPick(ds);
+  checkRound(ds);
   const pick = getCurrentPick(ds);
   const status = ds.status || 'idle';
   const picks = ds.picks || [];
@@ -398,6 +425,22 @@ function checkNewPick(ds) {
   const team   = (ds.teams  ||[]).find(t=>t.id===latest.teamId)  ||{};
   const player = (ds.players||[]).find(p=>p.id===latest.playerId)||{};
   showPickAnnounce(latest, team, player);
+}
+
+let lastRound2 = 0;
+function checkRound(ds) {
+  const seq = ds.status==='live' ? buildSeq(ds) : [];
+  const idx = ds.currentPickNum||0;
+  if (!seq.length) return;
+  const cur = idx < seq.length ? seq[idx]?.round : null;
+  const prev = idx > 0 ? seq[idx-1]?.round : 0;
+  if (cur && prev && cur !== prev && cur !== lastRound2) {
+    lastRound2 = cur;
+    const el = document.getElementById('round-splash');
+    el.innerHTML = '<div class="round-splash"><div class="round-splash-text">ROUND ' + cur + '</div></div>';
+    el.style.display = 'block';
+    setTimeout(() => { el.style.display='none'; }, 3000);
+  }
 }
 
 // ── LOAD ──
