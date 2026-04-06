@@ -483,8 +483,13 @@ select.form-input{width:100%}
     <div class="otc-bar" id="gm-otc" style="margin-bottom:16px">
       <div>
         <div class="otc-label">On the Clock</div>
-        <div class="otc-team" id="gm-otc-team">—</div>
-        <div class="otc-pick" id="gm-otc-pick">Waiting for draft to start...</div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div id="gm-otc-logo" style="width:44px;height:44px;border-radius:50%;overflow:hidden;background:var(--dark4);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0"></div>
+          <div>
+            <div class="otc-team" id="gm-otc-team">—</div>
+            <div class="otc-pick" id="gm-otc-pick">Waiting for draft to start...</div>
+          </div>
+        </div>
       </div>
       <div class="timer-wrap">
         <div class="otc-label">Time Left</div>
@@ -515,8 +520,15 @@ select.form-input{width:100%}
           <div style="overflow-x:auto">
             <table class="player-table" id="gm-player-table">
               <thead><tr>
-                <th></th><th>#</th><th>Player</th><th>Pos</th><th>GP</th>
-                <th>PPG</th><th>RPG</th><th>APG</th><th>PER</th><th>OVR</th>
+                <th></th><th>#</th>
+                <th onclick="gmSort('name')" style="cursor:pointer">Player <span id="gsort-name"></span></th>
+                <th onclick="gmSort('pos')" style="cursor:pointer">Pos <span id="gsort-pos"></span></th>
+                <th onclick="gmSort('gp')" style="cursor:pointer">GP <span id="gsort-gp"></span></th>
+                <th onclick="gmSort('ppg')" style="cursor:pointer">PPG <span id="gsort-ppg"></span></th>
+                <th onclick="gmSort('rpg')" style="cursor:pointer">RPG <span id="gsort-rpg"></span></th>
+                <th onclick="gmSort('apg')" style="cursor:pointer">APG <span id="gsort-apg"></span></th>
+                <th onclick="gmSort('per')" style="cursor:pointer">PER <span id="gsort-per"></span></th>
+                <th onclick="gmSort('ovr')" style="cursor:pointer">OVR <span id="gsort-ovr">▼</span></th>
               </tr></thead>
               <tbody id="gm-player-body"></tbody>
             </table>
@@ -609,6 +621,8 @@ let draftState = null;
 let kw5Players = [];
 let poolFilter = 'ALL';
 let gmFilter = 'ALL';
+let gmSortKey = 'ovr';
+let gmSortAsc = false;
 let myTeamId = null;
 let discordUser = null;
 let selectedPlayerId = null;
@@ -1465,9 +1479,19 @@ function renderGm() {
   if (pick) {
     document.getElementById('gm-otc-team').textContent = pick.team?.name || '—';
     document.getElementById('gm-otc-pick').textContent = `Round ${pick.round} · Pick #${pick.pickNum}`;
+    const logoEl = document.getElementById('gm-otc-logo');
+    if (logoEl) {
+      if (pick.team?.logoB64) {
+        logoEl.innerHTML = `<img src="${pick.team.logoB64}" style="width:100%;height:100%;object-fit:cover">`;
+      } else {
+        logoEl.innerHTML = `<span style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:16px;color:var(--gold)">${(pick.team?.name||'?')[0]}</span>`;
+      }
+    }
   } else {
     document.getElementById('gm-otc-team').textContent = status === 'done' ? 'DRAFT COMPLETE' : '—';
     document.getElementById('gm-otc-pick').textContent = status === 'idle' ? 'Waiting for draft to start...' : '';
+    const logoEl = document.getElementById('gm-otc-logo');
+    if (logoEl) logoEl.innerHTML = '';
   }
 
   // Timer
@@ -1499,6 +1523,17 @@ function renderGm() {
   renderGmAllTeams();
 }
 
+function gmSort(key) {
+  if (gmSortKey === key) { gmSortAsc = !gmSortAsc; }
+  else { gmSortKey = key; gmSortAsc = key === 'name' || key === 'pos'; }
+  // Update sort indicators
+  ['name','pos','gp','ppg','rpg','apg','per','ovr'].forEach(k => {
+    const el = document.getElementById('gsort-' + k);
+    if (el) el.textContent = k === gmSortKey ? (gmSortAsc ? '▲' : '▼') : '';
+  });
+  renderGmPlayers();
+}
+
 function renderGmPlayers() {
   if (!draftState) return;
   const search = (document.getElementById('gm-search')?.value||'').toLowerCase();
@@ -1508,7 +1543,11 @@ function renderGmPlayers() {
     if (gmFilter !== 'ALL' && p.pos !== gmFilter) return false;
     if (search && !p.name.toLowerCase().includes(search)) return false;
     return true;
-  }).sort((a,b) => b.ovr - a.ovr);
+  }).sort((a, b) => {
+    let va = a[gmSortKey], vb = b[gmSortKey];
+    if (typeof va === 'string') return gmSortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+    return gmSortAsc ? (va||0) - (vb||0) : (vb||0) - (va||0);
+  });
 
   const body = document.getElementById('gm-player-body');
   body.innerHTML = players.map((p,i) => {
@@ -1605,10 +1644,19 @@ function renderGmAllTeams() {
   el.innerHTML = draftState.teams.map(t => {
     const picks = getTeamPicks(draftState, t.id);
     const isMe = t.id === myTeamId;
+    const logoHtml = t.logoB64
+      ? `<img src="${t.logoB64}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0">`
+      : `<div style="width:32px;height:32px;border-radius:50%;background:var(--dark4);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:13px;color:var(--gold);flex-shrink:0">${(t.name||'?')[0]}</div>`;
     return `<div style="margin-bottom:10px;padding:10px;background:var(--dark3);border-radius:var(--radius);border:1px solid ${isMe?'rgba(240,192,64,.3)':'var(--border)'}">
-      <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:14px;margin-bottom:6px;display:flex;align-items:center;gap:6px">
-        ${isMe?'⭐ ':''} ${t.name}
-        <span style="font-size:11px;color:var(--muted);font-weight:400">${picks.length}/${draftState.config?.perTeam||5}</span>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+        ${logoHtml}
+        <div style="flex:1;min-width:0">
+          <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:14px;display:flex;align-items:center;gap:6px">
+            ${isMe?'⭐ ':''}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.name}</span>
+            <span style="font-size:11px;color:var(--muted);font-weight:400;flex-shrink:0">${picks.length}/${draftState.config?.perTeam||5}</span>
+          </div>
+          <div style="font-size:11px;color:var(--muted)">${t.gmName||''}</div>
+        </div>
       </div>
       ${picks.map(p => {
         const pl = (draftState.players||[]).find(x=>x.id===p.playerId)||{};
@@ -1663,16 +1711,27 @@ function renderBoard() {
 
   // Last pick
   const picks = draftState.picks||[];
-  const lastPick = picks[picks.length-1];
+  // Last 4 picks
   const lastEl = document.getElementById('board-last-pick');
-  if (lastPick) {
-    const lTeam = (draftState.teams||[]).find(t=>t.id===lastPick.teamId)||{};
-    lastEl.style.display='block';
-    lastEl.innerHTML=`<div style="background:rgba(74,222,128,.08);border:1px solid rgba(74,222,128,.2);border-radius:var(--radius);padding:8px 14px">
-      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Last Pick</div>
-      <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;color:var(--green)">${lastPick.playerId}</div>
-      <div style="font-size:11px;color:var(--muted)">${lTeam.name||''}</div>
-    </div>`;
+  const recentPicks = picks.slice(-4).reverse();
+  if (recentPicks.length) {
+    lastEl.style.display = 'flex';
+    lastEl.style.gap = '6px';
+    lastEl.innerHTML = recentPicks.map((p, i) => {
+      const lTeam = (draftState.teams||[]).find(t=>t.id===p.teamId)||{};
+      const pl = (draftState.players||[]).find(x=>x.id===p.playerId)||{};
+      const isLatest = i === 0;
+      const logoHtml = lTeam.logoB64
+        ? `<img src="${lTeam.logoB64}" style="width:18px;height:18px;border-radius:50%;object-fit:cover;flex-shrink:0">`
+        : `<div style="width:18px;height:18px;border-radius:50%;background:var(--dark4);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:800;color:var(--gold);flex-shrink:0">${(lTeam.name||'?')[0]}</div>`;
+      return `<div style="background:${isLatest?'rgba(74,222,128,.08)':'rgba(255,255,255,.04)'};border:1px solid ${isLatest?'rgba(74,222,128,.25)':'rgba(255,255,255,.08)'};border-radius:var(--radius);padding:6px 10px;min-width:120px">
+        <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:2px">#${p.pickNum} · R${p.round}</div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:900;color:${isLatest?'var(--green)':'var(--text)'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.playerId}</div>
+        <div style="display:flex;align-items:center;gap:4px;margin-top:2px">${logoHtml}<span style="font-size:10px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${lTeam.name||''}</span></div>
+      </div>`;
+    }).join('');
+  } else {
+    lastEl.style.display = 'none';
   }
 
   // Board grid
@@ -1694,12 +1753,43 @@ function renderBoard() {
         </div>
         ${isOtc?'<span class="badge badge-gold" style="margin-left:auto">ON CLOCK</span>':''}
       </div>
-      ${Array.from({length:perTeam},(_,i) => {
-        const p = teamPicks[i];
-        if (!p) return `<div class="pick-slot empty"><span class="pick-num">#${i+1}</span><span style="color:var(--muted);font-size:12px">—</span></div>`;
-        const pl = (draftState.players||[]).find(x=>x.id===p.playerId)||{};
-        return `<div class="pick-slot"><span class="pick-num">#${p.pickNum}</span><div><div class="pick-name">${p.playerId}</div><div class="pick-pos">${pl.pos||''}</div></div><span class="ovr-badge ${ovrClass(pl.ovr||50)}" style="margin-left:auto;font-size:12px">${pl.ovr||''}</span></div>`;
-      }).join('')}
+      ${(() => {
+        // Build position-based roster slots
+        const SLOTS = ['PG','SG','LCK','PF','C'];
+        const extraSlots = Math.max(0, perTeam - SLOTS.length);
+        const slots = [...SLOTS, ...Array.from({length:extraSlots},(_,i)=>'FLEX'+(i+1))];
+        // Map picks to positions
+        const filled = {};
+        const flexPicks = [];
+        teamPicks.forEach(p => {
+          const pl = (draftState.players||[]).find(x=>x.id===p.playerId)||{};
+          const pos = pl.pos || '';
+          // LCK = SF
+          const slotPos = pos === 'SF' ? 'LCK' : pos;
+          if (slots.includes(slotPos) && !filled[slotPos]) {
+            filled[slotPos] = { p, pl };
+          } else {
+            flexPicks.push({ p, pl });
+          }
+        });
+        return slots.map(slot => {
+          const entry = filled[slot] || (slot.startsWith('FLEX') && flexPicks.length ? { p: flexPicks.shift(), pl: {} } : null);
+          const posBadgeColor = {'PG':'rgba(96,165,250,.15)','SG':'rgba(96,165,250,.15)','LCK':'rgba(196,181,253,.15)','PF':'rgba(196,181,253,.15)','C':'rgba(134,239,172,.15)'}[slot]||'rgba(255,255,255,.08)';
+          const posTextColor = {'PG':'#93c5fd','SG':'#93c5fd','LCK':'#c4b5fd','PF':'#c4b5fd','C':'#86efac'}[slot]||'var(--muted)';
+          if (!entry) {
+            return `<div class="pick-slot empty">
+              <span style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:11px;padding:2px 6px;border-radius:3px;background:${posBadgeColor};color:${posTextColor};min-width:34px;text-align:center">${slot}</span>
+              <span style="color:var(--muted);font-size:12px">—</span>
+            </div>`;
+          }
+          const { p, pl } = entry;
+          return `<div class="pick-slot">
+            <span style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:11px;padding:2px 6px;border-radius:3px;background:${posBadgeColor};color:${posTextColor};min-width:34px;text-align:center">${slot}</span>
+            <div style="flex:1;min-width:0"><div class="pick-name" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.playerId||p}</div></div>
+            <span class="ovr-badge ${ovrClass(pl.ovr||50)}" style="font-size:12px">${pl.ovr||''}</span>
+          </div>`;
+        }).join('');
+      })()}
     </div>`;
   }).join('');
 }
