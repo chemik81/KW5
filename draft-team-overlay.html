@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>KW5 Draft Team View</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--gold:#f0c040;--dark:#0d0f14;--dark2:#13161e;--dark3:#1a1e2a;--dark4:#222736;--border:rgba(240,192,64,0.15);--text:#e8eaf0;--muted:#7a8099;--green:#4ade80;--red:#f87171;--radius:10px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:rgba(13,15,20,.97);color:var(--text);font-family:'Barlow',sans-serif;width:1920px;height:1080px;overflow:hidden;display:flex;flex-direction:column}
+
+/* ── HEADER ── */
+.header{background:rgba(13,15,20,.98);border-bottom:3px solid var(--gold);padding:16px 48px;display:flex;align-items:center;gap:24px;flex-shrink:0}
+.team-logo{width:80px;height:80px;border-radius:50%;border:3px solid var(--gold);overflow:hidden;background:var(--dark4);display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:30px;color:var(--gold);flex-shrink:0}
+.team-logo img{width:100%;height:100%;object-fit:cover}
+.team-info{flex:1}
+.team-name{font-family:'Barlow Condensed',sans-serif;font-size:52px;font-weight:900;color:var(--gold);line-height:1;letter-spacing:.02em}
+.gm-label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;margin-top:2px}
+.gm-name{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;color:var(--text)}
+.draft-info{text-align:right}
+.draft-name{font-family:'Barlow Condensed',sans-serif;font-size:16px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
+.picks-count{font-family:'Barlow Condensed',sans-serif;font-size:36px;font-weight:900;color:var(--text)}
+.picks-sub{font-size:12px;color:var(--muted)}
+
+/* ── ROSTER ── */
+.roster{flex:1;padding:28px 48px;display:grid;gap:14px}
+
+.slot{background:rgba(19,22,30,.85);border:1px solid var(--border);border-radius:var(--radius);display:flex;align-items:center;gap:20px;padding:16px 24px;min-height:120px;position:relative;overflow:hidden;transition:all .3s}
+.slot.filled{border-color:rgba(240,192,64,.3);background:rgba(19,22,30,.95)}
+.slot.empty{border-style:dashed;opacity:.5}
+
+/* Subtle position color strip on left */
+.slot::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--slot-color,rgba(255,255,255,.1))}
+
+.slot-pos{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:14px;padding:4px 10px;border-radius:5px;min-width:52px;text-align:center;flex-shrink:0;letter-spacing:.05em}
+.slot-avatar{width:72px;height:72px;border-radius:50%;background:var(--dark4);border:2px solid rgba(240,192,64,.2);display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:26px;color:var(--gold);flex-shrink:0}
+.slot-name{font-family:'Barlow Condensed',sans-serif;font-size:38px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.slot-empty-label{font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:700;color:var(--muted);flex:1}
+.slot-pick-num{font-family:'Barlow Condensed',sans-serif;font-size:14px;color:var(--muted);flex-shrink:0}
+.stats-row{display:flex;gap:20px;margin-top:4px}
+.stat-item{text-align:center}
+.stat-v{font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;color:var(--gold);line-height:1}
+.stat-l{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.ovr-big{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:52px;flex-shrink:0;min-width:80px;text-align:right}
+.ovr-s{color:#ffd700}.ovr-a{color:#4ade80}.ovr-b{color:#60a5fa}.ovr-c{color:#fb923c}.ovr-d{color:var(--muted)}
+
+/* ── TEAM CYCLE INDICATOR ── */
+.cycle-bar{position:fixed;bottom:0;left:0;right:0;height:3px;background:rgba(255,255,255,.06)}
+.cycle-bar-fill{height:100%;background:var(--gold);transition:width .1s linear}
+
+/* ── SLIDE ANIMATION ── */
+.roster.slide-in{animation:rosterIn .5s cubic-bezier(.22,.68,0,1.2)}
+@keyframes rosterIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="team-logo" id="team-logo"></div>
+  <div class="team-info">
+    <div class="team-name" id="team-name">Loading...</div>
+    <div class="gm-label">General Manager</div>
+    <div class="gm-name" id="gm-name">—</div>
+  </div>
+  <div class="draft-info">
+    <div class="draft-name" id="draft-name">KW5 Draft</div>
+    <div class="picks-count" id="picks-count">0 / 5</div>
+    <div class="picks-sub">picks made</div>
+  </div>
+</div>
+
+<div class="roster" id="roster"></div>
+
+<div class="cycle-bar"><div class="cycle-bar-fill" id="cycle-fill"></div></div>
+
+<script>
+const params = new URLSearchParams(location.search);
+const WORKER_URL = (params.get('w') || '').replace(/\/+$/, '');
+// team param: team name or index (0-based), or 'cycle' to auto-cycle
+const TEAM_PARAM = params.get('team') || 'cycle';
+const CYCLE_DURATION = parseInt(params.get('dur') || '12') * 1000;
+
+let ds = null;
+let currentTeamIdx = 0;
+let cycleTimer = null;
+let cycleRAF = null;
+let cycleStart = 0;
+
+const SLOTS = ['PG','SG','LCK','PF','C'];
+const POS_COLORS = {
+  'PG': { bg:'rgba(96,165,250,.2)', tc:'#93c5fd', strip:'#3b82f6' },
+  'SG': { bg:'rgba(96,165,250,.2)', tc:'#93c5fd', strip:'#3b82f6' },
+  'LCK':{ bg:'rgba(196,181,253,.2)', tc:'#c4b5fd', strip:'#8b5cf6' },
+  'PF': { bg:'rgba(196,181,253,.2)', tc:'#c4b5fd', strip:'#8b5cf6' },
+  'C':  { bg:'rgba(134,239,172,.2)', tc:'#86efac', strip:'#22c55e' },
+  'FLEX':{ bg:'rgba(255,255,255,.1)', tc:'var(--muted)', strip:'var(--border)' },
+};
+
+function ovrClass(ovr) {
+  if (ovr >= 85) return 'ovr-s';
+  if (ovr >= 75) return 'ovr-a';
+  if (ovr >= 65) return 'ovr-b';
+  if (ovr >= 55) return 'ovr-c';
+  return 'ovr-d';
+}
+
+function resolveTeam() {
+  if (!ds?.teams?.length) return null;
+  if (TEAM_PARAM === 'cycle') return ds.teams[currentTeamIdx];
+  // Try by name
+  const byName = ds.teams.find(t => t.name.toLowerCase().includes(TEAM_PARAM.toLowerCase()));
+  if (byName) return byName;
+  // Try by index
+  const idx = parseInt(TEAM_PARAM);
+  if (!isNaN(idx) && ds.teams[idx]) return ds.teams[idx];
+  return ds.teams[0];
+}
+
+function renderTeam(team, animate=true) {
+  if (!team) return;
+  const picks = (ds?.picks||[]).filter(p=>p.teamId===team.id);
+  const perTeam = ds?.config?.perTeam || 5;
+  const allPlayers = ds?.players || [];
+
+  // Header
+  const logoEl = document.getElementById('team-logo');
+  if (team.logoB64) logoEl.innerHTML = '<img src="'+team.logoB64+'">';
+  else logoEl.textContent = (team.name||'?')[0];
+
+  document.getElementById('team-name').textContent = team.name || '—';
+  document.getElementById('gm-name').textContent = team.gmName || 'TBD';
+  document.getElementById('draft-name').textContent = ds?.config?.name || 'KW5 Draft';
+  document.getElementById('picks-count').textContent = picks.length + ' / ' + perTeam;
+
+  // Build slots
+  const extraSlots = Math.max(0, perTeam - SLOTS.length);
+  const slots = [...SLOTS, ...Array.from({length:extraSlots},(_,i)=>'FLEX'+(i+1))];
+  const filled = {}, flexQ = [];
+  picks.forEach(p => {
+    const pl = allPlayers.find(x=>x.id===p.playerId)||{};
+    const sp = pl.pos==='SF'?'LCK':pl.pos||'';
+    if (slots.includes(sp) && !filled[sp]) filled[sp] = { p, pl };
+    else flexQ.push({ p, pl });
+  });
+
+  const roster = document.getElementById('roster');
+  roster.style.gridTemplateColumns = '1fr';
+  roster.style.gridTemplateRows = 'repeat('+slots.length+',1fr)';
+
+  if (animate) {
+    roster.className = 'roster slide-in';
+    setTimeout(() => { roster.className = 'roster'; }, 600);
+  }
+
+  roster.innerHTML = slots.map(slot => {
+    const entry = filled[slot] || (slot.startsWith('FLEX') && flexQ.length ? { p:flexQ.shift(), pl:{} } : null);
+    const posKey = slot.startsWith('FLEX') ? 'FLEX' : slot;
+    const pc = POS_COLORS[posKey] || POS_COLORS['FLEX'];
+    const displayPos = slot === 'LCK' ? 'SF/LCK' : slot;
+
+    if (!entry) {
+      return '<div class="slot empty" style="--slot-color:'+pc.strip+'">'
+        +'<span class="slot-pos" style="background:'+pc.bg+';color:'+pc.tc+'">'+displayPos+'</span>'
+        +'<div class="slot-avatar" style="border-color:rgba(255,255,255,.08)">?</div>'
+        +'<div class="slot-empty-label">Empty Slot</div>'
+        +'</div>';
+    }
+
+    const { p, pl } = entry;
+    const initials = (p.playerId||'?').slice(0,2).toUpperCase();
+    return '<div class="slot filled" style="--slot-color:'+pc.strip+'">'
+      +'<span class="slot-pos" style="background:'+pc.bg+';color:'+pc.tc+'">'+displayPos+'</span>'
+      +'<div class="slot-avatar">'+initials+'</div>'
+      +'<div style="flex:1;min-width:0">'
+      +'<div class="slot-name">'+p.playerId+'</div>'
+      +'<div class="stats-row">'
+      +'<div class="stat-item"><div class="stat-v">'+(pl.ppg!=null?(+pl.ppg).toFixed(1):'—')+'</div><div class="stat-l">PPG</div></div>'
+      +'<div class="stat-item"><div class="stat-v">'+(pl.rpg!=null?(+pl.rpg).toFixed(1):'—')+'</div><div class="stat-l">RPG</div></div>'
+      +'<div class="stat-item"><div class="stat-v">'+(pl.apg!=null?(+pl.apg).toFixed(1):'—')+'</div><div class="stat-l">APG</div></div>'
+      +'<div class="stat-item"><div class="stat-v">'+(pl.per!=null?(+pl.per).toFixed(1):'—')+'</div><div class="stat-l">PER</div></div>'
+      +'<div class="stat-item"><div class="stat-v">'+(pl.gp||'—')+'</div><div class="stat-l">GP</div></div>'
+      +'</div></div>'
+      +'<div>'
+      +'<div class="ovr-big '+ovrClass(pl.ovr||50)+'">'+(pl.ovr||'?')+'</div>'
+      +'<div class="slot-pick-num" style="text-align:right">Pick #'+p.pickNum+'</div>'
+      +'</div>'
+      +'</div>';
+  }).join('');
+}
+
+function startCycle() {
+  if (TEAM_PARAM !== 'cycle' || !ds?.teams?.length) return;
+  clearTimeout(cycleTimer);
+  cancelAnimationFrame(cycleRAF);
+  cycleStart = performance.now();
+
+  function tick() {
+    const elapsed = performance.now() - cycleStart;
+    const pct = Math.min(100, (elapsed / CYCLE_DURATION) * 100);
+    const fill = document.getElementById('cycle-fill');
+    if (fill) fill.style.width = pct + '%';
+    if (elapsed < CYCLE_DURATION) {
+      cycleRAF = requestAnimationFrame(tick);
+    }
+  }
+  cycleRAF = requestAnimationFrame(tick);
+
+  cycleTimer = setTimeout(() => {
+    currentTeamIdx = (currentTeamIdx + 1) % ds.teams.length;
+    renderTeam(resolveTeam(), true);
+    startCycle();
+  }, CYCLE_DURATION);
+}
+
+async function load() {
+  if (!WORKER_URL) return;
+  try {
+    const r = await fetch(WORKER_URL + '/draft-data');
+    if (!r.ok) return;
+    const d = await r.json();
+    const wasNull = ds === null;
+    ds = d.record || d;
+    renderTeam(resolveTeam(), wasNull);
+    if (wasNull && TEAM_PARAM === 'cycle') startCycle();
+  } catch(e) {}
+}
+
+load();
+setInterval(load, 4000);
+</script>
+</body>
+</html>
