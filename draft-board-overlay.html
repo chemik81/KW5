@@ -5,217 +5,70 @@
 <title>KW5 Draft Board Overlay</title>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-:root {
-  --gold: #f0c040;
-  --dark: #0d0f14;
-  --dark2: #13161e;
-  --dark3: #1a1e2a;
-  --dark4: #222736;
-  --border: rgba(240,192,64,0.15);
-  --text: #e8eaf0;
-  --muted: #7a8099;
-  --green: #4ade80;
-  --red: #f87171;
-}
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  background: transparent;
-  color: var(--text);
-  font-family: 'Barlow', sans-serif;
-  width: 1920px;
-  height: 1080px;
-  overflow: hidden;
-}
+:root{--gold:#f0c040;--dark:#0d0f14;--dark2:#13161e;--dark3:#1a1e2a;--dark4:#222736;--border:rgba(240,192,64,0.15);--text:#e8eaf0;--muted:#7a8099;--green:#4ade80;--red:#f87171;--radius:8px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:transparent;color:var(--text);font-family:'Barlow',sans-serif;font-size:13px;width:1920px;height:1080px;overflow:hidden}
+.condensed{font-family:'Barlow Condensed',sans-serif;letter-spacing:.02em}
 
-/* ── OTC BAR ── */
-.otc-bar {
-  background: rgba(13,15,20,.92);
-  border-bottom: 3px solid var(--gold);
-  padding: 10px 24px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  height: 90px;
-}
-.otc-logo {
-  width: 60px; height: 60px; border-radius: 50%;
-  border: 2px solid var(--gold); overflow: hidden;
-  background: var(--dark4);
-  display: flex; align-items: center; justify-content: center;
-  font-family: 'Barlow Condensed', sans-serif; font-weight: 900; font-size: 22px; color: var(--gold);
-  flex-shrink: 0;
-}
-.otc-logo img { width: 100%; height: 100%; object-fit: cover; }
-.otc-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .12em; font-weight: 700; }
-.otc-team  { font-family: 'Barlow Condensed', sans-serif; font-size: 28px; font-weight: 900; color: var(--gold); line-height: 1; }
-.otc-pick  { font-size: 13px; color: var(--muted); font-weight: 600; }
+.otc-bar{background:rgba(13,15,20,.95);border-bottom:2px solid var(--gold);padding:8px 20px;display:flex;align-items:center;gap:16px;height:80px;flex-shrink:0}
+.otc-logo{width:52px;height:52px;border-radius:50%;border:2px solid var(--gold);overflow:hidden;background:var(--dark4);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:20px;color:var(--gold)}
+.otc-logo img{width:100%;height:100%;object-fit:cover}
+.otc-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;font-weight:700}
+.otc-team{font-family:'Barlow Condensed',sans-serif;font-size:26px;font-weight:900;color:var(--gold);line-height:1.1}
+.otc-pick{font-size:12px;color:var(--muted)}
+.timer{font-family:'Barlow Condensed',sans-serif;font-size:48px;font-weight:900;color:var(--text);min-width:100px;text-align:right}
+.timer.urgent{color:var(--red);animation:pulse .5s infinite alternate}
+@keyframes pulse{to{opacity:.4}}
+.last-picks{display:flex;gap:6px;flex-shrink:0}
+.lp{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:6px;padding:5px 10px;min-width:110px}
+.lp.latest{background:rgba(74,222,128,.08);border-color:rgba(74,222,128,.25)}
+.lp-meta{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:2px}
+.lp-name{font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px}
+.lp-team{font-size:10px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px;display:flex;align-items:center;gap:4px}
 
-.last-picks { display: flex; gap: 8px; margin-left: 16px; }
-.last-pick-card {
-  background: rgba(255,255,255,.04);
-  border: 1px solid rgba(255,255,255,.08);
-  border-radius: 6px; padding: 6px 12px; min-width: 120px;
-}
-.last-pick-card.latest {
-  background: rgba(74,222,128,.08);
-  border-color: rgba(74,222,128,.25);
-}
-.lp-meta   { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; margin-bottom: 2px; }
-.lp-name   { font-family: 'Barlow Condensed', sans-serif; font-size: 15px; font-weight: 900; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.lp-team   { font-size: 10px; color: var(--muted); }
+.board-wrap{display:flex;flex-direction:column;height:calc(1080px - 80px);background:rgba(13,15,20,.88);overflow:hidden}
+.board-grid{display:grid;gap:6px;padding:8px 12px;flex:1;overflow:hidden}
+.team-col{background:rgba(19,22,30,.9);border:1px solid var(--border);border-radius:6px;overflow:hidden;display:flex;flex-direction:column}
+.team-col.otc{border-color:var(--gold);box-shadow:0 0 14px rgba(240,192,64,.2)}
+.team-col-header{padding:7px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:7px;flex-shrink:0;background:rgba(0,0,0,.2)}
+.team-logo{width:24px;height:24px;border-radius:50%;object-fit:cover;flex-shrink:0}
+.team-logo-placeholder{width:24px;height:24px;border-radius:50%;background:var(--dark4);display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:11px;color:var(--gold);flex-shrink:0}
+.team-name{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.team-gm{font-size:10px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.otc-badge{background:rgba(240,192,64,.15);border:1px solid rgba(240,192,64,.4);border-radius:3px;padding:1px 5px;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:9px;color:var(--gold);flex-shrink:0;letter-spacing:.05em}
+.pick-slot{padding:4px 8px;display:flex;align-items:center;gap:5px;border-bottom:1px solid rgba(255,255,255,.03);flex:1;min-height:28px}
+.pick-slot.empty{opacity:.3}
+.slot-pos{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:9px;padding:1px 4px;border-radius:3px;min-width:28px;text-align:center;flex-shrink:0}
+.slot-name{font-size:11px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.slot-ovr{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:12px;flex-shrink:0}
+.ovr-s{color:#ffd700}.ovr-a{color:#4ade80}.ovr-b{color:#60a5fa}.ovr-c{color:#fb923c}.ovr-d{color:var(--muted)}
 
-.timer-wrap { margin-left: auto; text-align: right; }
-.timer {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 52px; font-weight: 900; color: var(--text); line-height: 1;
-}
-.timer.urgent { color: var(--red); animation: pulse .5s infinite alternate; }
-@keyframes pulse { to { opacity: .4; } }
+.round-splash{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:200;background:rgba(13,15,20,.75);animation:splashIn .3s ease,splashOut .4s ease 2.5s forwards}
+@keyframes splashIn{from{opacity:0}to{opacity:1}}
+@keyframes splashOut{from{opacity:1}to{opacity:0}}
+.round-splash-text{font-family:'Barlow Condensed',sans-serif;font-size:130px;font-weight:900;color:var(--gold);letter-spacing:.05em;text-shadow:0 0 60px rgba(240,192,64,.5);animation:scaleIn .4s cubic-bezier(.22,.68,0,1.2)}
+@keyframes scaleIn{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
 
-/* ── BOARD GRID ── */
-.board {
-  display: grid;
-  gap: 6px;
-  padding: 10px 16px;
-  height: calc(1080px - 90px);
-  overflow: hidden;
-}
-.team-col {
-  background: rgba(13,15,20,.85);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-.team-col.otc {
-  border-color: var(--gold);
-  box-shadow: 0 0 16px rgba(240,192,64,.2);
-}
-.team-header {
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-}
-.team-logo {
-  width: 28px; height: 28px; border-radius: 50%;
-  object-fit: cover; flex-shrink: 0;
-}
-.team-logo-ph {
-  width: 28px; height: 28px; border-radius: 50%;
-  background: var(--dark4); display: flex; align-items: center; justify-content: center;
-  font-family: 'Barlow Condensed', sans-serif; font-weight: 900; font-size: 12px; color: var(--gold);
-  flex-shrink: 0;
-}
-.team-name { font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
-.team-gm   { font-size: 10px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.otc-badge { background: rgba(240,192,64,.15); border: 1px solid rgba(240,192,64,.4); border-radius: 4px; padding: 1px 6px; font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 10px; color: var(--gold); flex-shrink: 0; }
-
-.pick-slot {
-  padding: 4px 8px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  border-bottom: 1px solid rgba(255,255,255,.03);
-  flex: 1;
-}
-.pick-slot.empty { opacity: .3; }
-.slot-pos {
-  font-family: 'Barlow Condensed', sans-serif; font-weight: 800; font-size: 10px;
-  padding: 1px 5px; border-radius: 3px; min-width: 30px; text-align: center; flex-shrink: 0;
-}
-.slot-name { font-size: 12px; font-weight: 600; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.slot-ovr  { font-family: 'Barlow Condensed', sans-serif; font-weight: 900; font-size: 13px; flex-shrink: 0; }
-
-/* ── PICK ANNOUNCE ── */
-.pick-announce {
-  position: fixed;
-  top: 100px;
-  left: 20px;
-  z-index: 100;
-  pointer-events: none;
-}
-.pa-card {
-  background: rgba(13,15,20,.96);
-  border: 2px solid var(--gold);
-  border-radius: 12px;
-  padding: 14px 20px;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  min-width: 340px;
-  max-width: 420px;
-  animation: slideIn .4s cubic-bezier(.22,.68,0,1.2);
-}
-@keyframes slideIn {
-  from { transform: translateX(-120%); opacity: 0; }
-  to   { transform: translateX(0); opacity: 1; }
-}
-.pa-logo {
-  width: 56px; height: 56px; border-radius: 50%;
-  border: 2px solid var(--gold); overflow: hidden;
-  background: var(--dark4); flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
-  font-family: 'Barlow Condensed', sans-serif; font-weight: 900; font-size: 20px; color: var(--gold);
-}
-.pa-logo img { width: 100%; height: 100%; object-fit: cover; }
-.pa-label { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: .15em; font-weight: 700; }
-.pa-team  { font-size: 13px; font-weight: 700; color: var(--gold); }
-.pa-player{ font-size: 26px; font-weight: 900; color: var(--text); line-height: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pa-stats { display: flex; gap: 12px; margin-top: 5px; }
-.pa-stat-val { font-size: 15px; font-weight: 900; color: var(--gold); line-height: 1; }
-.pa-stat-lbl { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; }
-.pa-ovr { text-align: center; flex-shrink: 0; }
-.pa-ovr-val { font-size: 40px; font-weight: 900; color: var(--gold); line-height: 1; }
-.pa-ovr-lbl { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; }
-
-/* ── ROUND SPLASH ── */
-.round-splash {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  pointer-events: none;
-  z-index: 200;
-  background: rgba(13,15,20,.75);
-  animation: splashFade .3s ease, splashFadeOut .4s ease 2.5s forwards;
-}
-@keyframes splashFade    { from{opacity:0} to{opacity:1} }
-@keyframes splashFadeOut { from{opacity:1} to{opacity:0} }
-.round-splash-text {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 140px;
-  font-weight: 900;
-  color: var(--gold);
-  letter-spacing: .05em;
-  text-shadow: 0 0 80px rgba(240,192,64,.4);
-  animation: scaleUp .4s cubic-bezier(.22,.68,0,1.2);
-}
-@keyframes scaleUp { from{transform:scale(.4);opacity:0} to{transform:scale(1);opacity:1} }
-
-/* ── TICKER ── */
-.ticker {
-  position: fixed; bottom: 0; left: 0; right: 0;
-  background: rgba(13,15,20,.9);
-  border-top: 1px solid var(--border);
-  height: 32px; overflow: hidden;
-  display: flex; align-items: center;
-}
-.ticker-inner { display: inline-flex; align-items: center; animation: ticker 35s linear infinite; }
-@keyframes ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-.ticker-item { display: inline-flex; align-items: center; gap: 6px; padding: 0 20px; font-size: 12px; font-weight: 700; border-right: 1px solid rgba(255,255,255,.06); height: 32px; white-space: nowrap; }
-.ticker-pos  { font-size: 10px; font-weight: 800; padding: 1px 5px; border-radius: 3px; background: rgba(96,165,250,.15); color: #93c5fd; }
-.ticker-ovr  { color: var(--gold); font-weight: 900; }
+.pick-announce{position:fixed;top:88px;left:20px;z-index:100;pointer-events:none}
+.pa-card{background:rgba(13,15,20,.96);border:2px solid var(--gold);border-radius:10px;padding:12px 18px;display:flex;align-items:center;gap:12px;min-width:300px;max-width:400px;animation:slideIn .4s cubic-bezier(.22,.68,0,1.2)}
+@keyframes slideIn{from{transform:translateX(-120%);opacity:0}to{transform:translateX(0);opacity:1}}
+.pa-logo{width:50px;height:50px;border-radius:50%;border:2px solid var(--gold);overflow:hidden;background:var(--dark4);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:18px;color:var(--gold)}
+.pa-logo img{width:100%;height:100%;object-fit:cover}
+.pa-pick-label{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em}
+.pa-team{font-size:12px;font-weight:700;color:var(--gold)}
+.pa-player{font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pa-stats{display:flex;gap:10px;margin-top:4px}
+.pa-sv{font-size:14px;font-weight:900;color:var(--gold);line-height:1}
+.pa-sl{font-size:9px;color:var(--muted);text-transform:uppercase}
+.pa-ovr-v{font-family:'Barlow Condensed',sans-serif;font-size:38px;font-weight:900;color:var(--gold);line-height:1}
+.pa-ovr-l{font-size:9px;color:var(--muted);text-transform:uppercase}
 </style>
 </head>
 <body>
 
-<div id="round-splash" style="display:none"></div>
-<!-- OTC BAR -->
+<div id="round-splash-wrap"></div>
+<div id="pick-announce" class="pick-announce" style="display:none"></div>
+
 <div class="otc-bar">
   <div id="otc-logo" class="otc-logo"></div>
   <div>
@@ -224,29 +77,22 @@ body {
     <div class="otc-pick" id="otc-pick">Waiting...</div>
   </div>
   <div class="last-picks" id="last-picks"></div>
-  <div class="timer-wrap">
+  <div style="margin-left:auto;text-align:right">
     <div class="otc-label">Time Left</div>
     <div class="timer" id="timer">—</div>
   </div>
 </div>
 
-<!-- PICK ANNOUNCE -->
-<div class="pick-announce" id="pa" style="display:none"></div>
-
-<!-- BOARD -->
-<div class="board" id="board"></div>
-
-<!-- TICKER -->
-<div class="ticker"><div class="ticker-inner" id="ticker"></div></div>
+<div class="board-wrap">
+  <div class="board-grid" id="board-grid"></div>
+</div>
 
 <script>
 const params = new URLSearchParams(location.search);
 const WORKER_URL = (params.get('w') || '').replace(/\/+$/, '');
 
-let ds = null;
-let timerInterval = null;
+let ds = null, timerInterval = null, lastPickNum = -1, paTimeout = null, lastRound = 0;
 
-// ── HELPERS ──
 function buildSeq(ds) {
   const seq = [];
   for (let r = 0; r < ds.config.perTeam; r++) {
@@ -267,152 +113,28 @@ function getCurrentPick(ds) {
   return { teamId, round, pickNum: idx+1, totalPicks: seq.length, team: ds.teams.find(t=>t.id===teamId) };
 }
 
-function getPickedIds(ds) { return new Set((ds.picks||[]).map(p=>p.playerId)); }
+function ovrClass(ovr) {
+  if (ovr >= 85) return 'ovr-s';
+  if (ovr >= 75) return 'ovr-a';
+  if (ovr >= 65) return 'ovr-b';
+  if (ovr >= 55) return 'ovr-c';
+  return 'ovr-d';
+}
 
 function posStyle(pos) {
-  const bg = {'PG':'rgba(96,165,250,.2)','SG':'rgba(96,165,250,.2)','SF':'rgba(196,181,253,.2)','PF':'rgba(196,181,253,.2)','C':'rgba(134,239,172,.2)'}[pos]||'rgba(255,255,255,.1)';
-  const tc = {'PG':'#93c5fd','SG':'#93c5fd','SF':'#c4b5fd','PF':'#c4b5fd','C':'#86efac'}[pos]||'var(--muted)';
+  const bg = {'PG':'rgba(96,165,250,.2)','SG':'rgba(96,165,250,.2)','SF':'rgba(196,181,253,.2)','LCK':'rgba(196,181,253,.2)','PF':'rgba(196,181,253,.2)','C':'rgba(134,239,172,.2)'}[pos]||'rgba(255,255,255,.1)';
+  const tc = {'PG':'#93c5fd','SG':'#93c5fd','SF':'#c4b5fd','LCK':'#c4b5fd','PF':'#c4b5fd','C':'#86efac'}[pos]||'var(--muted)';
   return { bg, tc };
 }
 
-function ovrColor(ovr) {
-  if (ovr >= 85) return '#ffd700';
-  if (ovr >= 75) return '#4ade80';
-  if (ovr >= 65) return '#60a5fa';
-  return '#9ca3af';
-}
-
-// ── TIMER ──
 function startTimer(endsAt) {
   clearInterval(timerInterval);
   const el = document.getElementById('timer');
   timerInterval = setInterval(() => {
     const left = Math.max(0, Math.round((new Date(endsAt) - Date.now()) / 1000));
-    const mm = String(Math.floor(left/60)).padStart(2,'0');
-    const ss = String(left%60).padStart(2,'0');
-    el.textContent = mm + ':' + ss;
+    el.textContent = String(Math.floor(left/60)).padStart(2,'0')+':'+String(left%60).padStart(2,'0');
     el.classList.toggle('urgent', left <= 15);
   }, 500);
-}
-
-// ── RENDER ──
-function render() {
-  if (!ds) return;
-  checkNewPick(ds);
-  checkRound(ds);
-  const pick = getCurrentPick(ds);
-  const status = ds.status || 'idle';
-  const picks = ds.picks || [];
-
-  // OTC
-  if (pick) {
-    document.getElementById('otc-team').textContent = pick.team?.name || '—';
-    document.getElementById('otc-pick').textContent = 'Round ' + pick.round + ' · Pick #' + pick.pickNum + ' of ' + pick.totalPicks;
-    const logoEl = document.getElementById('otc-logo');
-    if (pick.team?.logoB64) logoEl.innerHTML = '<img src="' + pick.team.logoB64 + '">';
-    else logoEl.textContent = (pick.team?.name||'?')[0];
-    if (status === 'live' && ds.timerEnd) startTimer(ds.timerEnd);
-    else { clearInterval(timerInterval); document.getElementById('timer').textContent = '—'; }
-  } else {
-    document.getElementById('otc-team').textContent = status==='done' ? 'DRAFT COMPLETE' : '—';
-    document.getElementById('otc-pick').textContent = '';
-    clearInterval(timerInterval);
-    document.getElementById('timer').textContent = '—';
-  }
-
-  // Last 3 picks
-  const recentPicks = picks.slice(-3).reverse();
-  const lpEl = document.getElementById('last-picks');
-  lpEl.innerHTML = recentPicks.map((p, i) => {
-    const t = ds.teams.find(x=>x.id===p.teamId)||{};
-    return '<div class="last-pick-card' + (i===0?' latest':'') + '">'
-      + '<div class="lp-meta">#' + p.pickNum + ' · R' + p.round + '</div>'
-      + '<div class="lp-name">' + p.playerId + '</div>'
-      + '<div class="lp-team">' + (t.name||'') + '</div>'
-      + '</div>';
-  }).join('');
-
-  // Board
-  const SLOTS = ['PG','SG','LCK','PF','C'];
-  const perTeam = ds.config?.perTeam || 5;
-  const extraSlots = Math.max(0, perTeam - SLOTS.length);
-  const slots = [...SLOTS, ...Array.from({length:extraSlots},(_,i)=>'F'+(i+1))];
-  const pickedIds = getPickedIds(ds);
-
-  const cols = ds.teams.length;
-  const boardEl = document.getElementById('board');
-  boardEl.style.gridTemplateColumns = 'repeat(' + cols + ',1fr)';
-
-  boardEl.innerHTML = ds.teams.map(t => {
-    const teamPicks = picks.filter(p => p.teamId === t.id);
-    const isOtc = pick && pick.teamId === t.id;
-    const logoHtml = t.logoB64
-      ? '<img src="' + t.logoB64 + '" class="team-logo">'
-      : '<div class="team-logo-ph">' + (t.name||'?')[0] + '</div>';
-
-    // Fill slots
-    const filled = {};
-    const flexQ = [];
-    teamPicks.forEach(p => {
-      const pl = (ds.players||[]).find(x=>x.id===p.playerId)||{};
-      const sp = pl.pos==='SF'?'LCK':pl.pos||'';
-      if (slots.includes(sp) && !filled[sp]) filled[sp] = { p, pl };
-      else flexQ.push({ p, pl });
-    });
-
-    const pickSlots = slots.map(slot => {
-      const entry = filled[slot] || (slot.startsWith('F') && flexQ.length ? { p: flexQ.shift(), pl: {} } : null);
-      const { bg, tc } = posStyle(slot==='LCK'?'SF':slot);
-      if (!entry) return '<div class="pick-slot empty"><span class="slot-pos" style="background:' + bg + ';color:' + tc + '">' + slot + '</span><span style="color:var(--muted);font-size:11px">—</span></div>';
-      return '<div class="pick-slot"><span class="slot-pos" style="background:' + bg + ';color:' + tc + '">' + slot + '</span><span class="slot-name">' + entry.p.playerId + '</span><span class="slot-ovr" style="color:' + ovrColor(entry.pl.ovr||50) + '">' + (entry.pl.ovr||'') + '</span></div>';
-    }).join('');
-
-    return '<div class="team-col' + (isOtc?' otc':'') + '">'
-      + '<div class="team-header">' + logoHtml
-      + '<div style="flex:1;min-width:0"><div class="team-name">' + t.name + '</div><div class="team-gm">' + (t.gmName||'') + '</div></div>'
-      + (isOtc ? '<span class="otc-badge">ON CLOCK</span>' : '') + '</div>'
-      + pickSlots + '</div>';
-  }).join('');
-
-  // Ticker — best available
-  const available = (ds.players||[]).filter(p=>!p.excluded&&!pickedIds.has(p.id)).sort((a,b)=>(b.ovr||0)-(a.ovr||0));
-  const positions = ['PG','SG','SF','PF','C'];
-  let items = [];
-  positions.forEach(pos => {
-    available.filter(p=>p.pos===pos).slice(0,3).forEach((p,i) => {
-      items.push('<span class="ticker-item"><span class="ticker-pos">' + pos + ' #' + (i+1) + '</span><span>' + p.name + '</span><span class="ticker-ovr">' + p.ovr + '</span></span>');
-    });
-  });
-  const html = items.join('') + items.join('');
-  document.getElementById('ticker').innerHTML = html || '<span class="ticker-item">KW5 DRAFT</span>';
-}
-
-// ── PICK ANNOUNCE ──
-let lastPickNum = -1;
-let paTimeout = null;
-
-function showPickAnnounce(pick, team, player) {
-  const el = document.getElementById('pa');
-  clearTimeout(paTimeout);
-  const logoHtml = team.logoB64
-    ? '<img src="' + team.logoB64 + '">'
-    : (team.name||'?')[0];
-  el.innerHTML = '<div class="pa-card">'
-    + '<div class="pa-logo">' + (team.logoB64 ? '<img src="' + team.logoB64 + '">' : (team.name||'?')[0]) + '</div>'
-    + '<div style="flex:1;min-width:0">'
-    + '<div class="pa-label">Pick #' + pick.pickNum + ' · Round ' + pick.round + '</div>'
-    + '<div class="pa-team">' + (team.name||'') + '</div>'
-    + '<div class="pa-player">' + pick.playerId + '</div>'
-    + '<div class="pa-stats">'
-    + '<div><div class="pa-stat-val">' + (player.ppg!=null?(+player.ppg).toFixed(1):'—') + '</div><div class="pa-stat-lbl">PPG</div></div>'
-    + '<div><div class="pa-stat-val">' + (player.rpg!=null?(+player.rpg).toFixed(1):'—') + '</div><div class="pa-stat-lbl">RPG</div></div>'
-    + '<div><div class="pa-stat-val">' + (player.apg!=null?(+player.apg).toFixed(1):'—') + '</div><div class="pa-stat-lbl">APG</div></div>'
-    + '<div><div class="pa-stat-val">' + (player.pos||'?') + '</div><div class="pa-stat-lbl">POS</div></div>'
-    + '</div></div>'
-    + '<div class="pa-ovr"><div class="pa-ovr-val">' + (player.ovr||'?') + '</div><div class="pa-ovr-lbl">OVR</div></div>'
-    + '</div>';
-  el.style.display = 'block';
-  paTimeout = setTimeout(() => { el.style.display = 'none'; }, 7000);
 }
 
 function checkNewPick(ds) {
@@ -422,28 +144,120 @@ function checkNewPick(ds) {
   if (lastPickNum === -1) { lastPickNum = latest.pickNum; return; }
   if (latest.pickNum === lastPickNum) return;
   lastPickNum = latest.pickNum;
-  const team   = (ds.teams  ||[]).find(t=>t.id===latest.teamId)  ||{};
+  const team   = ds.teams.find(t=>t.id===latest.teamId)||{};
   const player = (ds.players||[]).find(p=>p.id===latest.playerId)||{};
-  showPickAnnounce(latest, team, player);
+  const el = document.getElementById('pick-announce');
+  clearTimeout(paTimeout);
+  el.innerHTML = '<div class="pa-card">'
+    +'<div class="pa-logo">'+(team.logoB64?'<img src="'+team.logoB64+'">':((team.name||'?')[0]))+'</div>'
+    +'<div style="flex:1;min-width:0">'
+    +'<div class="pa-pick-label">Pick #'+latest.pickNum+' · Round '+latest.round+'</div>'
+    +'<div class="pa-team">'+(team.name||'')+'</div>'
+    +'<div class="pa-player">'+latest.playerId+'</div>'
+    +'<div class="pa-stats">'
+    +'<div><div class="pa-sv">'+(player.ppg!=null?(+player.ppg).toFixed(1):'—')+'</div><div class="pa-sl">PPG</div></div>'
+    +'<div><div class="pa-sv">'+(player.rpg!=null?(+player.rpg).toFixed(1):'—')+'</div><div class="pa-sl">RPG</div></div>'
+    +'<div><div class="pa-sv">'+(player.pos||'?')+'</div><div class="pa-sl">POS</div></div>'
+    +'</div></div>'
+    +'<div style="text-align:center;flex-shrink:0"><div class="pa-ovr-v">'+(player.ovr||'?')+'</div><div class="pa-ovr-l">OVR</div></div>'
+    +'</div>';
+  el.style.display = 'block';
+  paTimeout = setTimeout(() => { el.style.display = 'none'; }, 7000);
 }
 
-let lastRound2 = 0;
 function checkRound(ds) {
   const seq = ds.status==='live' ? buildSeq(ds) : [];
   const idx = ds.currentPickNum||0;
   if (!seq.length) return;
   const cur = idx < seq.length ? seq[idx]?.round : null;
   const prev = idx > 0 ? seq[idx-1]?.round : 0;
-  if (cur && prev && cur !== prev && cur !== lastRound2) {
-    lastRound2 = cur;
-    const el = document.getElementById('round-splash');
-    el.innerHTML = '<div class="round-splash"><div class="round-splash-text">ROUND ' + cur + '</div></div>';
-    el.style.display = 'block';
-    setTimeout(() => { el.style.display='none'; }, 3000);
+  if (cur && prev && cur !== prev && cur !== lastRound) {
+    lastRound = cur;
+    const wrap = document.getElementById('round-splash-wrap');
+    wrap.innerHTML = '<div class="round-splash"><div class="round-splash-text">ROUND '+cur+'</div></div>';
+    setTimeout(() => { wrap.innerHTML = ''; }, 3200);
   }
 }
 
-// ── LOAD ──
+function render() {
+  if (!ds) return;
+  checkNewPick(ds);
+  checkRound(ds);
+
+  const pick = getCurrentPick(ds);
+  const status = ds.status || 'idle';
+  const picks = ds.picks || [];
+
+  // OTC
+  if (pick) {
+    document.getElementById('otc-team').textContent = pick.team?.name || '—';
+    document.getElementById('otc-pick').textContent = 'Round '+pick.round+' · Pick #'+pick.pickNum+' of '+pick.totalPicks;
+    const logoEl = document.getElementById('otc-logo');
+    if (pick.team?.logoB64) logoEl.innerHTML = '<img src="'+pick.team.logoB64+'" style="width:100%;height:100%;object-fit:cover">';
+    else logoEl.textContent = (pick.team?.name||'?')[0];
+    if (status==='live' && ds.timerEnd) startTimer(ds.timerEnd);
+    else { clearInterval(timerInterval); document.getElementById('timer').textContent = '—'; }
+  } else {
+    document.getElementById('otc-team').textContent = status==='done'?'DRAFT COMPLETE':'—';
+    document.getElementById('otc-pick').textContent = '';
+    clearInterval(timerInterval);
+    document.getElementById('timer').textContent = '—';
+  }
+
+  // Last 4 picks
+  const lpEl = document.getElementById('last-picks');
+  lpEl.innerHTML = picks.slice(-4).reverse().map((p,i) => {
+    const t = ds.teams.find(x=>x.id===p.teamId)||{};
+    const logoHtml = t.logoB64
+      ? '<img src="'+t.logoB64+'" style="width:14px;height:14px;border-radius:50%;object-fit:cover">'
+      : '<div style="width:14px;height:14px;border-radius:50%;background:var(--dark4);display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:800;color:var(--gold)">'+((t.name||'?')[0])+'</div>';
+    return '<div class="lp'+(i===0?' latest':'')+'">'
+      +'<div class="lp-meta">#'+p.pickNum+' · R'+p.round+'</div>'
+      +'<div class="lp-name">'+p.playerId+'</div>'
+      +'<div class="lp-team">'+logoHtml+'<span>'+t.name+'</span></div>'
+      +'</div>';
+  }).join('');
+
+  // Board grid
+  const perTeam = ds.config?.perTeam || 5;
+  const SLOTS = ['PG','SG','LCK','PF','C'];
+  const extraSlots = Math.max(0, perTeam - SLOTS.length);
+  const slots = [...SLOTS, ...Array.from({length:extraSlots},(_,i)=>'F'+(i+1))];
+  const pickedIds = new Set(picks.map(p=>p.playerId));
+
+  const grid = document.getElementById('board-grid');
+  grid.style.gridTemplateColumns = 'repeat('+ds.teams.length+',1fr)';
+
+  grid.innerHTML = ds.teams.map(t => {
+    const teamPicks = picks.filter(p=>p.teamId===t.id);
+    const isOtc = pick && pick.teamId === t.id;
+    const logoHtml = t.logoB64
+      ? '<img src="'+t.logoB64+'" class="team-logo">'
+      : '<div class="team-logo-placeholder">'+((t.name||'?')[0])+'</div>';
+
+    const filled = {}, flexQ = [];
+    teamPicks.forEach(p => {
+      const pl = (ds.players||[]).find(x=>x.id===p.playerId)||{};
+      const sp = pl.pos==='SF'?'LCK':pl.pos||'';
+      if (slots.includes(sp) && !filled[sp]) filled[sp] = { p, pl };
+      else flexQ.push({ p, pl });
+    });
+
+    const pickSlots = slots.map(slot => {
+      const entry = filled[slot] || (slot.startsWith('F') && flexQ.length ? { p:flexQ.shift(), pl:{} } : null);
+      const { bg, tc } = posStyle(slot==='LCK'?'SF':slot);
+      if (!entry) return '<div class="pick-slot empty"><span class="slot-pos" style="background:'+bg+';color:'+tc+'">'+slot+'</span><span style="font-size:10px;color:var(--muted)">—</span></div>';
+      return '<div class="pick-slot"><span class="slot-pos" style="background:'+bg+';color:'+tc+'">'+slot+'</span><span class="slot-name">'+entry.p.playerId+'</span><span class="slot-ovr '+ovrClass(entry.pl.ovr||50)+'">'+( entry.pl.ovr||'')+'</span></div>';
+    }).join('');
+
+    return '<div class="team-col'+(isOtc?' otc':'')+'">'
+      +'<div class="team-col-header">'+logoHtml
+      +'<div style="flex:1;min-width:0"><div class="team-name">'+t.name+'</div><div class="team-gm">'+(t.gmName||'')+'</div></div>'
+      +(isOtc?'<span class="otc-badge">ON CLOCK</span>':'')+'</div>'
+      +pickSlots+'</div>';
+  }).join('');
+}
+
 async function load() {
   if (!WORKER_URL) return;
   try {
