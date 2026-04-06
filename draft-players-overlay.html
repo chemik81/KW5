@@ -9,27 +9,27 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:rgba(13,15,20,.96);color:var(--text);font-family:'Barlow',sans-serif;width:1920px;height:1080px;overflow:hidden}
 
-/* ── HEADER ── */
+/* -- HEADER -- */
 .header{background:rgba(13,15,20,.98);border-bottom:3px solid var(--gold);padding:14px 40px;display:flex;align-items:center;gap:20px;height:90px}
 .header-logo{font-family:'Barlow Condensed',sans-serif;font-size:32px;font-weight:900;color:var(--gold);letter-spacing:.05em}
 .header-sub{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
 .pos-badge{font-family:'Barlow Condensed',sans-serif;font-size:60px;font-weight:900;letter-spacing:.05em;margin-left:auto;line-height:1}
 .pos-name{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:700;color:var(--muted);text-align:right;letter-spacing:.05em}
 
-/* ── PROGRESS DOTS ── */
+/* -- PROGRESS DOTS -- */
 .dots{display:flex;gap:8px;align-items:center;margin-left:20px}
 .dot{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.15);transition:all .3s}
 .dot.active{background:var(--gold);width:14px;height:14px}
 .dot.done{background:rgba(74,222,128,.5)}
 
-/* ── TIMER BAR ── */
+/* -- TIMER BAR -- */
 .timer-bar-wrap{position:absolute;bottom:0;left:0;right:0;height:4px;background:rgba(255,255,255,.08)}
 .timer-bar{height:100%;background:var(--gold);transition:width .1s linear;transform-origin:left}
 
-/* ── CONTENT ── */
+/* -- CONTENT -- */
 .content{padding:20px 40px;height:calc(1080px - 90px);display:flex;flex-direction:column}
 
-/* ── PLAYERS TABLE ── */
+/* -- PLAYERS TABLE -- */
 .players-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;flex:1;overflow:hidden}
 
 .player-card{background:rgba(19,22,30,.85);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;display:flex;align-items:center;gap:12px;position:relative;transition:all .2s}
@@ -49,13 +49,13 @@ body{background:rgba(13,15,20,.96);color:var(--text);font-family:'Barlow',sans-s
 .ovr-badge{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:30px;min-width:52px;text-align:center;flex-shrink:0}
 .ovr-s{color:#ffd700}.ovr-a{color:#4ade80}.ovr-b{color:#60a5fa}.ovr-c{color:#fb923c}.ovr-d{color:var(--muted)}
 
-/* ── TRANSITION ── */
+/* -- TRANSITION -- */
 .slide{animation:slideInRight .5s cubic-bezier(.22,.68,0,1.2)}
 @keyframes slideInRight{from{opacity:0;transform:translateX(60px)}to{opacity:1;transform:none}}
 .slide-out{animation:slideOutLeft .4s ease forwards}
 @keyframes slideOutLeft{from{opacity:1;transform:none}to{opacity:0;transform:translateX(-60px)}}
 
-/* ── POSITIONS CONFIG ── */
+/* -- POSITIONS CONFIG -- */
 </style>
 </head>
 <body>
@@ -145,7 +145,7 @@ function renderSlide(idx, animate=true) {
   badge.textContent = pos.key;
   badge.style.color = pos.color;
   name.textContent  = pos.name;
-  sub.textContent   = 'Top ' + TOP_N + ' Best Available — ' + pos.name;
+  sub.textContent   = 'Top ' + TOP_N + ' Best Available - ' + pos.name;
 
   const players = getPlayersForPos(pos.key);
   const grid = document.getElementById('players-grid');
@@ -176,11 +176,11 @@ function renderSlide(idx, animate=true) {
       +'<div class="player-info">'
       +'<div class="player-name">'+p.name+'</div>'
       +'<div class="player-stats">'
-      +'<div class="stat"><div class="stat-val">'+(p.ppg!=null?(+p.ppg).toFixed(1):'—')+'</div><div class="stat-lbl">PPG</div></div>'
-      +'<div class="stat"><div class="stat-val">'+(p.rpg!=null?(+p.rpg).toFixed(1):'—')+'</div><div class="stat-lbl">RPG</div></div>'
-      +'<div class="stat"><div class="stat-val">'+(p.apg!=null?(+p.apg).toFixed(1):'—')+'</div><div class="stat-lbl">APG</div></div>'
-      +'<div class="stat"><div class="stat-val">'+(p.per!=null?(+p.per).toFixed(1):'—')+'</div><div class="stat-lbl">PER</div></div>'
-      +'<div class="stat"><div class="stat-val">'+(p.gp||'—')+'</div><div class="stat-lbl">GP</div></div>'
+      +'<div class="stat"><div class="stat-val">'+(p.ppg!=null?(+p.ppg).toFixed(1):'-')+'</div><div class="stat-lbl">PPG</div></div>'
+      +'<div class="stat"><div class="stat-val">'+(p.rpg!=null?(+p.rpg).toFixed(1):'-')+'</div><div class="stat-lbl">RPG</div></div>'
+      +'<div class="stat"><div class="stat-val">'+(p.apg!=null?(+p.apg).toFixed(1):'-')+'</div><div class="stat-lbl">APG</div></div>'
+      +'<div class="stat"><div class="stat-val">'+(p.per!=null?(+p.per).toFixed(1):'-')+'</div><div class="stat-lbl">PER</div></div>'
+      +'<div class="stat"><div class="stat-val">'+(p.gp||'-')+'</div><div class="stat-lbl">GP</div></div>'
       +'</div></div>'
       +'<div class="ovr-badge '+ovrClass(p.ovr||50)+'">'+(p.ovr||'?')+'</div>'
       +pickedOverlay
