@@ -305,131 +305,6 @@ body {
   padding: 0 16px;
 }
 
-/* ── PICK ANNOUNCEMENT ── */
-.pick-announce {
-  position: absolute;
-  bottom: 260px;
-  left: 30px;
-  pointer-events: none;
-  z-index: 100;
-}
-
-.pick-announce-card {
-  background: rgba(13,15,20,0.95);
-  border: 2px solid var(--gold);
-  border-radius: 12px;
-  padding: 16px 24px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  min-width: 380px;
-  max-width: 500px;
-  animation: slideInLeft .4s cubic-bezier(.22,.68,0,1.2);
-  backdrop-filter: blur(12px);
-}
-
-@keyframes slideInLeft {
-  from { transform: translateX(-120%); opacity: 0; }
-  to   { transform: translateX(0);     opacity: 1; }
-}
-
-.pa-logo {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid var(--gold);
-  flex-shrink: 0;
-}
-
-.pa-logo-placeholder {
-  width: 64px;
-  height: 64px;
-  border-radius: 50%;
-  background: var(--dark4);
-  border: 2px solid var(--gold);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24px;
-  font-weight: 900;
-  color: var(--gold);
-  flex-shrink: 0;
-}
-
-.pa-content {
-  flex: 1;
-  min-width: 0;
-}
-
-.pa-label {
-  font-size: 10px;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: .15em;
-  font-weight: 700;
-  margin-bottom: 2px;
-}
-
-.pa-team {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--gold);
-  margin-bottom: 4px;
-}
-
-.pa-player {
-  font-size: 28px;
-  font-weight: 900;
-  color: var(--text);
-  line-height: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pa-stats {
-  display: flex;
-  gap: 12px;
-  margin-top: 6px;
-}
-
-.pa-stat {
-  text-align: center;
-}
-
-.pa-stat-val {
-  font-size: 16px;
-  font-weight: 900;
-  color: var(--gold);
-  line-height: 1;
-}
-
-.pa-stat-lbl {
-  font-size: 9px;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: .1em;
-}
-
-.pa-ovr {
-  font-size: 42px;
-  font-weight: 900;
-  color: var(--gold);
-  line-height: 1;
-  min-width: 60px;
-  text-align: center;
-  flex-shrink: 0;
-}
-
-.pa-ovr-lbl {
-  font-size: 10px;
-  color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: .1em;
-  text-align: center;
-}
-
 /* ── STATUS ── */
 .status-idle {
   display: flex;
@@ -460,7 +335,6 @@ body {
 </style>
 </head>
 <body>
-<div class="pick-announce" id="pick-announce" style="display:none"></div>
 <div class="overlay" id="overlay">
   <div class="top-row" id="top-row">
     <div class="status-idle" id="idle-msg">
@@ -481,8 +355,6 @@ const WORKER_URL = (params.get('w') || '').replace(/\/+$/, '');
 
 let draftState = null;
 let timerInterval = null;
-let lastSeenPickNum = -1;
-let announceTimeout = null;
 
 // ── LOAD STATE ──
 async function loadState() {
@@ -545,40 +417,6 @@ function startTimer(endsAt) {
   }, 500);
 }
 
-// ── PICK ANNOUNCEMENT ──
-function showPickAnnounce(pick, team, player) {
-  const el = document.getElementById('pick-announce');
-  if (!el) return;
-  clearTimeout(announceTimeout);
-
-  const logoHtml = team.logoB64
-    ? `<img src="${team.logoB64}" class="pa-logo" alt="">`
-    : `<div class="pa-logo-placeholder">${(team.name||'?')[0]}</div>`;
-
-  el.style.display = 'flex';
-  el.innerHTML = `<div class="pick-announce-card">
-    ${logoHtml}
-    <div class="pa-content">
-      <div class="pa-label">Pick #${pick.pickNum} · Round ${pick.round}</div>
-      <div class="pa-team">${team.name || ''}</div>
-      <div class="pa-player">${pick.playerId}</div>
-      <div class="pa-stats">
-        <div class="pa-stat"><div class="pa-stat-val">${player.ppg!=null?(+player.ppg).toFixed(1):'—'}</div><div class="pa-stat-lbl">PPG</div></div>
-        <div class="pa-stat"><div class="pa-stat-val">${player.rpg!=null?(+player.rpg).toFixed(1):'—'}</div><div class="pa-stat-lbl">RPG</div></div>
-        <div class="pa-stat"><div class="pa-stat-val">${player.apg!=null?(+player.apg).toFixed(1):'—'}</div><div class="pa-stat-lbl">APG</div></div>
-        <div class="pa-stat"><div class="pa-stat-val">${player.gp||'—'}</div><div class="pa-stat-lbl">GP</div></div>
-      </div>
-    </div>
-    <div>
-      <div class="pa-ovr">${player.ovr||'?'}</div>
-      <div class="pa-ovr-lbl">OVR</div>
-    </div>
-  </div>`;
-
-  // Hide after 6 seconds
-  announceTimeout = setTimeout(() => { el.style.display = 'none'; }, 6000);
-}
-
 // ── RENDER ──
 function render() {
   if (!draftState) return;
@@ -588,18 +426,6 @@ function render() {
   const lastPick = picks[picks.length - 1];
   const topRow = document.getElementById('top-row');
   const dot = document.getElementById('status-dot');
-
-  // Detect new pick and show announcement (skip on first load)
-  const latestPick = picks[picks.length - 1];
-  if (latestPick && lastSeenPickNum === -1) {
-    // First load — just record current state, don't animate
-    lastSeenPickNum = latestPick.pickNum;
-  } else if (latestPick && latestPick.pickNum !== lastSeenPickNum) {
-    lastSeenPickNum = latestPick.pickNum;
-    const pickTeam = (draftState.teams || []).find(t => t.id === latestPick.teamId) || {};
-    const pickPlayer = (draftState.players || []).find(p => p.id === latestPick.playerId) || {};
-    showPickAnnounce(latestPick, pickTeam, pickPlayer);
-  }
 
   if (status === 'idle') {
     dot.className = 'dot';
