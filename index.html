@@ -3399,10 +3399,13 @@ function initChemistry() {
   // Get top PGs (by games as PG in pairs)
   const pgGames = {};
   chemData.forEach(d => { pgGames[d.pg] = (pgGames[d.pg]||0) + d.wins + d.losses; });
-  const topPGs = Object.entries(pgGames)
-    .sort((a,b) => b[1]-a[1])
-    .slice(0, 20)
-    .map(([name]) => name);
+  // Build PER map from aggregates for sorting
+  const aggPlayers = getAggregates(state.matches);
+  const perMap = {};
+  aggPlayers.forEach(p => { perMap[p.name] = p.per || 0; });
+  const topPGs = Object.keys(pgGames)
+    .sort((a, b) => (perMap[b]||0) - (perMap[a]||0))
+    .slice(0, 20);
 
   const sel = document.getElementById('chem-pg-select');
   sel.innerHTML = topPGs.map(pg => `<option value="${pg}" style="background:#1a1a1a;color:#fff">${pg}</option>`).join('');
