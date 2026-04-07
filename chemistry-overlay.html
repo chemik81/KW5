@@ -266,187 +266,145 @@
 </div>
 
 <script>
-// ──────────────────────────────────────────────
-// CONFIG
-// ──────────────────────────────────────────────
-const params  = new URLSearchParams(location.search);
-const WORKER  = (params.get('w') || '').replace(/\/+$/, '');
+const params   = new URLSearchParams(location.search);
+const WORKER   = (params.get('w') || '').replace(/\/+$/, '');
 const IS_ADMIN = params.get('admin') === '1';
+// Admin token — same as kw5elite uses (stored in localStorage or URL param)
+let ADMIN_TOKEN = params.get('token') || localStorage.getItem('kw5_admin_hash') || '';
 
 let allMatches = [];
-let chemCache  = {};
-let pgPerMap   = {};  // pg name -> PER
+let pgPerMap   = {};
+let pollTimer  = null;
+let lastState  = '';
 
-// ──────────────────────────────────────────────
-// INIT
-// ──────────────────────────────────────────────
+// ── INIT ──────────────────────────────────────
 async function init() {
   if (IS_ADMIN) document.getElementById('admin-panel').style.display = 'block';
-
-  if (!WORKER) {
-    setStatus('No ?w= worker URL provided');
-    return;
-  }
+  if (!WORKER) { setStatus('No ?w= worker URL'); return; }
 
   try {
-    setStatus('Loading...');
+    setStatus('Loading match data...');
     const res  = await fetch(WORKER + '/kw5-data');
     const json = await res.json();
-    const rec  = json.record || json;
-    allMatches = rec.matches || [];
+    allMatches = (json.record || json).matches || [];
 
-    // Build PER map from aggregates
+    // Build PER map
     const agg = computeAggregates(allMatches);
     agg.forEach(p => { pgPerMap[p.name] = p.per; });
 
-    // Populate admin PG select sorted by PER
-    const chemData = buildChemistryData(allMatches);
-    const pgGames  = {};
-    chemData.forEach(d => { pgGames[d.pg] = (pgGames[d.pg]||0) + d.wins + d.losses; });
+    // Populate admin PG dropdown sorted by PER
+    if (IS_ADMIN) {
+      const chemData = buildChemistryData(allMatches);
+      const pgGames  = {};
+      chemData.forEach(d => { pgGames[d.pg] = (pgGames[d.pg]||0) + d.wins + d.losses; });
+      const topPGs = Object.keys(pgGames)
+        .sort((a, b) => (pgPerMap[b]||0) - (pgPerMap[a]||0))
+        .slice(0, 30);
+      const sel = document.getElementById('adm-pg');
+      sel.innerHTML = topPGs.map(pg =>
+        `<option value="${pg}">${pg} · PER ${(pgPerMap[pg]||0).toFixed(1)}</option>`
+      ).join('');
+      setStatus('Ready · ' + allMatches.length + ' matches');
+    }
 
-    const topPGs = Object.keys(pgGames)
-      .sort((a, b) => (pgPerMap[b]||0) - (pgPerMap[a]||0))
-      .slice(0, 30);
+    // Start polling KV state (both admin and OBS overlay)
+    startPolling();
 
-    const sel = document.getElementById('adm-pg');
-    sel.innerHTML = topPGs.map(pg =>
-      `<option value="${pg}">${pg}${pgPerMap[pg] ? ' · PER '+pgPerMap[pg].toFixed(1) : ''}</option>`
-    ).join('');
-
-    setStatus('Ready — ' + allMatches.length + ' matches loaded');
-
-    // Auto-show if ?pg= param given (for non-admin OBS source)
-    const pgParam = params.get('pg');
-    const minParam = parseInt(params.get('min') || '2');
-    if (pgParam) showChemistry(pgParam, minParam);
-
-  } catch(e) {
-    setStatus('Error: ' + e.message);
-  }
+  } catch(e) { setStatus('Error: ' + e.message); }
 }
 
-// ──────────────────────────────────────────────
-// DATA
-// ──────────────────────────────────────────────
-function computeAggregates(matches) {
-  const map = {};
-  matches.forEach(m => {
-    const s1 = +m.score1||0, s2 = +m.score2||0;
-    const process = (players, result) => {
-      (players||[]).forEach(p => {
-        if (!p.name) return;
-        if (!map[p.name]) map[p.name] = { name:p.name, gp:0, wins:0, losses:0, pts:0, reb:0, ast:0, stl:0, blk:0, to:0, grades:[], posCounts:{} };
-        const pl = map[p.name];
-        pl.gp++;
-        if (result === 'W') pl.wins++; else if (result === 'L') pl.losses++;
-        pl.pts += +p.pts||0; pl.reb += +p.reb||0; pl.ast += +p.ast||0;
-        pl.stl += +p.stl||0; pl.blk += +p.blk||0; pl.to  += +p.to ||0;
-        if (p.pos) pl.posCounts[p.pos] = (pl.posCounts[p.pos]||0)+1;
-      });
-    };
-    process(m.team1_players, s1>s2?'W':s1<s2?'L':'D');
-    process(m.team2_players, s2>s1?'W':s2<s1?'L':'D');
-  });
-  return Object.values(map).map(pl => {
-    const g = pl.gp || 1;
-    pl.ppg = pl.pts/g; pl.rpg = pl.reb/g; pl.apg = pl.ast/g;
-    pl.spg = pl.stl/g; pl.bpg = pl.blk/g; pl.tpg = pl.to/g;
-    pl.per = pl.ppg + pl.rpg*1.2 + pl.apg*1.5 + pl.spg*2 + pl.bpg*2 - pl.tpg*1.5;
-    const posC = pl.posCounts;
-    pl.pos = Object.keys(posC).sort((a,b)=>posC[b]-posC[a])[0] || 'SF';
-    return pl;
-  });
+// ── POLLING ───────────────────────────────────
+function startPolling() {
+  pollOnce();
+  pollTimer = setInterval(pollOnce, 3000);
 }
 
-function buildChemistryData(matches) {
-  const pairs = {};
-  matches.forEach(m => {
-    const s1 = +m.score1||0, s2 = +m.score2||0;
-    const processTeam = (players, won) => {
-      if (!players || !players.length) return;
-      const pgs = players.filter(p => p.pos === 'PG');
-      const cs  = players.filter(p => p.pos === 'C');
-      pgs.forEach(pg => {
-        cs.forEach(c => {
-          const key = pg.name + '|||' + c.name;
-          if (!pairs[key]) pairs[key] = {
-            pg: pg.name, c: c.name,
-            wins: 0, losses: 0,
-            pgStats: { pts:0, reb:0, ast:0, stl:0, blk:0, gp:0 },
-            cStats:  { pts:0, reb:0, ast:0, stl:0, blk:0, gp:0 }
-          };
-          const pair = pairs[key];
-          if (won) pair.wins++; else pair.losses++;
-          ['pts','reb','ast','stl','blk'].forEach(s => {
-            pair.pgStats[s] += +pg[s]||0;
-            pair.cStats[s]  += +c[s] ||0;
-          });
-          pair.pgStats.gp++;
-          pair.cStats.gp++;
-        });
-      });
-    };
-    processTeam(m.team1_players, s1 > s2);
-    processTeam(m.team2_players, s2 > s1);
-  });
-  return Object.values(pairs);
+async function pollOnce() {
+  try {
+    const res   = await fetch(WORKER + '/chemistry-state');
+    const state = await res.json();
+    const key   = JSON.stringify(state);
+    if (key === lastState) return; // no change
+    lastState = key;
+
+    if (state.visible && state.pg) {
+      showChemistry(state.pg, state.min || 2);
+    } else {
+      hideCard();
+    }
+  } catch(e) { /* silent */ }
 }
 
-// ──────────────────────────────────────────────
-// RENDER
-// ──────────────────────────────────────────────
+// ── ADMIN ACTIONS ─────────────────────────────
+async function applyAndShow() {
+  const pg  = document.getElementById('adm-pg').value;
+  const min = parseInt(document.getElementById('adm-min').value);
+  if (!pg) return;
+  await saveState({ pg, min, visible: true });
+}
+
+async function hideCard() {
+  document.getElementById('card').classList.remove('visible');
+  if (IS_ADMIN) await saveState({ pg: null, min: 2, visible: false });
+}
+
+async function saveState(state) {
+  try {
+    setStatus('Saving...');
+    const r = await fetch(WORKER + '/chemistry-state', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Admin-Token': ADMIN_TOKEN
+      },
+      body: JSON.stringify(state)
+    });
+    if (!r.ok) {
+      // Try without token if unauthorized - maybe token param needed
+      setStatus('⚠ Check ?token= param in URL');
+      return;
+    }
+    setStatus(state.visible ? 'Showing: ' + state.pg : 'Hidden');
+  } catch(e) { setStatus('Save error: ' + e.message); }
+}
+
+// ── RENDER ────────────────────────────────────
 function showChemistry(pgName, minGames) {
   const chemData = buildChemistryData(allMatches);
-
-  const agg = computeAggregates(allMatches);
-  const pgAgg = agg.find(p => p.name === pgName) || {};
+  const agg      = computeAggregates(allMatches);
+  const pgAgg    = agg.find(p => p.name === pgName) || {};
 
   const pgPairs = chemData
     .filter(d => d.pg === pgName && (d.wins + d.losses) >= minGames)
-    .sort((a, b) => {
-      const ra = a.wins / (a.wins + a.losses);
-      const rb = b.wins / (b.wins + b.losses);
-      return rb - ra;
-    });
+    .sort((a, b) => (b.wins/(b.wins+b.losses)) - (a.wins/(a.wins+a.losses)));
 
-  if (!pgPairs.length) {
-    setStatus('No pairs found for ' + pgName + ' (min ' + minGames + ' games)');
-    return;
-  }
+  if (!pgPairs.length) return;
 
-  // Header
   document.getElementById('pg-name').textContent = pgName;
   document.getElementById('footer-min').textContent = minGames;
 
-  const per = (pgAgg.per || 0).toFixed(1);
-  const ppg = (pgAgg.ppg || 0).toFixed(1);
-  const apg = (pgAgg.apg || 0).toFixed(1);
-  const rpg = (pgAgg.rpg || 0).toFixed(1);
+  const f = (v, d=1) => v != null ? (+v).toFixed(d) : '—';
   document.getElementById('pg-stats').innerHTML =
-    `<span class="pg-stat"><b>${ppg}</b> PPG</span>` +
-    `<span class="pg-stat"><b>${rpg}</b> RPG</span>` +
-    `<span class="pg-stat"><b>${apg}</b> APG</span>` +
-    `<span class="pg-stat"><b>${per}</b> PER</span>` +
+    `<span class="pg-stat"><b>${f(pgAgg.ppg)}</b> PPG</span>` +
+    `<span class="pg-stat"><b>${f(pgAgg.rpg)}</b> RPG</span>` +
+    `<span class="pg-stat"><b>${f(pgAgg.apg)}</b> APG</span>` +
+    `<span class="pg-stat"><b>${f(pgAgg.per)}</b> PER</span>` +
     `<span class="pg-stat"><b>${pgAgg.gp||0}</b> GP</span>`;
 
-  // Pairs rows
   const sa = (stats, field) => stats.gp > 0 ? (stats[field]/stats.gp).toFixed(1) : '—';
-  const rateColor = r => r >= 0.6 ? '#4ade80' : r >= 0.4 ? '#f0c040' : '#f87171';
+  const rc = r => r >= 0.6 ? '#4ade80' : r >= 0.4 ? '#f0c040' : '#f87171';
 
   document.getElementById('pairs-list').innerHTML = pgPairs.map((d, i) => {
     const gp   = d.wins + d.losses;
     const rate = d.wins / gp;
     const pct  = Math.round(rate * 100);
-    const col  = rateColor(rate);
+    const col  = rc(rate);
     const isFirst = i === 0;
     const isLast  = i === pgPairs.length - 1 && pgPairs.length > 1;
-    const badge = isFirst ? '🟢' : isLast ? '🔴' : '';
-    const cls   = isFirst ? 'best' : isLast ? 'worst' : '';
-
     return `
-    <div class="pair-row ${cls}">
+    <div class="pair-row ${isFirst?'best':isLast?'worst':''}">
       <div class="pair-rank">${i+1}</div>
-      <div class="pair-name">${badge ? badge+' ' : ''}${d.c}</div>
+      <div class="pair-name">${isFirst?'🟢 ':isLast?'🔴 ':''}${d.c}</div>
       <div class="pair-gp"><b>${gp}</b><br>GP</div>
       <div class="pair-wl win">${d.wins}W</div>
       <div class="pair-wl loss">${d.losses}L</div>
@@ -463,19 +421,64 @@ function showChemistry(pgName, minGames) {
   }).join('');
 
   document.getElementById('card').classList.add('visible');
-  setStatus('Showing: ' + pgName + ' · ' + pgPairs.length + ' Centers');
 }
 
-function hideCard() {
-  document.getElementById('card').classList.remove('visible');
-  setStatus('Hidden');
+// ── DATA FUNCTIONS ────────────────────────────
+function computeAggregates(matches) {
+  const map = {};
+  matches.forEach(m => {
+    const s1 = +m.score1||0, s2 = +m.score2||0;
+    const process = (players, result) => {
+      (players||[]).forEach(p => {
+        if (!p.name) return;
+        if (!map[p.name]) map[p.name] = { name:p.name, gp:0, wins:0, losses:0, pts:0, reb:0, ast:0, stl:0, blk:0, to:0, posCounts:{} };
+        const pl = map[p.name];
+        pl.gp++;
+        if (result==='W') pl.wins++; else if (result==='L') pl.losses++;
+        pl.pts+=+p.pts||0; pl.reb+=+p.reb||0; pl.ast+=+p.ast||0;
+        pl.stl+=+p.stl||0; pl.blk+=+p.blk||0; pl.to +=+p.to ||0;
+        if (p.pos) pl.posCounts[p.pos] = (pl.posCounts[p.pos]||0)+1;
+      });
+    };
+    process(m.team1_players, s1>s2?'W':s1<s2?'L':'D');
+    process(m.team2_players, s2>s1?'W':s2<s1?'L':'D');
+  });
+  return Object.values(map).map(pl => {
+    const g = pl.gp||1;
+    pl.ppg=pl.pts/g; pl.rpg=pl.reb/g; pl.apg=pl.ast/g;
+    pl.spg=pl.stl/g; pl.bpg=pl.blk/g; pl.tpg=pl.to/g;
+    pl.per=pl.ppg+pl.rpg*1.2+pl.apg*1.5+pl.spg*2+pl.bpg*2-pl.tpg*1.5;
+    const posC=pl.posCounts;
+    pl.pos=Object.keys(posC).sort((a,b)=>posC[b]-posC[a])[0]||'SF';
+    return pl;
+  });
 }
 
-function applyAndShow() {
-  const pg  = document.getElementById('adm-pg').value;
-  const min = parseInt(document.getElementById('adm-min').value);
-  if (!pg) return;
-  showChemistry(pg, min);
+function buildChemistryData(matches) {
+  const pairs = {};
+  matches.forEach(m => {
+    const s1=+m.score1||0, s2=+m.score2||0;
+    const processTeam = (players, won) => {
+      if (!players||!players.length) return;
+      const pgs=players.filter(p=>p.pos==='PG');
+      const cs =players.filter(p=>p.pos==='C');
+      pgs.forEach(pg => cs.forEach(c => {
+        const key=pg.name+'|||'+c.name;
+        if (!pairs[key]) pairs[key]={pg:pg.name,c:c.name,wins:0,losses:0,
+          pgStats:{pts:0,reb:0,ast:0,stl:0,blk:0,gp:0},
+          cStats: {pts:0,reb:0,ast:0,stl:0,blk:0,gp:0}};
+        const pair=pairs[key];
+        if (won) pair.wins++; else pair.losses++;
+        ['pts','reb','ast','stl','blk'].forEach(s=>{
+          pair.pgStats[s]+=+pg[s]||0; pair.cStats[s]+=+c[s]||0;
+        });
+        pair.pgStats.gp++; pair.cStats.gp++;
+      }));
+    };
+    processTeam(m.team1_players, s1>s2);
+    processTeam(m.team2_players, s2>s1);
+  });
+  return Object.values(pairs);
 }
 
 function setStatus(msg) {
@@ -483,7 +486,6 @@ function setStatus(msg) {
   if (el) el.textContent = msg;
 }
 
-// ──────────────────────────────────────────────
 init();
 </script>
 </body>
