@@ -3443,19 +3443,19 @@ function renderChemistry() {
             <th style="padding:10px 12px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.08em;text-align:center">W</th>
             <th style="padding:10px 12px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.08em;text-align:center">L</th>
             <th style="padding:10px 12px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.08em;min-width:160px">W%</th>
-            <th colspan="5" style="padding:10px 12px;color:var(--gold);font-weight:700;text-transform:uppercase;letter-spacing:.08em;text-align:center;border-left:1px solid rgba(255,255,255,.08)">
+            <th colspan="5" style="padding:10px 12px;color:var(--gold);font-weight:700;text-transform:uppercase;letter-spacing:.08em;text-align:center;border-left:1px solid var(--border2)">
               ${selectedPG} stats when paired</th>
-            <th colspan="5" style="padding:10px 12px;color:#86efac;font-weight:700;text-transform:uppercase;letter-spacing:.08em;text-align:center;border-left:1px solid rgba(255,255,255,.08)">
+            <th colspan="5" style="padding:10px 12px;color:var(--text2);font-weight:700;text-transform:uppercase;letter-spacing:.08em;text-align:center;border-left:1px solid var(--border2)">
               Center stats when paired</th>
           </tr>
           <tr style="border-bottom:1px solid rgba(255,255,255,.06);font-size:11px;color:var(--text3)">
             <th colspan="5"></th>
-            <th style="padding:6px 10px;text-align:center;border-left:1px solid rgba(255,255,255,.08)">PTS</th>
+            <th style="padding:6px 10px;text-align:center;border-left:1px solid var(--border2)">PTS</th>
             <th style="padding:6px 10px;text-align:center">REB</th>
             <th style="padding:6px 10px;text-align:center">AST</th>
             <th style="padding:6px 10px;text-align:center">STL</th>
             <th style="padding:6px 10px;text-align:center">BLK</th>
-            <th style="padding:6px 10px;text-align:center;border-left:1px solid rgba(255,255,255,.08)">PTS</th>
+            <th style="padding:6px 10px;text-align:center;border-left:1px solid var(--border2)">PTS</th>
             <th style="padding:6px 10px;text-align:center">REB</th>
             <th style="padding:6px 10px;text-align:center">AST</th>
             <th style="padding:6px 10px;text-align:center">STL</th>
@@ -3468,33 +3468,33 @@ function renderChemistry() {
             const rate = d.wins / gp;
             const isFirst = i === 0;
             const isLast = i === pgPairs.length - 1;
-            const rowBg = i % 2 === 0 ? 'rgba(255,255,255,.02)' : 'transparent';
-            const highlight = isFirst ? 'rgba(74,222,128,.06)' : isLast && pgPairs.length > 1 ? 'rgba(248,113,113,.06)' : rowBg;
-            return `<tr style="background:${highlight};border-bottom:1px solid rgba(255,255,255,.04)">
-              <td style="padding:10px 12px;font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800">
+            const rowBg = i % 2 === 0 ? 'var(--bg4)' : 'transparent';
+            const highlight = isFirst ? 'rgba(74,222,128,.08)' : isLast && pgPairs.length > 1 ? 'rgba(248,113,113,.08)' : rowBg;
+            return `<tr style="background:${highlight};border-bottom:1px solid var(--border2)">
+              <td style="padding:10px 12px;font-size:14px;font-weight:600;color:var(--white)">
                 ${isFirst ? '🟢 ' : isLast && pgPairs.length > 1 ? '🔴 ' : ''}${d.c}
               </td>
               <td style="padding:10px 12px;text-align:center;color:var(--text3)">${gp}</td>
-              <td style="padding:10px 12px;text-align:center;color:#4ade80;font-weight:700">${d.wins}</td>
-              <td style="padding:10px 12px;text-align:center;color:#f87171;font-weight:700">${d.losses}</td>
+              <td style="padding:10px 12px;text-align:center;color:var(--gold);font-weight:700">${d.wins}</td>
+              <td style="padding:10px 12px;text-align:center;color:var(--text3);font-weight:700">${d.losses}</td>
               <td style="padding:10px 12px">
                 <div style="display:flex;align-items:center;gap:8px">
-                  <div style="flex:1;height:8px;background:rgba(255,255,255,.08);border-radius:4px;overflow:hidden">
+                  <div style="flex:1;height:8px;background:var(--bg4);border-radius:4px;overflow:hidden">
                     <div style="width:${barW(rate)}%;height:100%;background:${rateColor(rate)};border-radius:4px;transition:width .3s"></div>
                   </div>
                   <span style="font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:16px;color:${rateColor(rate)};min-width:40px">${Math.round(rate*100)}%</span>
                 </div>
               </td>
-              <td style="padding:10px 10px;text-align:center;color:var(--gold);font-weight:700;border-left:1px solid rgba(255,255,255,.08)">${statAvg(d.pgStats,'pts')}</td>
+              <td style="padding:10px 10px;text-align:center;color:var(--gold);font-weight:700;border-left:1px solid var(--border2)">${statAvg(d.pgStats,'pts')}</td>
               <td style="padding:10px 10px;text-align:center;color:var(--gold);font-weight:700">${statAvg(d.pgStats,'reb')}</td>
               <td style="padding:10px 10px;text-align:center;color:var(--gold);font-weight:700">${statAvg(d.pgStats,'ast')}</td>
               <td style="padding:10px 10px;text-align:center;color:var(--gold);font-weight:700">${statAvg(d.pgStats,'stl')}</td>
               <td style="padding:10px 10px;text-align:center;color:var(--gold);font-weight:700">${statAvg(d.pgStats,'blk')}</td>
-              <td style="padding:10px 10px;text-align:center;color:#86efac;font-weight:700;border-left:1px solid rgba(255,255,255,.08)">${statAvg(d.cStats,'pts')}</td>
-              <td style="padding:10px 10px;text-align:center;color:#86efac;font-weight:700">${statAvg(d.cStats,'reb')}</td>
-              <td style="padding:10px 10px;text-align:center;color:#86efac;font-weight:700">${statAvg(d.cStats,'ast')}</td>
-              <td style="padding:10px 10px;text-align:center;color:#86efac;font-weight:700">${statAvg(d.cStats,'stl')}</td>
-              <td style="padding:10px 10px;text-align:center;color:#86efac;font-weight:700">${statAvg(d.cStats,'blk')}</td>
+              <td style="padding:10px 10px;text-align:center;color:var(--text2);font-weight:700;border-left:1px solid var(--border2)">${statAvg(d.cStats,'pts')}</td>
+              <td style="padding:10px 10px;text-align:center;color:var(--text2);font-weight:700">${statAvg(d.cStats,'reb')}</td>
+              <td style="padding:10px 10px;text-align:center;color:var(--text2);font-weight:700">${statAvg(d.cStats,'ast')}</td>
+              <td style="padding:10px 10px;text-align:center;color:var(--text2);font-weight:700">${statAvg(d.cStats,'stl')}</td>
+              <td style="padding:10px 10px;text-align:center;color:var(--text2);font-weight:700">${statAvg(d.cStats,'blk')}</td>
             </tr>`;
           }).join('')}
         </tbody>
