@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Chemistry Overlay</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;700;900&family=Barlow:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: transparent;
+    font-family: 'Barlow', sans-serif;
+    color: #fff;
+    overflow: hidden;
+  }
+
+  /* ── OVERLAY CARD ── */
+  .card {
+    position: fixed;
+    top: 40px;
+    left: 40px;
+    width: 860px;
+    background: linear-gradient(135deg, rgba(10,10,10,.97) 0%, rgba(20,18,12,.97) 100%);
+    border: 1px solid rgba(212,168,67,.3);
+    border-top: 3px solid #d4a843;
+    border-radius: 6px;
+    padding: 20px 24px 18px;
+    animation: slideIn .5s cubic-bezier(.22,1,.36,1);
+    display: none;
+  }
+  .card.visible { display: block; }
+
+  @keyframes slideIn {
+    from { opacity:0; transform:translateX(-40px); }
+    to   { opacity:1; transform:translateX(0); }
+  }
+
+  /* ── HEADER ── */
+  .hdr {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 16px;
+    border-bottom: 1px solid rgba(212,168,67,.2);
+    padding-bottom: 14px;
+  }
+  .hdr-icon { font-size: 22px; }
+  .hdr-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    color: #d4a843;
+  }
+  .pg-name {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 36px;
+    font-weight: 900;
+    color: #fff;
+    letter-spacing: .04em;
+    line-height: 1;
+    margin-top: 2px;
+  }
+  .pg-stats {
+    display: flex;
+    gap: 16px;
+    margin-top: 4px;
+  }
+  .pg-stat { font-size: 12px; color: rgba(255,255,255,.5); }
+  .pg-stat b { color: #d4a843; font-weight: 700; }
+
+  /* ── PAIRS TABLE ── */
+  .pairs {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .pair-row {
+    display: grid;
+    grid-template-columns: 28px 180px 52px 52px 52px 1fr 52px;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+    border-radius: 4px;
+    background: rgba(255,255,255,.03);
+    border: 1px solid rgba(255,255,255,.05);
+    transition: background .2s;
+  }
+  .pair-row.best  { background: rgba(74,222,128,.06); border-color: rgba(74,222,128,.15); }
+  .pair-row.worst { background: rgba(248,113,113,.06); border-color: rgba(248,113,113,.15); }
+
+  .pair-rank {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 14px;
+    font-weight: 900;
+    color: rgba(255,255,255,.2);
+    text-align: center;
+  }
+  .pair-name {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 20px;
+    font-weight: 800;
+    color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .pair-gp {
+    font-size: 12px;
+    color: rgba(255,255,255,.4);
+    text-align: center;
+  }
+  .pair-gp b { color: rgba(255,255,255,.7); font-size: 14px; font-weight: 700; }
+
+  .pair-wl {
+    text-align: center;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+  }
+  .pair-wl.win  { color: #4ade80; }
+  .pair-wl.loss { color: rgba(255,255,255,.35); }
+
+  /* W% bar */
+  .pair-bar-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .pair-bar-bg {
+    flex: 1;
+    height: 6px;
+    background: rgba(255,255,255,.1);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .pair-bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width .6s ease;
+  }
+  .pair-pct {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 18px;
+    font-weight: 900;
+    min-width: 46px;
+    text-align: right;
+  }
+
+  /* emoji badge */
+  .badge { font-size: 16px; min-width: 24px; }
+
+  /* ── FOOTER ── */
+  .footer {
+    margin-top: 12px;
+    font-size: 10px;
+    color: rgba(255,255,255,.25);
+    text-transform: uppercase;
+    letter-spacing: .1em;
+    border-top: 1px solid rgba(255,255,255,.06);
+    padding-top: 8px;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  /* ── ADMIN PANEL (only shown when ?admin=1) ── */
+  #admin-panel {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: rgba(10,10,10,.95);
+    border: 1px solid #d4a843;
+    border-radius: 6px;
+    padding: 16px;
+    width: 280px;
+    display: none;
+    z-index: 999;
+    font-size: 13px;
+    color: #fff;
+  }
+  #admin-panel h3 {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 14px;
+    font-weight: 900;
+    color: #d4a843;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  #admin-panel label { display: block; font-size: 11px; color: rgba(255,255,255,.5); margin-bottom: 4px; margin-top: 10px; text-transform: uppercase; letter-spacing: .08em; }
+  #admin-panel select, #admin-panel input[type=number] {
+    width: 100%;
+    background: #1a1a1a;
+    color: #fff;
+    border: 1px solid #d4a843;
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+  #admin-panel select option { background: #1a1a1a; }
+  .admin-btn {
+    margin-top: 12px;
+    width: 100%;
+    background: #d4a843;
+    color: #000;
+    border: none;
+    border-radius: 4px;
+    padding: 8px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 14px;
+    font-weight: 900;
+    letter-spacing: .08em;
+    cursor: pointer;
+    text-transform: uppercase;
+  }
+  .admin-btn:hover { background: #e8c05a; }
+  .admin-btn.secondary {
+    background: transparent;
+    border: 1px solid rgba(255,255,255,.2);
+    color: rgba(255,255,255,.6);
+    margin-top: 6px;
+  }
+  .admin-btn.secondary:hover { border-color: #d4a843; color: #d4a843; }
+  #admin-status { font-size: 11px; color: rgba(255,255,255,.4); margin-top: 8px; text-align: center; }
+</style>
+</head>
+<body>
+
+<!-- OVERLAY CARD -->
+<div class="card" id="card">
+  <div class="hdr">
+    <div class="hdr-icon">🔗</div>
+    <div>
+      <div class="hdr-title">PG + Center Chemistry</div>
+      <div class="pg-name" id="pg-name">—</div>
+      <div class="pg-stats" id="pg-stats"></div>
+    </div>
+  </div>
+  <div class="pairs" id="pairs-list"></div>
+  <div class="footer">
+    <span>Win rate per pairing · min <span id="footer-min">2</span> games</span>
+    <span>KW5 ELITE LEAGUE</span>
+  </div>
+</div>
+
+<!-- ADMIN PANEL -->
+<div id="admin-panel">
+  <h3>⚙ Chemistry Control</h3>
+
+  <label>Point Guard</label>
+  <select id="adm-pg"></select>
+
+  <label>Min games together</label>
+  <select id="adm-min">
+    <option value="1">1+</option>
+    <option value="2" selected>2+</option>
+    <option value="3">3+</option>
+    <option value="5">5+</option>
+  </select>
+
+  <button class="admin-btn" onclick="applyAndShow()">▶ Show on overlay</button>
+  <button class="admin-btn secondary" onclick="hideCard()">✕ Hide overlay</button>
+  <div id="admin-status">Loading data...</div>
+</div>
+
+<script>
+// ──────────────────────────────────────────────
+// CONFIG
+// ──────────────────────────────────────────────
+const params  = new URLSearchParams(location.search);
+const WORKER  = (params.get('w') || '').replace(/\/+$/, '');
+const IS_ADMIN = params.get('admin') === '1';
+
+let allMatches = [];
+let chemCache  = {};
+let pgPerMap   = {};  // pg name -> PER
+
+// ──────────────────────────────────────────────
+// INIT
+// ──────────────────────────────────────────────
+async function init() {
+  if (IS_ADMIN) document.getElementById('admin-panel').style.display = 'block';
+
+  if (!WORKER) {
+    setStatus('No ?w= worker URL provided');
+    return;
+  }
+
+  try {
+    setStatus('Loading...');
+    const res  = await fetch(WORKER + '/kw5-data');
+    const json = await res.json();
+    const rec  = json.record || json;
+    allMatches = rec.matches || [];
+
+    // Build PER map from aggregates
+    const agg = computeAggregates(allMatches);
+    agg.forEach(p => { pgPerMap[p.name] = p.per; });
+
+    // Populate admin PG select sorted by PER
+    const chemData = buildChemistryData(allMatches);
+    const pgGames  = {};
+    chemData.forEach(d => { pgGames[d.pg] = (pgGames[d.pg]||0) + d.wins + d.losses; });
+
+    const topPGs = Object.keys(pgGames)
+      .sort((a, b) => (pgPerMap[b]||0) - (pgPerMap[a]||0))
+      .slice(0, 30);
+
+    const sel = document.getElementById('adm-pg');
+    sel.innerHTML = topPGs.map(pg =>
+      `<option value="${pg}">${pg}${pgPerMap[pg] ? ' · PER '+pgPerMap[pg].toFixed(1) : ''}</option>`
+    ).join('');
+
+    setStatus('Ready — ' + allMatches.length + ' matches loaded');
+
+    // Auto-show if ?pg= param given (for non-admin OBS source)
+    const pgParam = params.get('pg');
+    const minParam = parseInt(params.get('min') || '2');
+    if (pgParam) showChemistry(pgParam, minParam);
+
+  } catch(e) {
+    setStatus('Error: ' + e.message);
+  }
+}
+
+// ──────────────────────────────────────────────
+// DATA
+// ──────────────────────────────────────────────
+function computeAggregates(matches) {
+  const map = {};
+  matches.forEach(m => {
+    const s1 = +m.score1||0, s2 = +m.score2||0;
+    const process = (players, result) => {
+      (players||[]).forEach(p => {
+        if (!p.name) return;
+        if (!map[p.name]) map[p.name] = { name:p.name, gp:0, wins:0, losses:0, pts:0, reb:0, ast:0, stl:0, blk:0, to:0, grades:[], posCounts:{} };
+        const pl = map[p.name];
+        pl.gp++;
+        if (result === 'W') pl.wins++; else if (result === 'L') pl.losses++;
+        pl.pts += +p.pts||0; pl.reb += +p.reb||0; pl.ast += +p.ast||0;
+        pl.stl += +p.stl||0; pl.blk += +p.blk||0; pl.to  += +p.to ||0;
+        if (p.pos) pl.posCounts[p.pos] = (pl.posCounts[p.pos]||0)+1;
+      });
+    };
+    process(m.team1_players, s1>s2?'W':s1<s2?'L':'D');
+    process(m.team2_players, s2>s1?'W':s2<s1?'L':'D');
+  });
+  return Object.values(map).map(pl => {
+    const g = pl.gp || 1;
+    pl.ppg = pl.pts/g; pl.rpg = pl.reb/g; pl.apg = pl.ast/g;
+    pl.spg = pl.stl/g; pl.bpg = pl.blk/g; pl.tpg = pl.to/g;
+    pl.per = pl.ppg + pl.rpg*1.2 + pl.apg*1.5 + pl.spg*2 + pl.bpg*2 - pl.tpg*1.5;
+    const posC = pl.posCounts;
+    pl.pos = Object.keys(posC).sort((a,b)=>posC[b]-posC[a])[0] || 'SF';
+    return pl;
+  });
+}
+
+function buildChemistryData(matches) {
+  const pairs = {};
+  matches.forEach(m => {
+    const s1 = +m.score1||0, s2 = +m.score2||0;
+    const processTeam = (players, won) => {
+      if (!players || !players.length) return;
+      const pgs = players.filter(p => p.pos === 'PG');
+      const cs  = players.filter(p => p.pos === 'C');
+      pgs.forEach(pg => {
+        cs.forEach(c => {
+          const key = pg.name + '|||' + c.name;
+          if (!pairs[key]) pairs[key] = {
+            pg: pg.name, c: c.name,
+            wins: 0, losses: 0,
+            pgStats: { pts:0, reb:0, ast:0, stl:0, blk:0, gp:0 },
+            cStats:  { pts:0, reb:0, ast:0, stl:0, blk:0, gp:0 }
+          };
+          const pair = pairs[key];
+          if (won) pair.wins++; else pair.losses++;
+          ['pts','reb','ast','stl','blk'].forEach(s => {
+            pair.pgStats[s] += +pg[s]||0;
+            pair.cStats[s]  += +c[s] ||0;
+          });
+          pair.pgStats.gp++;
+          pair.cStats.gp++;
+        });
+      });
+    };
+    processTeam(m.team1_players, s1 > s2);
+    processTeam(m.team2_players, s2 > s1);
+  });
+  return Object.values(pairs);
+}
+
+// ──────────────────────────────────────────────
+// RENDER
+// ──────────────────────────────────────────────
+function showChemistry(pgName, minGames) {
+  const chemData = buildChemistryData(allMatches);
+
+  const agg = computeAggregates(allMatches);
+  const pgAgg = agg.find(p => p.name === pgName) || {};
+
+  const pgPairs = chemData
+    .filter(d => d.pg === pgName && (d.wins + d.losses) >= minGames)
+    .sort((a, b) => {
+      const ra = a.wins / (a.wins + a.losses);
+      const rb = b.wins / (b.wins + b.losses);
+      return rb - ra;
+    });
+
+  if (!pgPairs.length) {
+    setStatus('No pairs found for ' + pgName + ' (min ' + minGames + ' games)');
+    return;
+  }
+
+  // Header
+  document.getElementById('pg-name').textContent = pgName;
+  document.getElementById('footer-min').textContent = minGames;
+
+  const per = (pgAgg.per || 0).toFixed(1);
+  const ppg = (pgAgg.ppg || 0).toFixed(1);
+  const apg = (pgAgg.apg || 0).toFixed(1);
+  const rpg = (pgAgg.rpg || 0).toFixed(1);
+  document.getElementById('pg-stats').innerHTML =
+    `<span class="pg-stat"><b>${ppg}</b> PPG</span>` +
+    `<span class="pg-stat"><b>${rpg}</b> RPG</span>` +
+    `<span class="pg-stat"><b>${apg}</b> APG</span>` +
+    `<span class="pg-stat"><b>${per}</b> PER</span>` +
+    `<span class="pg-stat"><b>${pgAgg.gp||0}</b> GP</span>`;
+
+  // Pairs rows
+  const sa = (stats, field) => stats.gp > 0 ? (stats[field]/stats.gp).toFixed(1) : '—';
+  const rateColor = r => r >= 0.6 ? '#4ade80' : r >= 0.4 ? '#f0c040' : '#f87171';
+
+  document.getElementById('pairs-list').innerHTML = pgPairs.map((d, i) => {
+    const gp   = d.wins + d.losses;
+    const rate = d.wins / gp;
+    const pct  = Math.round(rate * 100);
+    const col  = rateColor(rate);
+    const isFirst = i === 0;
+    const isLast  = i === pgPairs.length - 1 && pgPairs.length > 1;
+    const badge = isFirst ? '🟢' : isLast ? '🔴' : '';
+    const cls   = isFirst ? 'best' : isLast ? 'worst' : '';
+
+    return `
+    <div class="pair-row ${cls}">
+      <div class="pair-rank">${i+1}</div>
+      <div class="pair-name">${badge ? badge+' ' : ''}${d.c}</div>
+      <div class="pair-gp"><b>${gp}</b><br>GP</div>
+      <div class="pair-wl win">${d.wins}W</div>
+      <div class="pair-wl loss">${d.losses}L</div>
+      <div class="pair-bar-wrap">
+        <div class="pair-bar-bg">
+          <div class="pair-bar-fill" style="width:${pct}%;background:${col}"></div>
+        </div>
+        <div class="pair-pct" style="color:${col}">${pct}%</div>
+      </div>
+      <div class="pair-gp" style="font-size:11px;color:rgba(255,255,255,.35)">
+        ${sa(d.pgStats,'pts')}pts<br>${sa(d.pgStats,'ast')}ast
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('card').classList.add('visible');
+  setStatus('Showing: ' + pgName + ' · ' + pgPairs.length + ' Centers');
+}
+
+function hideCard() {
+  document.getElementById('card').classList.remove('visible');
+  setStatus('Hidden');
+}
+
+function applyAndShow() {
+  const pg  = document.getElementById('adm-pg').value;
+  const min = parseInt(document.getElementById('adm-min').value);
+  if (!pg) return;
+  showChemistry(pg, min);
+}
+
+function setStatus(msg) {
+  const el = document.getElementById('admin-status');
+  if (el) el.textContent = msg;
+}
+
+// ──────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
