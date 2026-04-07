@@ -341,6 +341,7 @@
     </button>
     <button onclick="showSection('boxscores',this)">Box Scores</button>
     <button id="admin-nav-btn" onclick="showSection('admin',this)" style="display:none">⚙ Admin</button>
+    <button id="chemistry-nav-btn" onclick="showSection('chemistry',this)" style="display:none">🔗 Chemistry</button>
     <button id="superadmin-nav-btn" onclick="showSection('superadmin',this)" style="display:none">👑 Super Admin</button>
   </nav>
   <div class="header-right">
@@ -397,6 +398,28 @@
     </div>
 
     <div class="table-wrap" id="stats-table-wrap"></div>
+  </div>
+</section>
+
+<!-- CHEMISTRY SECTION -->
+<section class="section" id="sec-chemistry" style="display:none">
+  <div class="stats-wrap">
+    <div style="margin-bottom:20px">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:900;color:var(--gold);letter-spacing:.05em;margin-bottom:4px">🔗 PG + C CHEMISTRY</div>
+      <div style="font-size:13px;color:var(--text3)">Win rate for top PGs paired with each Center in the same match. Min. 2 games together.</div>
+    </div>
+    <div style="margin-bottom:16px;display:flex;align-items:center;gap:12px">
+      <label style="font-size:13px;color:var(--text3)">PG:</label>
+      <select id="chem-pg-select" onchange="renderChemistry()" style="background:var(--card-bg);color:var(--white);border:1px solid var(--gold);border-radius:6px;padding:6px 12px;font-size:13px"></select>
+      <label style="font-size:13px;color:var(--text3)">Min games:</label>
+      <select id="chem-min-games" onchange="renderChemistry()" style="background:var(--card-bg);color:var(--white);border:1px solid var(--gold);border-radius:6px;padding:6px 12px;font-size:13px">
+        <option value="1">1+</option>
+        <option value="2" selected>2+</option>
+        <option value="3">3+</option>
+        <option value="5">5+</option>
+      </select>
+    </div>
+    <div id="chem-content"></div>
   </div>
 </section>
 
@@ -998,6 +1021,8 @@ function saveState() {
 
 function updateAdminUI() {
   const a = isAdmin, sa = isSuperAdmin;
+  const chemBtn = document.getElementById('chemistry-nav-btn');
+  if (chemBtn) chemBtn.style.display = a ? 'inline-flex' : 'none';
   document.getElementById('login-btn').style.display          = a  ? 'none' : '';
   document.getElementById('logout-btn').style.display         = a  ? ''     : 'none';
   document.getElementById('admin-nav-btn').style.display      = a  ? ''     : 'none';
@@ -1028,6 +1053,7 @@ function showSection(name, btn) {
   if (btn) btn.classList.add('active');
   if (name === 'stats') renderStats();
   if (name === 'boxscores') renderBoxScores();
+  if (name === 'chemistry') initChemistry();
   if (name === 'superadmin') fillSuperAdminFields();
 }
 
@@ -3310,6 +3336,163 @@ function autoFillRoster() {
   }
 }
 
+
+// ═══════════════════════════════════════════════════════════════
+// CHEMISTRY ANALYSIS — PG + C win rate
+// ═══════════════════════════════════════════════════════════════
+function buildChemistryData(matches) {
+  // For each match, find all PGs and Cs on the same team
+  // Track wins/losses per pair
+  const pairs = {}; // key: "PG|C" -> { wins, losses, pgStats, cStats }
+
+  matches.forEach(m => {
+    const s1 = +m.score1||0, s2 = +m.score2||0;
+    const processTeam = (players, won) => {
+      if (!players || !players.length) return;
+      const pgs = players.filter(p => p.pos === 'PG');
+      const cs  = players.filter(p => p.pos === 'C');
+      pgs.forEach(pg => {
+        cs.forEach(c => {
+          const key = pg.name + '|||' + c.name;
+          if (!pairs[key]) pairs[key] = {
+            pg: pg.name, c: c.name,
+            wins: 0, losses: 0,
+            pgStats: { pts:0, reb:0, ast:0, stl:0, blk:0, gp:0 },
+            cStats:  { pts:0, reb:0, ast:0, stl:0, blk:0, gp:0 }
+          };
+          const pair = pairs[key];
+          if (won) pair.wins++; else pair.losses++;
+          ['pts','reb','ast','stl','blk'].forEach(s => {
+            pair.pgStats[s] += +pg[s]||0;
+            pair.cStats[s]  += +c[s] ||0;
+          });
+          pair.pgStats.gp++;
+          pair.cStats.gp++;
+        });
+      });
+    };
+    processTeam(m.team1_players, s1 > s2);
+    processTeam(m.team2_players, s2 > s1);
+  });
+
+  return Object.values(pairs);
+}
+
+function initChemistry() {
+  if (!state.matches || !state.matches.length) return;
+  const chemData = buildChemistryData(state.matches);
+
+  // Get top PGs (by games as PG in pairs)
+  const pgGames = {};
+  chemData.forEach(d => { pgGames[d.pg] = (pgGames[d.pg]||0) + d.wins + d.losses; });
+  const topPGs = Object.entries(pgGames)
+    .sort((a,b) => b[1]-a[1])
+    .slice(0, 20)
+    .map(([name]) => name);
+
+  const sel = document.getElementById('chem-pg-select');
+  sel.innerHTML = topPGs.map(pg => `<option value="${pg}">${pg}</option>`).join('');
+  renderChemistry();
+}
+
+function renderChemistry() {
+  if (!state.matches || !state.matches.length) return;
+  const chemData = buildChemistryData(state.matches);
+  const selectedPG = document.getElementById('chem-pg-select').value;
+  const minGames = +document.getElementById('chem-min-games').value;
+
+  // Filter to selected PG
+  const pgPairs = chemData
+    .filter(d => d.pg === selectedPG && (d.wins + d.losses) >= minGames)
+    .sort((a,b) => {
+      const rateA = a.wins / (a.wins + a.losses);
+      const rateB = b.wins / (b.wins + b.losses);
+      return rateB - rateA;
+    });
+
+  if (!pgPairs.length) {
+    document.getElementById('chem-content').innerHTML = '<div style="color:var(--text3);padding:24px">No data for selected filters.</div>';
+    return;
+  }
+
+  const statAvg = (stats, field) => stats.gp > 0 ? (stats[field]/stats.gp).toFixed(1) : '—';
+  const rateColor = rate => rate >= 0.6 ? '#4ade80' : rate >= 0.4 ? '#f0c040' : '#f87171';
+  const barW = rate => Math.round(rate * 100);
+
+  const html = `
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead>
+          <tr style="border-bottom:2px solid var(--gold);text-align:left">
+            <th style="padding:10px 12px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.08em">Center</th>
+            <th style="padding:10px 12px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.08em;text-align:center">GP</th>
+            <th style="padding:10px 12px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.08em;text-align:center">W</th>
+            <th style="padding:10px 12px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.08em;text-align:center">L</th>
+            <th style="padding:10px 12px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.08em;min-width:160px">W%</th>
+            <th colspan="5" style="padding:10px 12px;color:var(--gold);font-weight:700;text-transform:uppercase;letter-spacing:.08em;text-align:center;border-left:1px solid rgba(255,255,255,.08)">
+              ${selectedPG} stats when paired</th>
+            <th colspan="5" style="padding:10px 12px;color:#86efac;font-weight:700;text-transform:uppercase;letter-spacing:.08em;text-align:center;border-left:1px solid rgba(255,255,255,.08)">
+              Center stats when paired</th>
+          </tr>
+          <tr style="border-bottom:1px solid rgba(255,255,255,.06);font-size:11px;color:var(--text3)">
+            <th colspan="5"></th>
+            <th style="padding:6px 10px;text-align:center;border-left:1px solid rgba(255,255,255,.08)">PTS</th>
+            <th style="padding:6px 10px;text-align:center">REB</th>
+            <th style="padding:6px 10px;text-align:center">AST</th>
+            <th style="padding:6px 10px;text-align:center">STL</th>
+            <th style="padding:6px 10px;text-align:center">BLK</th>
+            <th style="padding:6px 10px;text-align:center;border-left:1px solid rgba(255,255,255,.08)">PTS</th>
+            <th style="padding:6px 10px;text-align:center">REB</th>
+            <th style="padding:6px 10px;text-align:center">AST</th>
+            <th style="padding:6px 10px;text-align:center">STL</th>
+            <th style="padding:6px 10px;text-align:center">BLK</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${pgPairs.map((d, i) => {
+            const gp = d.wins + d.losses;
+            const rate = d.wins / gp;
+            const isFirst = i === 0;
+            const isLast = i === pgPairs.length - 1;
+            const rowBg = i % 2 === 0 ? 'rgba(255,255,255,.02)' : 'transparent';
+            const highlight = isFirst ? 'rgba(74,222,128,.06)' : isLast && pgPairs.length > 1 ? 'rgba(248,113,113,.06)' : rowBg;
+            return `<tr style="background:${highlight};border-bottom:1px solid rgba(255,255,255,.04)">
+              <td style="padding:10px 12px;font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:800">
+                ${isFirst ? '🟢 ' : isLast && pgPairs.length > 1 ? '🔴 ' : ''}${d.c}
+              </td>
+              <td style="padding:10px 12px;text-align:center;color:var(--text3)">${gp}</td>
+              <td style="padding:10px 12px;text-align:center;color:#4ade80;font-weight:700">${d.wins}</td>
+              <td style="padding:10px 12px;text-align:center;color:#f87171;font-weight:700">${d.losses}</td>
+              <td style="padding:10px 12px">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <div style="flex:1;height:8px;background:rgba(255,255,255,.08);border-radius:4px;overflow:hidden">
+                    <div style="width:${barW(rate)}%;height:100%;background:${rateColor(rate)};border-radius:4px;transition:width .3s"></div>
+                  </div>
+                  <span style="font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:16px;color:${rateColor(rate)};min-width:40px">${Math.round(rate*100)}%</span>
+                </div>
+              </td>
+              <td style="padding:10px 10px;text-align:center;color:var(--gold);font-weight:700;border-left:1px solid rgba(255,255,255,.08)">${statAvg(d.pgStats,'pts')}</td>
+              <td style="padding:10px 10px;text-align:center;color:var(--gold);font-weight:700">${statAvg(d.pgStats,'reb')}</td>
+              <td style="padding:10px 10px;text-align:center;color:var(--gold);font-weight:700">${statAvg(d.pgStats,'ast')}</td>
+              <td style="padding:10px 10px;text-align:center;color:var(--gold);font-weight:700">${statAvg(d.pgStats,'stl')}</td>
+              <td style="padding:10px 10px;text-align:center;color:var(--gold);font-weight:700">${statAvg(d.pgStats,'blk')}</td>
+              <td style="padding:10px 10px;text-align:center;color:#86efac;font-weight:700;border-left:1px solid rgba(255,255,255,.08)">${statAvg(d.cStats,'pts')}</td>
+              <td style="padding:10px 10px;text-align:center;color:#86efac;font-weight:700">${statAvg(d.cStats,'reb')}</td>
+              <td style="padding:10px 10px;text-align:center;color:#86efac;font-weight:700">${statAvg(d.cStats,'ast')}</td>
+              <td style="padding:10px 10px;text-align:center;color:#86efac;font-weight:700">${statAvg(d.cStats,'stl')}</td>
+              <td style="padding:10px 10px;text-align:center;color:#86efac;font-weight:700">${statAvg(d.cStats,'blk')}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div style="margin-top:12px;font-size:11px;color:var(--text3)">
+      🟢 Best chemistry &nbsp; 🔴 Worst chemistry &nbsp; · Stats are averages per game in that pairing
+    </div>
+  `;
+
+  document.getElementById('chem-content').innerHTML = html;
+}
 </script>
 
 <!-- SHARE CARD OVERLAY -->
