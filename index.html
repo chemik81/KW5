@@ -424,13 +424,13 @@
     </div>
     <div style="margin-bottom:16px;display:flex;align-items:center;gap:12px">
       <label style="font-size:13px;color:var(--text3)">PG:</label>
-      <select id="chem-pg-select" onchange="renderChemistry()" style="background:var(--card-bg);color:var(--white);border:1px solid var(--gold);border-radius:6px;padding:6px 12px;font-size:13px"></select>
+      <select id="chem-pg-select" onchange="renderChemistry()" style="background:var(--bg3);color:var(--white);border:1px solid var(--gold);border-radius:6px;padding:6px 12px;font-size:13px"></select>
       <label style="font-size:13px;color:var(--text3)">Min games:</label>
-      <select id="chem-min-games" onchange="renderChemistry()" style="background:var(--card-bg);color:var(--white);border:1px solid var(--gold);border-radius:6px;padding:6px 12px;font-size:13px">
-        <option value="1">1+</option>
-        <option value="2" selected>2+</option>
-        <option value="3">3+</option>
-        <option value="5">5+</option>
+      <select id="chem-min-games" onchange="renderChemistry()" style="background:var(--bg3);color:var(--white);border:1px solid var(--gold);border-radius:6px;padding:6px 12px;font-size:13px">
+        <option value="1" style="background:#1a1a1a;color:#fff">1+</option>
+        <option value="2" selected style="background:#1a1a1a;color:#fff">2+</option>
+        <option value="3" style="background:#1a1a1a;color:#fff">3+</option>
+        <option value="5" style="background:#1a1a1a;color:#fff">5+</option>
       </select>
     </div>
     <div id="chem-content"></div>
@@ -3405,7 +3405,7 @@ function initChemistry() {
     .map(([name]) => name);
 
   const sel = document.getElementById('chem-pg-select');
-  sel.innerHTML = topPGs.map(pg => `<option value="${pg}">${pg}</option>`).join('');
+  sel.innerHTML = topPGs.map(pg => `<option value="${pg}" style="background:#1a1a1a;color:#fff">${pg}</option>`).join('');
   renderChemistry();
 }
 
