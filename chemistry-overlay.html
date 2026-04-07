@@ -19,7 +19,7 @@
     position: fixed;
     top: 40px;
     left: 40px;
-    width: 860px;
+    width: 980px;
     background: linear-gradient(135deg, rgba(10,10,10,.97) 0%, rgba(20,18,12,.97) 100%);
     border: 1px solid rgba(212,168,67,.3);
     border-top: 3px solid #d4a843;
@@ -79,7 +79,7 @@
 
   .pair-row {
     display: grid;
-    grid-template-columns: 28px 180px 52px 52px 52px 1fr 52px;
+    grid-template-columns: 24px 170px 44px 44px 44px 1fr 90px 110px;
     align-items: center;
     gap: 8px;
     padding: 8px 10px;
@@ -237,6 +237,16 @@
       <div class="pg-name" id="pg-name">—</div>
       <div class="pg-stats" id="pg-stats"></div>
     </div>
+  </div>
+  <div style="display:grid;grid-template-columns:24px 170px 44px 44px 44px 1fr 90px 110px;gap:8px;padding:0 10px 6px;margin-bottom:2px;border-bottom:1px solid rgba(212,168,67,.15)">
+    <div></div>
+    <div style="font-size:10px;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.1em">Center</div>
+    <div style="font-size:10px;color:rgba(255,255,255,.3);text-align:center;letter-spacing:.08em">GP</div>
+    <div style="font-size:10px;color:#4ade80;text-align:center">W</div>
+    <div style="font-size:10px;color:rgba(255,255,255,.3);text-align:center">L</div>
+    <div style="font-size:10px;color:rgba(255,255,255,.3);padding-left:4px;letter-spacing:.08em">W%</div>
+    <div style="font-size:10px;color:#d4a843;text-align:center;letter-spacing:.06em">PG STATS</div>
+    <div style="font-size:10px;color:#7dd3a8;text-align:center;letter-spacing:.06em">C STATS</div>
   </div>
   <div class="pairs" id="pairs-list"></div>
   <div class="footer">
@@ -414,8 +424,13 @@ function showChemistry(pgName, minGames) {
         </div>
         <div class="pair-pct" style="color:${col}">${pct}%</div>
       </div>
-      <div class="pair-gp" style="font-size:11px;color:rgba(255,255,255,.35)">
-        ${sa(d.pgStats,'pts')}pts<br>${sa(d.pgStats,'ast')}ast
+      <div style="display:flex;flex-direction:column;gap:1px;text-align:center">
+        <div style="font-size:11px;color:#d4a843;font-weight:700;letter-spacing:.03em">${sa(d.pgStats,'pts')}/${sa(d.pgStats,'ast')}/${sa(d.pgStats,'reb')}</div>
+        <div style="font-size:9px;color:rgba(212,168,67,.45)">PTS/AST/REB</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:1px;text-align:center">
+        <div style="font-size:11px;color:#7dd3a8;font-weight:700;letter-spacing:.03em">${sa(d.cStats,'pts')}/${sa(d.cStats,'reb')}/${sa(d.cStats,'ast')}</div>
+        <div style="font-size:9px;color:rgba(125,211,168,.45)">PTS/REB/AST</div>
       </div>
     </div>`;
   }).join('');
