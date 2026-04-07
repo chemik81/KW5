@@ -3404,7 +3404,7 @@ async function chemSendToOverlay(visible) {
   const token = localStorage.getItem('kw5_admin_hash') || ADMIN_HASH;
   try {
     statusEl.textContent = 'Sending...';
-    const r = await fetch(WORKER_URL + '/chemistry-state', {
+    const r = await fetch(WORKER_URL.replace(/\/+$/, '') + '/chemistry-state', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', 'X-Admin-Token': token },
       body: JSON.stringify({ pg: visible ? pg : null, min, visible })
