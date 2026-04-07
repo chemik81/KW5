@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=1200, initial-scale=0.8, minimum-scale=0.3, maximum-scale=3.0, user-scalable=yes">
 <title>KW5 Elite League</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Barlow+Condensed:wght@400;600;700;900&family=Inter:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
 <style>
@@ -310,11 +310,25 @@
   .match-del:hover { color:#e74c3c; }
 
   @media(max-width:600px) {
-    header { padding:0 12px; gap:10px; }
-    .logo-main { font-size:16px; }
-    main { padding:12px; }
-    .hero { flex-direction:column; padding:24px 16px; }
+    header { padding:0 10px; gap:6px; flex-wrap:wrap; }
+    .logo-main { font-size:14px; }
+    .logo-sub { font-size:10px; }
+    main { padding:8px; }
+    .hero { flex-direction:column; padding:16px 10px; }
     .hero-img { display:none; }
+    .stats-wrap table { font-size:12px; }
+    .stats-wrap th, .stats-wrap td { padding:6px 6px; }
+    nav { flex-wrap:wrap; gap:4px; }
+    nav button { font-size:11px; padding:5px 8px; }
+    .pos-filter { flex-wrap:wrap; }
+    .pos-filter button { font-size:11px; padding:5px 10px; }
+    .search-wrap { min-width:140px; }
+    .kpi-grid { grid-template-columns: 1fr 1fr; gap:8px; }
+    .kpi-card { padding:12px; }
+    .kpi-val { font-size:28px; }
+    .per-bg { min-width:30px; }
+    .modal { padding:16px; margin:8px; }
+    .compare-grid { flex-direction:column; }
   }
 </style>
 </head>
