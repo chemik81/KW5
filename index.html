@@ -441,11 +441,11 @@
     <div id="chem-content"></div>
 
     <div style="margin-top:40px;margin-bottom:20px;border-top:1px solid var(--border2);padding-top:28px">
-      <div style="font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:900;color:var(--gold);letter-spacing:.05em;margin-bottom:4px">🔗 SF/LCK + PF CHEMISTRY</div>
-      <div style="font-size:13px;color:var(--text3)">Win rate for SF/LCK players paired with PF in the same match. Key defensive pairing.</div>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:900;color:var(--gold);letter-spacing:.05em;margin-bottom:4px">🔗 LCK + PF CHEMISTRY</div>
+      <div style="font-size:13px;color:var(--text3)">Win rate for Lock (LCK/SF) players paired with Power Forward in the same match. Key defensive pairing.</div>
     </div>
     <div style="margin-bottom:16px;display:flex;align-items:center;gap:12px">
-      <label style="font-size:13px;color:var(--text3)">SF/LCK:</label>
+      <label style="font-size:13px;color:var(--text3)">LCK:</label>
       <select id="chem-sf-select" onchange="renderChemistrySF()" style="background:var(--bg3);color:var(--white);border:1px solid var(--gold);border-radius:6px;padding:6px 12px;font-size:13px"></select>
       <label style="font-size:13px;color:var(--text3)">Min games:</label>
       <select id="chem-sf-min" onchange="renderChemistrySF()" style="background:var(--bg3);color:var(--white);border:1px solid var(--gold);border-radius:6px;padding:6px 12px;font-size:13px">
@@ -3571,7 +3571,7 @@ function buildChemistrySFData(matches) {
     const s1 = +m.score1||0, s2 = +m.score2||0;
     const processTeam = (players, won) => {
       if (!players || !players.length) return;
-      const sfs = players.filter(p => p.pos === 'SF' || p.pos === 'LCK' || p.pos === 'SG'); // LCK = Lock (SF variant)
+      const sfs = players.filter(p => p.pos === 'SF' || p.pos === 'LCK');
       const pfs = players.filter(p => p.pos === 'PF');
       sfs.forEach(sf => {
         pfs.forEach(pf => {
@@ -3610,7 +3610,12 @@ function initChemistrySF() {
   const perMap = {};
   aggPlayers.forEach(p => { perMap[p.name] = p.per || 0; });
 
+  // LCK (Lock) = SF — same position, different naming convention in KW5
+  const posPrimary = {};
+  aggPlayers.forEach(p => { posPrimary[p.name] = p.pos || ''; });
+
   const topSFs = Object.keys(sfGames)
+    .filter(name => posPrimary[name] === 'SF' || posPrimary[name] === 'LCK')
     .sort((a, b) => (perMap[b]||0) - (perMap[a]||0))
     .slice(0, 25);
 
