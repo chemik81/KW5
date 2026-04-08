@@ -439,6 +439,23 @@
       <span id="chem-overlay-status" style="font-size:12px;color:var(--text3)"></span>
     </div>
     <div id="chem-content"></div>
+
+    <div style="margin-top:40px;margin-bottom:20px;border-top:1px solid var(--border2);padding-top:28px">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:900;color:var(--gold);letter-spacing:.05em;margin-bottom:4px">🔗 SF/LCK + PF CHEMISTRY</div>
+      <div style="font-size:13px;color:var(--text3)">Win rate for SF/LCK players paired with PF in the same match. Key defensive pairing.</div>
+    </div>
+    <div style="margin-bottom:16px;display:flex;align-items:center;gap:12px">
+      <label style="font-size:13px;color:var(--text3)">SF/LCK:</label>
+      <select id="chem-sf-select" onchange="renderChemistrySF()" style="background:var(--bg3);color:var(--white);border:1px solid var(--gold);border-radius:6px;padding:6px 12px;font-size:13px"></select>
+      <label style="font-size:13px;color:var(--text3)">Min games:</label>
+      <select id="chem-sf-min" onchange="renderChemistrySF()" style="background:var(--bg3);color:var(--white);border:1px solid var(--gold);border-radius:6px;padding:6px 12px;font-size:13px">
+        <option value="1" style="background:#1a1a1a;color:#fff">1+</option>
+        <option value="2" selected style="background:#1a1a1a;color:#fff">2+</option>
+        <option value="3" style="background:#1a1a1a;color:#fff">3+</option>
+        <option value="5" style="background:#1a1a1a;color:#fff">5+</option>
+      </select>
+    </div>
+    <div id="chem-sf-content"></div>
   </div>
 </section>
 
@@ -1072,7 +1089,7 @@ function showSection(name, btn) {
   if (btn) btn.classList.add('active');
   if (name === 'stats') renderStats();
   if (name === 'boxscores') renderBoxScores();
-  if (name === 'chemistry') initChemistry();
+  if (name === 'chemistry') { initChemistry(); initChemistrySF(); }
   if (name === 'superadmin') fillSuperAdminFields();
 }
 
@@ -3435,10 +3452,13 @@ function initChemistry() {
   aggPlayers.forEach(p => { perMap[p.name] = p.per || 0; });
   const topPGs = Object.keys(pgGames)
     .sort((a, b) => (perMap[b]||0) - (perMap[a]||0))
-    .slice(0, 20);
+    .slice(0, 25);
 
   const sel = document.getElementById('chem-pg-select');
-  sel.innerHTML = topPGs.map(pg => `<option value="${pg}" style="background:#1a1a1a;color:#fff">${pg}</option>`).join('');
+  sel.innerHTML = topPGs.map((pg, i) => {
+    const per = perMap[pg] ? perMap[pg].toFixed(1) : '—';
+    return `<option value="${pg}" style="background:#1a1a1a;color:#fff">${i+1}. ${pg} · PER ${per}</option>`;
+  }).join('');
   renderChemistry();
 }
 
@@ -3539,6 +3559,255 @@ function renderChemistry() {
   `;
 
   document.getElementById('chem-content').innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CHEMISTRY SF/LCK + PF
+// ═══════════════════════════════════════════════════════════════
+function buildChemistrySFData(matches) {
+  // SF/LCK paired with PF on the same team
+  const pairs = {};
+  matches.forEach(m => {
+    const s1 = +m.score1||0, s2 = +m.score2||0;
+    const processTeam = (players, won) => {
+      if (!players || !players.length) return;
+      const sfs = players.filter(p => p.pos === 'SF' || p.pos === 'LCK' || p.pos === 'SG'); // LCK = Lock (SF variant)
+      const pfs = players.filter(p => p.pos === 'PF');
+      sfs.forEach(sf => {
+        pfs.forEach(pf => {
+          const key = sf.name + '|||' + pf.name;
+          if (!pairs[key]) pairs[key] = {
+            sf: sf.name, sfPos: sf.pos, pf: pf.name,
+            wins: 0, losses: 0,
+            sfStats: { pts:0, reb:0, ast:0, stl:0, blk:0, gp:0 },
+            pfStats: { pts:0, reb:0, ast:0, stl:0, blk:0, gp:0 }
+          };
+          const pair = pairs[key];
+          if (won) pair.wins++; else pair.losses++;
+          ['pts','reb','ast','stl','blk'].forEach(s => {
+            pair.sfStats[s] += +sf[s]||0;
+            pair.pfStats[s] += +pf[s]||0;
+          });
+          pair.sfStats.gp++;
+          pair.pfStats.gp++;
+        });
+      });
+    };
+    processTeam(m.team1_players, s1 > s2);
+    processTeam(m.team2_players, s2 > s1);
+  });
+  return Object.values(pairs);
+}
+
+function initChemistrySF() {
+  if (!state.matches || !state.matches.length) return;
+  const chemData = buildChemistrySFData(state.matches);
+
+  const sfGames = {};
+  chemData.forEach(d => { sfGames[d.sf] = (sfGames[d.sf]||0) + d.wins + d.losses; });
+
+  const aggPlayers = getAggregates(state.matches);
+  const perMap = {};
+  aggPlayers.forEach(p => { perMap[p.name] = p.per || 0; });
+
+  const topSFs = Object.keys(sfGames)
+    .sort((a, b) => (perMap[b]||0) - (perMap[a]||0))
+    .slice(0, 25);
+
+  const sel = document.getElementById('chem-sf-select');
+  if (!sel) return;
+  sel.innerHTML = topSFs.map((sf, i) => {
+    const per = perMap[sf] ? perMap[sf].toFixed(1) : '—';
+    return `<option value="${sf}" style="background:#1a1a1a;color:#fff">${i+1}. ${sf} · PER ${per}</option>`;
+  }).join('');
+  renderChemistrySF();
+}
+
+function renderChemistrySF() {
+  if (!state.matches || !state.matches.length) return;
+  const chemData = buildChemistrySFData(state.matches);
+  const selectedSF = document.getElementById('chem-sf-select').value;
+  const minGames = +document.getElementById('chem-sf-min').value;
+
+  const el = document.getElementById('chem-sf-content');
+  if (!selectedSF) return;
+
+  const aggPlayers = getAggregates(state.matches);
+  const sfAgg = aggPlayers.find(p => p.name === selectedSF) || {};
+
+  // All pairs for this SF
+  const allSFPairs = chemData.filter(d => d.sf === selectedSF);
+
+  // Compute SF overall defensive avg (across all games regardless of PF partner)
+  // = sfAgg.spg / sfAgg.bpg
+  const sfOverallSTL = sfAgg.spg || 0;
+  const sfOverallBLK = sfAgg.bpg || 0;
+
+  // Filtered pairs for table
+  const sfPairs = allSFPairs
+    .filter(d => (d.wins + d.losses) >= minGames)
+    .map(d => {
+      const gp = d.wins + d.losses;
+      const winRate = d.wins / gp;
+
+      // DEF Score = combined defensive stats per game for the pair
+      const sfSTL = d.sfStats.gp > 0 ? d.sfStats.stl / d.sfStats.gp : 0;
+      const sfBLK = d.sfStats.gp > 0 ? d.sfStats.blk / d.sfStats.gp : 0;
+      const pfSTL = d.pfStats.gp > 0 ? d.pfStats.stl / d.pfStats.gp : 0;
+      const pfBLK = d.pfStats.gp > 0 ? d.pfStats.blk / d.pfStats.gp : 0;
+      const defScore = sfSTL + sfBLK * 1.3 + pfSTL + pfBLK * 1.3;
+
+      // ON/OFF: SF stl/blk when paired vs overall
+      const sfSTLdiff = sfSTL - sfOverallSTL;
+      const sfBLKdiff = sfBLK - sfOverallBLK;
+
+      // Consistency: std dev of per-game outcomes (win=1, loss=0)
+      // Simple measure: if all wins or all losses = 0 variance, mixed = higher
+      const consistency = gp <= 1 ? 100 :
+        Math.round((1 - Math.sqrt(winRate * (1 - winRate))) * 100);
+
+      return { ...d, gp, winRate, defScore, sfSTL, sfBLK, pfSTL, pfBLK, sfSTLdiff, sfBLKdiff, consistency };
+    })
+    .sort((a, b) => b.defScore - a.defScore); // sort by DEF Score
+
+  if (!sfPairs.length) {
+    el.innerHTML = '<div style="color:var(--text3);padding:24px">No data for selected filters.</div>';
+    return;
+  }
+
+  const sa = (stats, field) => stats.gp > 0 ? (stats[field]/stats.gp).toFixed(1) : '—';
+  const rateColor = rate => rate >= 0.6 ? '#4ade80' : rate >= 0.4 ? '#f0c040' : '#f87171';
+  const diffColor = v => v > 0.1 ? '#4ade80' : v < -0.1 ? '#f87171' : 'rgba(255,255,255,.5)';
+  const diffStr = v => (v > 0 ? '+' : '') + v.toFixed(1);
+  const maxDef = Math.max(...sfPairs.map(d => d.defScore), 0.1);
+
+  const html = `
+    <!-- SF header card -->
+    <div style="margin-bottom:16px;padding:12px 16px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:6px;display:flex;gap:20px;flex-wrap:wrap;align-items:center">
+      <div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:900;color:var(--white)">${selectedSF}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">Overall season stats</div>
+      </div>
+      <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+        ${['ppg','rpg','apg','spg','bpg'].map(s => `<span style="font-size:12px;color:var(--text3)"><b style="color:var(--gold)">${(sfAgg[s]||0).toFixed(1)}</b> ${s.replace('pg','').toUpperCase()}</span>`).join('')}
+        <span style="font-size:12px;color:var(--text3)"><b style="color:var(--gold)">${(sfAgg.per||0).toFixed(1)}</b> PER</span>
+        <span style="font-size:12px;color:var(--text3)"><b style="color:var(--gold)">${sfAgg.gp||0}</b> GP</span>
+      </div>
+    </div>
+
+    <!-- Methodology explanation -->
+    <details style="margin-bottom:16px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:6px;padding:12px 16px;cursor:pointer">
+      <summary style="font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;list-style:none;display:flex;align-items:center;gap:8px">
+        <span>ℹ</span> How these metrics are calculated
+      </summary>
+      <div style="margin-top:12px;font-size:12px;color:var(--text3);line-height:1.7;display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div>
+          <div style="color:var(--white);font-weight:700;margin-bottom:4px">🛡 DEF Score</div>
+          <div>Combined defensive output of the pair per game together.<br>
+          Formula: <code style="background:rgba(255,255,255,.06);padding:1px 5px;border-radius:3px;font-size:11px">(SF_STL + SF_BLK×1.3 + PF_STL + PF_BLK×1.3) / GP</code><br>
+          BLK weighted ×1.3 as it stops a clear scoring chance. Higher = better defensive pair. Bar shows relative strength vs other PF partners.</div>
+        </div>
+        <div>
+          <div style="color:var(--white);font-weight:700;margin-bottom:4px">📈 ON/OFF (SF)</div>
+          <div>Shows how SF's defensive stats change <i>when playing with this PF</i> vs their season average.<br>
+          <span style="color:#4ade80">+0.5 STL</span> means the SF averages 0.5 more steals per game with this PF than their usual average.<br>
+          Reveals which PF partner brings out the best in the SF defensively.</div>
+        </div>
+        <div>
+          <div style="color:var(--white);font-weight:700;margin-bottom:4px">🎯 Consistency</div>
+          <div>How reliable the pair is across multiple games together.<br>
+          Formula: <code style="background:rgba(255,255,255,.06);padding:1px 5px;border-radius:3px;font-size:11px">(1 − √(W%×(1−W%))) × 100</code><br>
+          100% = always wins or always loses together. Low consistency = unpredictable results. High consistency + high W% = ideal pair.</div>
+        </div>
+        <div>
+          <div style="color:var(--white);font-weight:700;margin-bottom:4px">📊 Sorting</div>
+          <div>Table is sorted by <b>DEF Score</b> (not W%) — because two players can win games despite bad defense if their offense dominates. DEF Score isolates the defensive pairing quality.</div>
+        </div>
+      </div>
+    </details>
+
+    <!-- Table -->
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:13px">
+        <thead>
+          <tr style="border-bottom:2px solid var(--gold);text-align:left">
+            <th style="padding:10px 12px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.08em">PF Partner</th>
+            <th style="padding:10px 12px;color:var(--text3);font-weight:700;text-align:center">GP</th>
+            <th style="padding:10px 12px;color:var(--text3);font-weight:700;text-align:center">W%</th>
+            <th style="padding:10px 12px;color:#60a5fa;font-weight:700;text-align:center;min-width:120px" title="(SF_STL + SF_BLK×1.3 + PF_STL + PF_BLK×1.3) / GP">🛡 DEF Score</th>
+            <th style="padding:10px 12px;color:#a78bfa;font-weight:700;text-align:center" title="How SF defensive stats change vs their season average">📈 ON/OFF (SF)</th>
+            <th style="padding:10px 12px;color:#f0c040;font-weight:700;text-align:center" title="How consistent the pair performs across games">🎯 Consistency</th>
+            <th colspan="5" style="padding:10px 12px;color:var(--gold);font-weight:700;text-align:center;border-left:1px solid rgba(255,255,255,.08)">${selectedSF} when paired</th>
+            <th colspan="5" style="padding:10px 12px;color:#86efac;font-weight:700;text-align:center;border-left:1px solid rgba(255,255,255,.08)">PF when paired</th>
+          </tr>
+          <tr style="border-bottom:1px solid rgba(255,255,255,.06);font-size:11px;color:var(--text3)">
+            <th colspan="6"></th>
+            <th style="padding:6px 8px;text-align:center;border-left:1px solid rgba(255,255,255,.08)">PTS</th>
+            <th style="padding:6px 8px;text-align:center">REB</th>
+            <th style="padding:6px 8px;text-align:center">AST</th>
+            <th style="padding:6px 8px;text-align:center">STL</th>
+            <th style="padding:6px 8px;text-align:center">BLK</th>
+            <th style="padding:6px 8px;text-align:center;border-left:1px solid rgba(255,255,255,.08)">PTS</th>
+            <th style="padding:6px 8px;text-align:center">REB</th>
+            <th style="padding:6px 8px;text-align:center">AST</th>
+            <th style="padding:6px 8px;text-align:center">STL</th>
+            <th style="padding:6px 8px;text-align:center">BLK</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${sfPairs.map((d, i) => {
+            const isFirst = i === 0;
+            const isLast = i === sfPairs.length - 1 && sfPairs.length > 1;
+            const rowBg = isFirst ? 'rgba(74,222,128,.05)' : isLast ? 'rgba(248,113,113,.05)' : i % 2 === 0 ? 'var(--bg4)' : 'transparent';
+            const defBarW = Math.round((d.defScore / maxDef) * 100);
+            const defCol = d.defScore >= maxDef * 0.7 ? '#60a5fa' : d.defScore >= maxDef * 0.4 ? '#93c5fd' : 'rgba(147,197,253,.4)';
+            return \`<tr style="background:\${rowBg};border-bottom:1px solid var(--border2)">
+              <td style="padding:10px 12px;font-size:15px;font-weight:700;color:var(--white)">
+                \${isFirst ? '🟢 ' : isLast ? '🔴 ' : ''}\${d.pf}
+              </td>
+              <td style="padding:10px 12px;text-align:center;color:var(--text3)">\${d.gp}</td>
+              <td style="padding:10px 12px;text-align:center">
+                <span style="font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:16px;color:\${rateColor(d.winRate)}">\${Math.round(d.winRate*100)}%</span>
+              </td>
+              <td style="padding:10px 12px">
+                <div style="display:flex;align-items:center;gap:8px">
+                  <div style="flex:1;height:6px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden">
+                    <div style="width:\${defBarW}%;height:100%;background:\${defCol};border-radius:3px"></div>
+                  </div>
+                  <span style="font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:15px;color:\${defCol};min-width:32px">\${d.defScore.toFixed(1)}</span>
+                </div>
+              </td>
+              <td style="padding:10px 12px;text-align:center">
+                <div style="font-size:11px;color:rgba(255,255,255,.4)">STL</div>
+                <div style="font-weight:700;color:\${diffColor(d.sfSTLdiff)}">\${diffStr(d.sfSTLdiff)}</div>
+                <div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:2px">BLK</div>
+                <div style="font-weight:700;color:\${diffColor(d.sfBLKdiff)}">\${diffStr(d.sfBLKdiff)}</div>
+              </td>
+              <td style="padding:10px 12px;text-align:center">
+                <div style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:900;color:\${d.consistency >= 80 ? '#f0c040' : d.consistency >= 60 ? 'rgba(240,192,64,.6)' : 'rgba(255,255,255,.3)'}">\${d.consistency}%</div>
+              </td>
+              <td style="padding:8px;text-align:center;color:var(--gold);font-weight:700;border-left:1px solid var(--border2)">\${sa(d.sfStats,'pts')}</td>
+              <td style="padding:8px;text-align:center;color:var(--gold);font-weight:700">\${sa(d.sfStats,'reb')}</td>
+              <td style="padding:8px;text-align:center;color:var(--gold);font-weight:700">\${sa(d.sfStats,'ast')}</td>
+              <td style="padding:8px;text-align:center;color:var(--gold);font-weight:700">\${sa(d.sfStats,'stl')}</td>
+              <td style="padding:8px;text-align:center;color:var(--gold);font-weight:700">\${sa(d.sfStats,'blk')}</td>
+              <td style="padding:8px;text-align:center;color:#86efac;font-weight:700;border-left:1px solid var(--border2)">\${sa(d.pfStats,'pts')}</td>
+              <td style="padding:8px;text-align:center;color:#86efac;font-weight:700">\${sa(d.pfStats,'reb')}</td>
+              <td style="padding:8px;text-align:center;color:#86efac;font-weight:700">\${sa(d.pfStats,'ast')}</td>
+              <td style="padding:8px;text-align:center;color:#86efac;font-weight:700">\${sa(d.pfStats,'stl')}</td>
+              <td style="padding:8px;text-align:center;color:#86efac;font-weight:700">\${sa(d.pfStats,'blk')}</td>
+            </tr>\`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div style="margin-top:12px;font-size:11px;color:var(--text3);display:flex;gap:20px;flex-wrap:wrap">
+      <span>🟢 Best DEF Score partner &nbsp; 🔴 Worst DEF Score partner</span>
+      <span>· Stats are per-game averages in that pairing only</span>
+      <span>· Sorted by DEF Score, not W%</span>
+    </div>
+  \`;
+  el.innerHTML = html;
 }
 </script>
 
