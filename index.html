@@ -3451,14 +3451,14 @@ function initChemistry() {
   const perMap = {};
   aggPlayers.forEach(p => { perMap[p.name] = p.per || 0; });
   const topPGs = Object.keys(pgGames)
-    .sort((a, b) => (perMap[b]||0) - (perMap[a]||0))
-    .slice(0, 25);
+    .sort((a, b) => (perMap[b]||0) - (perMap[a]||0));
 
   const sel = document.getElementById('chem-pg-select');
-  sel.innerHTML = topPGs.map((pg, i) => {
-    const per = perMap[pg] ? perMap[pg].toFixed(1) : '—';
-    return `<option value="${pg}" style="background:#1a1a1a;color:#fff">${i+1}. ${pg} · PER ${per}</option>`;
-  }).join('');
+  sel.innerHTML = '<option value="" style="background:#1a1a1a;color:#555">— wybierz PG —</option>' +
+    topPGs.map((pg, i) => {
+      const per = perMap[pg] ? perMap[pg].toFixed(1) : '—';
+      return `<option value="${pg}" style="background:#1a1a1a;color:#fff">${i+1}. ${pg} · PER ${per}</option>`;
+    }).join('');
   renderChemistry();
 }
 
@@ -3477,8 +3477,12 @@ function renderChemistry() {
       return rateB - rateA;
     });
 
+  if (!selectedPG) {
+    document.getElementById('chem-content').innerHTML = '<div style="color:var(--text3);padding:24px">Wybierz PG z listy powyżej.</div>';
+    return;
+  }
   if (!pgPairs.length) {
-    document.getElementById('chem-content').innerHTML = '<div style="color:var(--text3);padding:24px">No data for selected filters.</div>';
+    document.getElementById('chem-content').innerHTML = '<div style="color:var(--text3);padding:24px">Brak danych dla wybranych filtrów.</div>';
     return;
   }
 
@@ -3616,15 +3620,15 @@ function initChemistrySF() {
 
   const topSFs = Object.keys(sfGames)
     .filter(name => posPrimary[name] === 'SF' || posPrimary[name] === 'LCK')
-    .sort((a, b) => (perMap[b]||0) - (perMap[a]||0))
-    .slice(0, 25);
+    .sort((a, b) => (perMap[b]||0) - (perMap[a]||0));
 
   const sel = document.getElementById('chem-sf-select');
   if (!sel) return;
-  sel.innerHTML = topSFs.map((sf, i) => {
-    const per = perMap[sf] ? perMap[sf].toFixed(1) : '—';
-    return `<option value="${sf}" style="background:#1a1a1a;color:#fff">${i+1}. ${sf} · PER ${per}</option>`;
-  }).join('');
+  sel.innerHTML = '<option value="" style="background:#1a1a1a;color:#555">— wybierz LCK —</option>' +
+    topSFs.map((sf, i) => {
+      const per = perMap[sf] ? perMap[sf].toFixed(1) : '—';
+      return `<option value="${sf}" style="background:#1a1a1a;color:#fff">${i+1}. ${sf} · PER ${per}</option>`;
+    }).join('');
   renderChemistrySF();
 }
 
@@ -3659,8 +3663,12 @@ function renderChemistrySF() {
     })
     .sort((a, b) => b.defScore - a.defScore);
 
+  if (!selectedSF) {
+    el.innerHTML = '<div style="color:var(--text3);padding:24px">Wybierz LCK z listy powyżej.</div>';
+    return;
+  }
   if (!sfPairs.length) {
-    el.innerHTML = '<div style="color:var(--text3);padding:24px">No data for selected filters.</div>';
+    el.innerHTML = '<div style="color:var(--text3);padding:24px">Brak danych dla wybranych filtrów.</div>';
     return;
   }
 
