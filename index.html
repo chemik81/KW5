@@ -3454,7 +3454,7 @@ function initChemistry() {
     .sort((a, b) => (perMap[b]||0) - (perMap[a]||0));
 
   const sel = document.getElementById('chem-pg-select');
-  sel.innerHTML = '<option value="" style="background:#1a1a1a;color:#555">— wybierz PG —</option>' +
+  sel.innerHTML = '<option value="" style="background:#1a1a1a;color:#555">— select a PG —</option>' +
     topPGs.map((pg, i) => {
       const per = perMap[pg] ? perMap[pg].toFixed(1) : '—';
       return `<option value="${pg}" style="background:#1a1a1a;color:#fff">${i+1}. ${pg} · PER ${per}</option>`;
@@ -3478,11 +3478,11 @@ function renderChemistry() {
     });
 
   if (!selectedPG) {
-    document.getElementById('chem-content').innerHTML = '<div style="color:var(--text3);padding:24px">Wybierz PG z listy powyżej.</div>';
+    document.getElementById('chem-content').innerHTML = '<div style="color:var(--text3);padding:24px">Select a PG from the list above.</div>';
     return;
   }
   if (!pgPairs.length) {
-    document.getElementById('chem-content').innerHTML = '<div style="color:var(--text3);padding:24px">Brak danych dla wybranych filtrów.</div>';
+    document.getElementById('chem-content').innerHTML = '<div style="color:var(--text3);padding:24px">No data for selected filters.</div>';
     return;
   }
 
@@ -3624,7 +3624,7 @@ function initChemistrySF() {
 
   const sel = document.getElementById('chem-sf-select');
   if (!sel) return;
-  sel.innerHTML = '<option value="" style="background:#1a1a1a;color:#555">— wybierz LCK —</option>' +
+  sel.innerHTML = '<option value="" style="background:#1a1a1a;color:#555">— select a LCK —</option>' +
     topSFs.map((sf, i) => {
       const per = perMap[sf] ? perMap[sf].toFixed(1) : '—';
       return `<option value="${sf}" style="background:#1a1a1a;color:#fff">${i+1}. ${sf} · PER ${per}</option>`;
@@ -3664,11 +3664,11 @@ function renderChemistrySF() {
     .sort((a, b) => b.defScore - a.defScore);
 
   if (!selectedSF) {
-    el.innerHTML = '<div style="color:var(--text3);padding:24px">Wybierz LCK z listy powyżej.</div>';
+    el.innerHTML = '<div style="color:var(--text3);padding:24px">Select a LCK from the list above.</div>';
     return;
   }
   if (!sfPairs.length) {
-    el.innerHTML = '<div style="color:var(--text3);padding:24px">Brak danych dla wybranych filtrów.</div>';
+    el.innerHTML = '<div style="color:var(--text3);padding:24px">No data for selected filters.</div>';
     return;
   }
 
