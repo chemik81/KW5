@@ -4099,21 +4099,118 @@ function renderStandings() {
   document.getElementById('standings-content').innerHTML = html;
 }
 
-function renderRosters() {
+async function renderRosters() {
+  var el = document.getElementById('rosters-content');
+  el.innerHTML = '<div style="color:var(--text3);padding:20px">Loading draft data...</div>';
+
+  var draftData = null;
+  try {
+    var res = await fetch(WORKER_URL.replace(/\/+$/, '') + '/draft-data');
+    if (res.ok) {
+      var json = await res.json();
+      draftData = json.record || json;
+    }
+  } catch(e) {}
+
   var html = '';
-  html += '<div style="margin-bottom:24px">';
+  html += '<div style="margin-bottom:24px;display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap">';
+  html += '<div>';
   html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:28px;font-weight:900;color:var(--gold);letter-spacing:.05em;margin-bottom:4px">👥 TEAM ROSTERS</div>';
-  html += '<div style="font-size:13px;color:var(--text3)">Drafted players assigned to teams — Season 1</div>';
+  html += '<div style="font-size:13px;color:var(--text3)">KW5 Elite League Season 1 — Drafted players per team</div>';
   html += '</div>';
-  html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px">';
-  ELITE_TEAMS.forEach(function(team) {
-    html += '<div style="background:var(--bg3);border:1px solid var(--border2);border-top:2px solid var(--gold3);border-radius:4px;padding:16px">';
-    html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:17px;font-weight:900;color:var(--gold);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border2)">' + team + '</div>';
-    html += '<div style="color:var(--text3);font-size:13px;font-style:italic">Roster data coming soon</div>';
+  if (draftData && draftData.status) {
+    var statusCol = draftData.status === 'done' ? '#4ade80' : draftData.status === 'live' ? 'var(--gold)' : 'var(--text3)';
+    html += '<div style="font-size:12px;padding:4px 10px;border:1px solid ' + statusCol + ';border-radius:3px;color:' + statusCol + ';font-family:\'Barlow Condensed\',sans-serif;font-weight:700;letter-spacing:.06em">' + draftData.status.toUpperCase() + '</div>';
+  }
+  html += '<button onclick="renderRosters()" style="margin-left:auto;background:transparent;border:1px solid var(--border2);border-radius:3px;padding:5px 12px;font-size:12px;color:var(--text2);cursor:pointer;font-family:\'Barlow Condensed\',sans-serif">⟳ Refresh</button>';
+  html += '</div>';
+
+  if (!draftData || !draftData.picks || draftData.picks.length === 0) {
+    // Draft not started yet — show team grid as placeholders
+    html += '<div style="background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:20px;margin-bottom:20px;text-align:center">';
+    html += '<div style="font-size:32px;margin-bottom:8px">🏀</div>';
+    html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;color:var(--gold);margin-bottom:4px">Draft has not started yet</div>';
+    html += '<div style="font-size:13px;color:var(--text3)">Rosters will appear here in real time as picks are made</div>';
+    html += '</div>';
+    html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px">';
+    ELITE_TEAMS.forEach(function(team) {
+      html += '<div style="background:var(--bg3);border:1px solid var(--border2);border-top:2px solid var(--gold3);border-radius:4px;padding:14px">';
+      html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:16px;font-weight:900;color:var(--gold)">' + team + '</div>';
+      html += '<div style="font-size:12px;color:var(--text3);margin-top:6px;font-style:italic">No picks yet</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+    el.innerHTML = html;
+    return;
+  }
+
+  // Build lookup maps from draft data
+  var teams   = (draftData.teams   || []);
+  var players = (draftData.players || []);
+  var picks   = (draftData.picks   || []);
+
+  var playerMap = {};
+  players.forEach(function(p) { playerMap[p.id] = p; });
+
+  // Group picks by team
+  var teamPicks = {};
+  teams.forEach(function(t) { teamPicks[t.id] = []; });
+  picks.forEach(function(pick) {
+    if (!teamPicks[pick.teamId]) teamPicks[pick.teamId] = [];
+    teamPicks[pick.teamId].push(pick);
+  });
+
+  var totalPicks = picks.length;
+  var totalExpected = (draftData.config?.perTeam || 5) * teams.length;
+  html += '<div style="font-size:12px;color:var(--text3);margin-bottom:16px">' + totalPicks + ' / ' + totalExpected + ' picks made</div>';
+
+  html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px">';
+  teams.forEach(function(team) {
+    var tPicks = teamPicks[team.id] || [];
+    tPicks.sort(function(a,b){ return a.pickNum - b.pickNum; });
+
+    html += '<div style="background:var(--bg3);border:1px solid var(--border2);border-top:2px solid var(--gold3);border-radius:4px;padding:14px">';
+
+    // Team header
+    html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border2)">';
+    if (team.logoB64) {
+      html += '<img src="' + team.logoB64 + '" style="width:32px;height:32px;object-fit:contain;border-radius:3px">';
+    }
+    html += '<div>';
+    html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:17px;font-weight:900;color:var(--gold);line-height:1">' + team.name + '</div>';
+    if (team.gmName) html += '<div style="font-size:11px;color:var(--text3)">GM: ' + team.gmName + '</div>';
+    html += '</div>';
+    html += '<div style="margin-left:auto;font-size:12px;color:var(--text3)">' + tPicks.length + ' picks</div>';
+    html += '</div>';
+
+    if (tPicks.length === 0) {
+      html += '<div style="font-size:12px;color:var(--text3);font-style:italic">No picks yet</div>';
+    } else {
+      var posOrder = {PG:0,SG:1,SF:2,LCK:2,PF:3,C:4};
+      tPicks.sort(function(a,b){
+        var pa = playerMap[a.playerId];
+        var pb = playerMap[b.playerId];
+        var posA = posOrder[pa?.pos] ?? 9;
+        var posB = posOrder[pb?.pos] ?? 9;
+        return posA !== posB ? posA - posB : a.pickNum - b.pickNum;
+      });
+      tPicks.forEach(function(pick) {
+        var p = playerMap[pick.playerId] || {id: pick.playerId, pos:'?', ovr:0};
+        var posColors = {PG:'#f0c060',SG:'#60a5fa',SF:'#a78bfa',LCK:'#a78bfa',PF:'#4ade80',C:'#fb923c'};
+        var posCol = posColors[p.pos] || 'var(--text2)';
+        html += '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04)">';
+        html += '<span style="font-size:10px;font-family:\'Barlow Condensed\',sans-serif;font-weight:700;color:' + posCol + ';min-width:28px">' + (p.pos || '?') + '</span>';
+        html += '<span style="font-size:13px;color:var(--white);flex:1">' + (p.id || pick.playerId) + '</span>';
+        if (p.ovr) html += '<span style="font-size:11px;color:var(--text3)">' + p.ovr + ' OVR</span>';
+        html += '<span style="font-size:10px;color:var(--text3);min-width:22px;text-align:right">#' + (pick.pickNum != null ? pick.pickNum + 1 : '?') + '</span>';
+        html += '</div>';
+      });
+    }
     html += '</div>';
   });
   html += '</div>';
-  document.getElementById('rosters-content').innerHTML = html;
+
+  el.innerHTML = html;
 }
 </script>
 
