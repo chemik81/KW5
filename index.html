@@ -356,6 +356,7 @@
     <button onclick="showSection('boxscores',this)">Box Scores</button>
     <button id="admin-nav-btn" onclick="showSection('admin',this)" style="display:none">⚙ Admin</button>
     <button id="chemistry-nav-btn" onclick="showSection('chemistry',this)">🔗 Chemistry</button>
+    <button id="elite-stats-nav-btn" onclick="showSection('elite-stats',this)" style="display:none">📊 Elite Stats</button>
     <button id="schedule-nav-btn" onclick="showSection('schedule',this)" style="display:none">📅 Schedule</button>
     <button id="standings-nav-btn" onclick="showSection('standings',this)" style="display:none">🏆 Standings</button>
     <button id="rosters-nav-btn" onclick="showSection('rosters',this)" style="display:none">👥 Rosters</button>
@@ -462,6 +463,38 @@
   </div>
 </section>
 
+<!-- ELITE STATS SECTION -->
+<section class="section" id="sec-elite-stats">
+  <div class="stat-grid" style="margin-bottom:20px;">
+    <div class="stat-pill"><div class="stat-pill-icon">🎮</div><div><div class="stat-pill-val" id="d-elite-matches">0</div><div class="stat-pill-label">Elite Matches</div></div></div>
+    <div class="stat-pill"><div class="stat-pill-icon">🏅</div><div><div class="stat-pill-val" id="d-elite-players">0</div><div class="stat-pill-label">Players</div></div></div>
+    <div class="stat-pill"><div class="stat-pill-icon">⭐</div><div><div class="stat-pill-val" id="d-elite-top-per">—</div><div class="stat-pill-label">Top PER</div></div></div>
+    <div class="stat-pill"><div class="stat-pill-icon">🏆</div><div><div class="stat-pill-val" id="d-elite-top-scorer">—</div><div class="stat-pill-label">Top Scorer</div></div></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Elite Season 1 Statistics</div>
+    <div class="controls">
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="elite-search-input" placeholder="Search player name..." oninput="renderEliteStats()" autocomplete="off">
+      </div>
+      <div class="pos-filters" id="elite-pos-filters">
+        <button class="pos-btn active" data-pos="" onclick="setElitePosFilter(this)">All</button>
+        <button class="pos-btn" data-pos="PG" onclick="setElitePosFilter(this)">PG</button>
+        <button class="pos-btn" data-pos="SG" onclick="setElitePosFilter(this)">SG</button>
+        <button class="pos-btn" data-pos="SF" onclick="setElitePosFilter(this)">SF</button>
+        <button class="pos-btn" data-pos="PF" onclick="setElitePosFilter(this)">PF</button>
+        <button class="pos-btn" data-pos="C"  onclick="setElitePosFilter(this)">C</button>
+      </div>
+    </div>
+    <div class="table-wrap" id="elite-stats-table-wrap"></div>
+  </div>
+  <div class="card" style="margin-top:16px;">
+    <div class="card-title">Elite Box Scores</div>
+    <div id="elite-boxscores-list"></div>
+  </div>
+</section>
+
 <!-- SCHEDULE SECTION -->
 <section class="section" id="sec-schedule">
   <div class="stats-wrap">
@@ -495,7 +528,16 @@
 <section class="section" id="sec-admin">
   <div class="card">
     <div class="card-title">Upload Box Score</div>
-    <p style="color:var(--text2);font-size:13px;margin-bottom:20px;">Upload a screenshot from the Game Stats screen — AI will automatically read all player statistics and update the Arena Statistics page instantly.</p>
+
+    <!-- League selector -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;padding:10px 14px;background:var(--bg3);border:1px solid var(--border2);border-radius:6px;">
+      <span style="font-size:12px;color:var(--text3);font-weight:700;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap">Upload to:</span>
+      <button id="league-arena-btn" onclick="setLeague('arena')" style="background:var(--gold);border:none;border-radius:4px;padding:5px 14px;font-size:12px;font-weight:700;color:#000;cursor:pointer;font-family:'Barlow Condensed',sans-serif;letter-spacing:.06em">🏟 ARENA</button>
+      <button id="league-elite-btn" onclick="setLeague('elite')" style="background:transparent;border:1px solid var(--border2);border-radius:4px;padding:5px 14px;font-size:12px;font-weight:700;color:var(--text2);cursor:pointer;font-family:'Barlow Condensed',sans-serif;letter-spacing:.06em">🏆 ELITE S1</button>
+      <span id="league-desc" style="font-size:12px;color:var(--text3);margin-left:4px">Stats → Arena Statistics</span>
+    </div>
+
+    <p style="color:var(--text2);font-size:13px;margin-bottom:20px;">Upload a screenshot from the Game Stats screen — AI will automatically read all player statistics and save them to the selected league.</p>
 
     <div class="upload-area" id="upload-area"
       ondragover="event.preventDefault();this.classList.add('dragover')"
@@ -854,12 +896,13 @@ let isAdmin      = false;
 let isSuperAdmin = false;
 let loginTarget  = 'admin';
 
-let state = { matches: [], roster: [], corrections: {}, eliteResults: {} };
+let state = { matches: [], eliteMatches: [], roster: [], corrections: {}, eliteResults: {} };
 let sortCol = 'per';
 let sortDir = 'desc';
 let posFilter    = '';
 let pendingMatch  = null;
 let screenshotB64 = null;
+let currentLeague = 'arena'; // 'arena' | 'elite'
 
 let screenshotMimeType = 'image/jpeg';
 
@@ -988,6 +1031,7 @@ async function loadFromDb() {
     if (rec && rec.roster)        state.roster        = rec.roster;
     if (rec && rec.corrections)   state.corrections   = rec.corrections;
     if (rec && rec.eliteResults)  state.eliteResults  = rec.eliteResults;
+    if (rec && rec.eliteMatches)  state.eliteMatches  = rec.eliteMatches;
     setDbStatus('✅ Connected — data loaded', 'ok');
     // Re-render after loading
     if (typeof renderBoxScores === 'function') renderBoxScores();
@@ -1087,12 +1131,14 @@ function updateAdminUI() {
   document.getElementById('login-btn').style.display          = a  ? 'none' : '';
   document.getElementById('logout-btn').style.display         = a  ? ''     : 'none';
   document.getElementById('admin-nav-btn').style.display      = a  ? ''     : 'none';
-  const scheduleBtn  = document.getElementById('schedule-nav-btn');
-  const standingsBtn = document.getElementById('standings-nav-btn');
-  const rostersBtn   = document.getElementById('rosters-nav-btn');
-  if (scheduleBtn)  scheduleBtn.style.display  = a ? '' : 'none';
-  if (standingsBtn) standingsBtn.style.display = a ? '' : 'none';
-  if (rostersBtn)   rostersBtn.style.display   = a ? '' : 'none';
+  const eliteStatsBtn = document.getElementById('elite-stats-nav-btn');
+  const scheduleBtn   = document.getElementById('schedule-nav-btn');
+  const standingsBtn  = document.getElementById('standings-nav-btn');
+  const rostersBtn    = document.getElementById('rosters-nav-btn');
+  if (eliteStatsBtn) eliteStatsBtn.style.display = a ? '' : 'none';
+  if (scheduleBtn)   scheduleBtn.style.display   = a ? '' : 'none';
+  if (standingsBtn)  standingsBtn.style.display  = a ? '' : 'none';
+  if (rostersBtn)    rostersBtn.style.display     = a ? '' : 'none';
   // Superadmin nav — hidden element, only shown when logged in as super
   const saBtn = document.getElementById('superadmin-nav-btn');
   if (saBtn) saBtn.style.display = sa ? '' : 'none';
@@ -1121,6 +1167,7 @@ function showSection(name, btn) {
   if (name === 'stats') renderStats();
   if (name === 'boxscores') renderBoxScores();
   if (name === 'chemistry') { initChemistry(); initChemistrySF(); }
+  if (name === 'elite-stats') renderEliteStats();
   if (name === 'schedule') renderSchedule();
   if (name === 'standings') renderStandings();
   if (name === 'rosters') renderRosters();
@@ -2008,12 +2055,15 @@ function saveMatch() {
   };
   delete match._editId;
 
+  const matchStore = currentLeague === 'elite' ? 'eliteMatches' : 'matches';
+  if (!state[matchStore]) state[matchStore] = [];
   if (isEdit) {
-    // Replace existing match
-    const idx = state.matches.findIndex(m => String(m.id) === String(match.id));
-    if (idx !== -1) state.matches[idx] = match;
+    const idx = state[matchStore].findIndex(m => String(m.id) === String(match.id));
+    if (idx !== -1) state[matchStore][idx] = match;
+    else { const idxFallback = state.matches.findIndex(m => String(m.id) === String(match.id));
+      if (idxFallback !== -1) state.matches[idxFallback] = match; }
   } else {
-    state.matches.push(match);
+    state[matchStore].push(match);
   }
 
   // Auto-add new player names to roster
@@ -2026,15 +2076,20 @@ function saveMatch() {
   });
 
   saveState();
-  renderStats(); renderBoxScores(); updatePills(); renderRoster();
+  if (currentLeague === 'elite') {
+    renderEliteStats();
+    const esBtn = document.getElementById('elite-stats-nav-btn');
+    showSection('elite-stats', esBtn);
+  } else {
+    renderStats(); renderBoxScores(); updatePills(); renderRoster();
+    showSection('stats', document.querySelector('nav button'));
+  }
   cancelReview();
-  // Reset save button label
   const saveBtn = document.getElementById('save-btn');
   if (saveBtn) { saveBtn.textContent = '✅ Save Box Score'; saveBtn.style.background = ''; }
   if (isEdit) notify('✅ Box score updated!', 'success');
   else if (newPlayers > 0) notify(`✅ Saved! ${newPlayers} new player${newPlayers>1?'s':''} added to roster.`, 'success');
   else notify('✅ Box score saved! Statistics updated.', 'success');
-  showSection('stats', document.querySelector('nav button'));
 }
 
 function cancelReview() {
@@ -3811,6 +3866,249 @@ function renderChemistrySF() {
 }
 
 // ============================================================
+// LEAGUE TOGGLE
+// ============================================================
+function setLeague(l) {
+  currentLeague = l;
+  const arenaBtn = document.getElementById('league-arena-btn');
+  const eliteBtn = document.getElementById('league-elite-btn');
+  const desc     = document.getElementById('league-desc');
+  if (arenaBtn) { arenaBtn.style.background = l === 'arena' ? 'var(--gold)' : 'transparent'; arenaBtn.style.color = l === 'arena' ? '#000' : 'var(--text2)'; arenaBtn.style.border = l === 'arena' ? 'none' : '1px solid var(--border2)'; }
+  if (eliteBtn) { eliteBtn.style.background = l === 'elite' ? 'var(--gold)' : 'transparent'; eliteBtn.style.color = l === 'elite' ? '#000' : 'var(--text2)'; eliteBtn.style.border = l === 'elite' ? 'none' : '1px solid var(--border2)'; }
+  if (desc) desc.textContent = l === 'elite' ? 'Stats → Elite Season 1' : 'Stats → Arena Statistics';
+}
+
+// ============================================================
+// ELITE STATS
+// ============================================================
+let elitePosFilter = '';
+
+function setElitePosFilter(btn) {
+  elitePosFilter = btn.dataset.pos;
+  document.querySelectorAll('#elite-pos-filters .pos-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderEliteStats();
+}
+
+function renderEliteStats() {
+  if (!state.eliteMatches) state.eliteMatches = [];
+  const matches = state.eliteMatches;
+
+  // Pills
+  const aggs = getAggregates(matches);
+  const dm = document.getElementById('d-elite-matches');
+  const dp = document.getElementById('d-elite-players');
+  const dt = document.getElementById('d-elite-top-per');
+  const ds = document.getElementById('d-elite-top-scorer');
+  if (dm) dm.textContent = matches.length;
+  if (dp) dp.textContent = aggs.length;
+  if (dt) dt.textContent = aggs.length ? aggs.sort((a,b)=>b.per-a.per)[0].name.split(' ')[0] : '—';
+  const sortedPts = [...aggs].sort((a,b)=>b.ppg-a.ppg);
+  if (ds) ds.textContent = sortedPts.length ? sortedPts[0].name.split(' ')[0] : '—';
+
+  // Stats table (reuse existing renderStats logic but for eliteMatches)
+  const search = (document.getElementById('elite-search-input')?.value || '').toLowerCase();
+  let players = getAggregates(matches);
+  if (elitePosFilter) players = players.filter(p => p.pos === elitePosFilter);
+  if (search) players = players.filter(p => p.name.toLowerCase().includes(search));
+  players.sort((a,b) => b.per - a.per);
+
+  const wrap = document.getElementById('elite-stats-table-wrap');
+  if (!wrap) return;
+
+  if (!players.length) {
+    wrap.innerHTML = '<div style="color:var(--text3);padding:24px;text-align:center">' + (matches.length === 0 ? '🏀 No Elite Season 1 matches uploaded yet. Use admin panel with "Elite S1" selected.' : 'No players found.') + '</div>';
+  } else {
+    // Build same table as renderStats — use existing buildStatsTable if available, else minimal version
+    let html = '<table style="width:100%;border-collapse:collapse;font-size:13px">';
+    html += '<thead><tr style="border-bottom:2px solid var(--gold)">';
+    ['#','Player','Pos','GP','GRD','CS','PER','PTS','REB','AST','STL','BLK','FG%','3P%'].forEach(h => {
+      html += '<th style="padding:8px 6px;color:var(--text3);font-weight:700;text-align:' + (h==='Player'?'left':'center') + ';text-transform:uppercase;letter-spacing:.06em;font-size:11px">' + h + '</th>';
+    });
+    html += '</tr></thead><tbody>';
+    players.forEach((p, i) => {
+      const rowBg = i % 2 === 0 ? 'var(--bg4)' : 'transparent';
+      html += '<tr style="background:' + rowBg + ';border-bottom:1px solid var(--border)">';
+      html += '<td style="padding:8px 6px;text-align:center;color:var(--text3);font-size:12px">' + (i+1) + '</td>';
+      html += '<td style="padding:8px 6px;font-weight:700;color:var(--white)">' + p.name + '</td>';
+      html += '<td style="padding:8px 6px;text-align:center;color:var(--text2)">' + (p.pos||'—') + '</td>';
+      html += '<td style="padding:8px 6px;text-align:center;color:var(--text2)">' + (p.gp||0) + '</td>';
+      html += '<td style="padding:8px 6px;text-align:center"><span style="font-weight:700;color:var(--gold)">' + (p.grade||'—') + '</span></td>';
+      html += '<td style="padding:8px 6px;text-align:center;font-weight:700;color:var(--gold)">' + (p.cs||0).toFixed(1) + '</td>';
+      html += '<td style="padding:8px 6px;text-align:center;font-weight:700;color:var(--gold2)">' + (p.per||0).toFixed(1) + '</td>';
+      html += '<td style="padding:8px 6px;text-align:center">' + (p.ppg||0).toFixed(1) + '</td>';
+      html += '<td style="padding:8px 6px;text-align:center">' + (p.rpg||0).toFixed(1) + '</td>';
+      html += '<td style="padding:8px 6px;text-align:center">' + (p.apg||0).toFixed(1) + '</td>';
+      html += '<td style="padding:8px 6px;text-align:center">' + (p.spg||0).toFixed(1) + '</td>';
+      html += '<td style="padding:8px 6px;text-align:center">' + (p.bpg||0).toFixed(1) + '</td>';
+      html += '<td style="padding:8px 6px;text-align:center">' + (p.fg_pct !== '—' ? p.fg_pct + '%' : '—') + '</td>';
+      html += '<td style="padding:8px 6px;text-align:center">' + (p.tp_pct !== '—' ? p.tp_pct + '%' : '—') + '</td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    wrap.innerHTML = html;
+  }
+
+  // Elite box scores
+  const bsEl = document.getElementById('elite-boxscores-list');
+  if (bsEl) {
+    if (!matches.length) {
+      bsEl.innerHTML = '<div style="color:var(--text3);padding:16px">No Elite matches yet.</div>';
+    } else {
+      const sorted = [...matches].sort((a,b) => new Date(b.date||0) - new Date(a.date||0));
+      let bhtml = '';
+      sorted.forEach(m => {
+        const rnd = (m.note || '').replace(/elite\s*/i,'').trim() || '—';
+        bhtml += '<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="openMatchDetail(\'' + m.id + '\',\'elite\')">';
+        bhtml += '<div style="font-size:12px;color:var(--text3);min-width:90px">' + (m.date||'—') + '</div>';
+        bhtml += '<div style="flex:1;font-family:\'Barlow Condensed\',sans-serif;font-size:15px;font-weight:700;color:var(--white)">' + (m.team1||'?') + '</div>';
+        bhtml += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:18px;font-weight:900;color:var(--gold);min-width:60px;text-align:center">' + (m.score1||0) + ' — ' + (m.score2||0) + '</div>';
+        bhtml += '<div style="flex:1;font-family:\'Barlow Condensed\',sans-serif;font-size:15px;font-weight:700;color:var(--white);text-align:right">' + (m.team2||'?') + '</div>';
+        bhtml += '<div style="font-size:11px;color:var(--text3);min-width:60px;text-align:right">' + rnd + '</div>';
+        bhtml += '</div>';
+      });
+      bsEl.innerHTML = bhtml;
+    }
+  }
+}
+
+// ============================================================
+// TEAM MODAL (standings click)
+// ============================================================
+const TEAM_COLORS = ['#d4a843','#60a5fa','#4ade80','#f87171','#a78bfa','#fb923c',
+                     '#f0c040','#34d399','#e879f9','#2dd4bf','#fbbf24','#f472b6'];
+
+function openTeamModal(teamName) {
+  if (!state.eliteResults) state.eliteResults = {};
+  if (!state.eliteMatches) state.eliteMatches = [];
+  const results = state.eliteResults;
+
+  // Record from schedule
+  let w = 0, l = 0, pf = 0, pa = 0;
+  ELITE_SCHEDULE.forEach(function(g, i) {
+    const r = results[i];
+    if (!r) return;
+    if (g.home === teamName || g.away === teamName) {
+      const isHome = g.home === teamName;
+      const ts = isHome ? r.hs : r.as;
+      const to = isHome ? r.as : r.hs;
+      pf += ts; pa += to;
+      if (ts > to) w++; else l++;
+    }
+  });
+
+  // Team color + initials
+  const idx = ELITE_TEAMS.indexOf(teamName);
+  const col = TEAM_COLORS[idx % TEAM_COLORS.length] || 'var(--gold)';
+  const initials = teamName.split(' ').map(w=>w[0]).join('').substring(0,3).toUpperCase();
+
+  // Logo element
+  const logoEl = document.getElementById('team-modal-logo');
+  if (logoEl) { logoEl.style.background = col + '22'; logoEl.style.border = '2px solid ' + col; logoEl.style.color = col; logoEl.textContent = initials; }
+
+  document.getElementById('team-modal-name').textContent = teamName;
+  const gp = w + l;
+  document.getElementById('team-modal-record').textContent =
+    gp > 0 ? w + 'W — ' + l + 'L · PTS: ' + (w*2) + ' · PF: ' + pf + ' · PA: ' + pa + ' · DIFF: ' + (pf>pa?'+':'') + (pf-pa)
+           : 'No results yet';
+
+  // Player stats from elite matches for this team
+  const teamMatches = state.eliteMatches.filter(function(m) { return m.team1 === teamName || m.team2 === teamName; });
+  const playerAggs = getAggregates(teamMatches);
+
+  let html = '';
+
+  // Player stats table
+  if (playerAggs.length) {
+    html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:16px;font-weight:900;color:var(--gold);letter-spacing:.08em;margin-bottom:10px">PLAYER STATS</div>';
+    html += '<div style="overflow-x:auto;margin-bottom:24px"><table style="width:100%;border-collapse:collapse;font-size:13px">';
+    html += '<thead><tr style="border-bottom:2px solid var(--gold)">';
+    ['Player','Pos','GP','GRD','CS','PER','PTS','REB','AST','STL','BLK','FG%','3P%'].forEach(function(h) {
+      html += '<th style="padding:7px 6px;color:var(--text3);font-weight:700;text-align:' + (h==='Player'?'left':'center') + ';text-transform:uppercase;letter-spacing:.06em;font-size:11px">' + h + '</th>';
+    });
+    html += '</tr></thead><tbody>';
+    playerAggs.sort(function(a,b){ return b.per - a.per; }).forEach(function(p, i) {
+      html += '<tr style="background:' + (i%2===0?'var(--bg4)':'transparent') + ';border-bottom:1px solid var(--border)">';
+      html += '<td style="padding:7px 6px;font-weight:700;color:var(--white)">' + p.name + '</td>';
+      html += '<td style="padding:7px 6px;text-align:center;color:var(--text2)">' + (p.pos||'—') + '</td>';
+      html += '<td style="padding:7px 6px;text-align:center;color:var(--text2)">' + (p.gp||0) + '</td>';
+      html += '<td style="padding:7px 6px;text-align:center;font-weight:700;color:var(--gold)">' + (p.grade||'—') + '</td>';
+      html += '<td style="padding:7px 6px;text-align:center;font-weight:700;color:var(--gold)">' + (p.cs||0).toFixed(1) + '</td>';
+      html += '<td style="padding:7px 6px;text-align:center;font-weight:700;color:var(--gold2)">' + (p.per||0).toFixed(1) + '</td>';
+      html += '<td style="padding:7px 6px;text-align:center">' + (p.ppg||0).toFixed(1) + '</td>';
+      html += '<td style="padding:7px 6px;text-align:center">' + (p.rpg||0).toFixed(1) + '</td>';
+      html += '<td style="padding:7px 6px;text-align:center">' + (p.apg||0).toFixed(1) + '</td>';
+      html += '<td style="padding:7px 6px;text-align:center">' + (p.spg||0).toFixed(1) + '</td>';
+      html += '<td style="padding:7px 6px;text-align:center">' + (p.bpg||0).toFixed(1) + '</td>';
+      html += '<td style="padding:7px 6px;text-align:center">' + (p.fg_pct!=='—'?p.fg_pct+'%':'—') + '</td>';
+      html += '<td style="padding:7px 6px;text-align:center">' + (p.tp_pct!=='—'?p.tp_pct+'%':'—') + '</td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table></div>';
+  } else {
+    html += '<div style="color:var(--text3);font-size:13px;font-style:italic;margin-bottom:20px">No player stats yet — Elite matches will appear here once uploaded.</div>';
+  }
+
+  // Match history
+  html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:16px;font-weight:900;color:var(--gold);letter-spacing:.08em;margin-bottom:10px">MATCH HISTORY (' + gp + '/' + 11 + ')</div>';
+
+  const teamGames = [];
+  ELITE_SCHEDULE.forEach(function(g, i) {
+    if (g.home !== teamName && g.away !== teamName) return;
+    const r = results[i];
+    const isHome = g.home === teamName;
+    const opp = isHome ? g.away : g.home;
+    const ts = r ? (isHome ? r.hs : r.as) : null;
+    const os = r ? (isHome ? r.as : r.hs) : null;
+    // Find matching elite match for box score link
+    const boxMatch = state.eliteMatches.find(function(m) {
+      return (m.team1 === g.home && m.team2 === g.away) || (m.team1 === g.away && m.team2 === g.home);
+    });
+    teamGames.push({ round: g.round, date: g.date, opp: opp, ts: ts, os: os, played: r != null, won: ts !== null && ts > os, boxMatch: boxMatch });
+  });
+
+  if (!teamGames.length) {
+    html += '<div style="color:var(--text3);font-size:13px;font-style:italic">No games found in schedule.</div>';
+  } else {
+    html += '<table style="width:100%;border-collapse:collapse;font-size:13px">';
+    html += '<thead><tr style="border-bottom:1px solid var(--border2)"><th style="padding:7px 6px;color:var(--text3);font-size:11px;text-transform:uppercase;letter-spacing:.06em;text-align:left">Round</th><th style="padding:7px 6px;color:var(--text3);font-size:11px;text-transform:uppercase;letter-spacing:.06em;text-align:left">Date</th><th style="padding:7px 6px;color:var(--text3);font-size:11px;text-transform:uppercase;letter-spacing:.06em;text-align:center">W/L</th><th style="padding:7px 6px;color:var(--text3);font-size:11px;text-transform:uppercase;letter-spacing:.06em">Opponent</th><th style="padding:7px 6px;color:var(--text3);font-size:11px;text-transform:uppercase;letter-spacing:.06em;text-align:center">Result</th><th style="padding:7px 6px"></th></tr></thead><tbody>';
+    teamGames.forEach(function(g, i) {
+      const wlCol = g.played ? (g.won ? '#4ade80' : '#f87171') : 'var(--text3)';
+      const wl = g.played ? (g.won ? 'W' : 'L') : '—';
+      const scoreStr = g.played ? (g.ts + ' — ' + g.os) : 'vs';
+      html += '<tr style="background:' + (i%2===0?'var(--bg4)':'transparent') + ';border-bottom:1px solid var(--border)">';
+      html += '<td style="padding:7px 6px;color:var(--text3)">R' + g.round + '</td>';
+      html += '<td style="padding:7px 6px;color:var(--text2)">' + g.date + '</td>';
+      html += '<td style="padding:7px 6px;text-align:center;font-weight:900;font-family:\'Barlow Condensed\',sans-serif;font-size:16px;color:' + wlCol + '">' + wl + '</td>';
+      html += '<td style="padding:7px 6px;font-family:\'Barlow Condensed\',sans-serif;font-size:14px;font-weight:700;color:var(--white)">' + g.opp + '</td>';
+      html += '<td style="padding:7px 6px;text-align:center;font-family:\'Barlow Condensed\',sans-serif;font-size:16px;font-weight:900;color:' + (g.played?'var(--gold)':'var(--text3)') + '">' + scoreStr + '</td>';
+      html += '<td style="padding:7px 6px;text-align:center">' + (g.boxMatch ? '<button onclick="openMatchDetail(\'' + g.boxMatch.id + '\',\'elite\');closeModal(\'team-overlay\')" style="background:transparent;border:1px solid var(--border2);border-radius:3px;padding:3px 8px;font-size:11px;color:var(--text2);cursor:pointer">📊</button>' : '') + '</td>';
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+  }
+
+  document.getElementById('team-modal-content').innerHTML = html;
+  document.getElementById('team-overlay').classList.add('active');
+}
+
+// openMatchDetail for elite matches
+function openMatchDetail(id, league) {
+  const arr = league === 'elite' ? (state.eliteMatches || []) : state.matches;
+  const m = arr.find(function(x) { return String(x.id) === String(id); });
+  if (!m) return;
+  // Reuse existing detail modal
+  const title = document.getElementById('detail-title');
+  const content = document.getElementById('detail-content');
+  if (title) title.textContent = (m.team1||'?') + ' vs ' + (m.team2||'?');
+  if (content && typeof buildDetailHTML === 'function') content.innerHTML = buildDetailHTML(m);
+  else if (content) content.innerHTML = '<div style="color:var(--text3);padding:20px">Box score detail not available.</div>';
+  const editBtn = document.getElementById('detail-edit-btn');
+  if (editBtn) editBtn.style.display = 'none';
+  document.getElementById('detail-overlay').classList.add('active');
+}
+
+// ============================================================
 // ELITE LEAGUE — SCHEDULE / STANDINGS / ROSTERS
 // ============================================================
 
@@ -4086,7 +4384,13 @@ function renderStandings() {
     var diffCol = r.diff > 0 ? '#4ade80' : r.diff < 0 ? '#f87171' : 'var(--text3)';
     html += '<tr style="background:' + rowBg + ';border-bottom:' + borderBottom + '">';
     html += '<td style="padding:10px 8px;font-family:\'Barlow Condensed\',sans-serif;font-size:16px;font-weight:700;color:' + (isPlayoff ? 'var(--gold)' : 'var(--text3)') + '">' + (i + 1) + '</td>';
-    html += '<td style="padding:10px 12px;font-family:\'Barlow Condensed\',sans-serif;font-size:16px;font-weight:700;color:var(--white)">' + (isPlayoff ? '🏅 ' : '') + r.team + '</td>';
+    var tIdx = ELITE_TEAMS.indexOf(r.team);
+    var tCol = TEAM_COLORS[tIdx % TEAM_COLORS.length] || 'var(--gold)';
+    var tInit = r.team.split(' ').map(function(w){return w[0];}).join('').substring(0,3).toUpperCase();
+    html += '<td style="padding:8px 12px"><div style="display:flex;align-items:center;gap:8px;cursor:pointer" data-team="' + r.team + '" onclick="openTeamModal(this.dataset.team)">';
+    html += '<div style="width:28px;height:28px;border-radius:5px;background:' + tCol + '22;border:1.5px solid ' + tCol + ';display:flex;align-items:center;justify-content:center;font-family:\'Bebas Neue\',sans-serif;font-size:10px;color:' + tCol + ';flex-shrink:0">' + tInit + '</div>';
+    html += '<span style="font-family:\'Barlow Condensed\',sans-serif;font-size:16px;font-weight:700;color:var(--white);border-bottom:1px dotted rgba(255,255,255,.25)">' + (isPlayoff ? '🏅 ' : '') + r.team + '</span>';
+    html += '</div></td>';
     html += '<td style="padding:10px 8px;text-align:center;color:var(--text2)">' + r.gp + '</td>';
     html += '<td style="padding:10px 8px;text-align:center;font-weight:700;color:' + (r.w > 0 ? '#4ade80' : 'var(--text3)') + '">' + r.w + '</td>';
     html += '<td style="padding:10px 8px;text-align:center;color:' + (r.l > 0 ? '#f87171' : 'var(--text3)') + '">' + r.l + '</td>';
@@ -4234,6 +4538,23 @@ async function renderRosters() {
       <button class="btn btn-outline" onclick="closeModal('share-overlay')">Close</button>
     </div>
     <p style="text-align:center;font-size:11px;color:var(--text3);margin-top:8px;" id="share-hint">Save and share on Discord, Twitter or as stream thumbnail</p>
+  </div>
+</div>
+
+<!-- TEAM MODAL -->
+<div class="modal-overlay" id="team-overlay">
+  <div class="modal" style="max-width:860px;max-height:90vh;overflow-y:auto;">
+    <div class="modal-header" style="position:sticky;top:0;background:var(--bg2);z-index:10;padding-bottom:12px;border-bottom:1px solid var(--border2);margin-bottom:0;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div id="team-modal-logo" style="width:44px;height:44px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:18px;font-weight:900;flex-shrink:0"></div>
+        <div>
+          <h3 id="team-modal-name" style="font-size:22px;letter-spacing:2px;"></h3>
+          <div id="team-modal-record" style="font-size:13px;color:var(--text2);margin-top:1px;"></div>
+        </div>
+      </div>
+      <button class="btn btn-outline" onclick="closeModal('team-overlay')">✕ Close</button>
+    </div>
+    <div id="team-modal-content" style="padding-top:16px;"></div>
   </div>
 </div>
 
