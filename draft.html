@@ -1126,11 +1126,17 @@ function saveConfig() {
 }
 
 // ── Teams ──
+const KW5_ELITE_TEAMS = [
+  'TEAM KW5','HOF','AKA HERO','94 ESPORTS','SATURLITY','UPA',
+  'WLG','TWENTY STARS','INF ESPORTS','INFURIA ESPORTS','MAYBEAST','ARAB SHEIKS'
+];
+
 function autoFillTeams() {
   const n = +(document.getElementById('cfg-teams').value) || 12;
   setupTeams = [];
-  for (let i = 1; i <= n; i++) {
-    setupTeams.push({ id: 'team'+i, name:'Team '+i, logoB64:null, gmDiscordId:'', gmName:'' });
+  for (let i = 0; i < n; i++) {
+    const defaultName = KW5_ELITE_TEAMS[i] || ('Team ' + (i + 1));
+    setupTeams.push({ id: 'team'+(i+1), name: defaultName, logoB64:null, gmDiscordId:'', gmName:'' });
   }
   setupOrder = setupTeams.map(t=>t.id);
   renderTeamsGrid();
@@ -1139,8 +1145,9 @@ function autoFillTeams() {
 function renderTeamsGrid() {
   const n = draftState?.config?.teams || +(document.getElementById('cfg-teams').value) || 12;
   while (setupTeams.length < n) {
-    const i = setupTeams.length+1;
-    setupTeams.push({ id:'team'+i, name:'Team '+i, logoB64:null, gmDiscordId:'', gmName:'' });
+    const i = setupTeams.length;
+    const defaultName = KW5_ELITE_TEAMS[i] || ('Team ' + (i + 1));
+    setupTeams.push({ id:'team'+(i+1), name: defaultName, logoB64:null, gmDiscordId:'', gmName:'' });
   }
   setupTeams = setupTeams.slice(0, n);
   if (!setupOrder.length) setupOrder = setupTeams.map(t=>t.id);
