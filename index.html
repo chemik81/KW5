@@ -3490,7 +3490,27 @@ function renderChemistry() {
   const rateColor = rate => rate >= 0.6 ? '#4ade80' : rate >= 0.4 ? '#f0c040' : '#f87171';
   const barW = rate => Math.round(rate * 100);
 
-  const html = `
+  const aggPlayers = getAggregates(state.matches);
+  const pgAgg = aggPlayers.find(p => p.name === selectedPG) || {};
+
+  const pgHeader = `
+    <div style="margin-bottom:16px;padding:12px 16px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:6px;display:flex;gap:20px;flex-wrap:wrap;align-items:center">
+      <div>
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:24px;font-weight:900;color:var(--white)">${selectedPG}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">Overall season stats</div>
+      </div>
+      <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+        ${['ppg','rpg','apg','spg','bpg'].map(s =>
+          `<span style="font-size:12px;color:var(--text3)"><b style="color:var(--gold)">${(pgAgg[s]||0).toFixed(1)}</b> ${s.replace('pg','').toUpperCase()}</span>`
+        ).join('')}
+        <span style="font-size:12px;color:var(--text3)"><b style="color:var(--gold)">${pgAgg.fg_pct && pgAgg.fg_pct !== '—' ? pgAgg.fg_pct + '%' : '—'}</b> FG%</span>
+        <span style="font-size:12px;color:var(--text3)"><b style="color:var(--gold)">${pgAgg.tp_pct && pgAgg.tp_pct !== '—' ? pgAgg.tp_pct + '%' : '—'}</b> 3PT%</span>
+        <span style="font-size:12px;color:var(--text3)"><b style="color:var(--gold)">${(pgAgg.per||0).toFixed(1)}</b> PER</span>
+        <span style="font-size:12px;color:var(--text3)"><b style="color:var(--gold)">${pgAgg.gp||0}</b> GP</span>
+      </div>
+    </div>`;
+
+  const html = pgHeader + `
     <div style="overflow-x:auto">
       <table style="width:100%;border-collapse:collapse;font-size:13px">
         <thead>
@@ -3686,6 +3706,8 @@ function renderChemistrySF() {
   ['ppg','rpg','apg','spg','bpg'].forEach(function(s) {
     html += '<span style="font-size:12px;color:var(--text3)"><b style="color:var(--gold)">' + (sfAgg[s]||0).toFixed(1) + '</b> ' + s.replace('pg','').toUpperCase() + '</span>';
   });
+  html += '<span style="font-size:12px;color:var(--text3)"><b style="color:var(--gold)">' + (sfAgg.fg_pct && sfAgg.fg_pct !== '—' ? sfAgg.fg_pct + '%' : '—') + '</b> FG%</span>';
+  html += '<span style="font-size:12px;color:var(--text3)"><b style="color:var(--gold)">' + (sfAgg.tp_pct && sfAgg.tp_pct !== '—' ? sfAgg.tp_pct + '%' : '—') + '</b> 3PT%</span>';
   html += '<span style="font-size:12px;color:var(--text3)"><b style="color:var(--gold)">' + (sfAgg.per||0).toFixed(1) + '</b> PER</span>';
   html += '<span style="font-size:12px;color:var(--text3)"><b style="color:var(--gold)">' + (sfAgg.gp||0) + '</b> GP</span>';
   html += '</div></div>';
