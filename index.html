@@ -2511,6 +2511,18 @@ function openPlayerModal(playerName) {
   document.getElementById('player-overlay').classList.add('active');
 }
 
+function openElitePlayerModal(playerName) {
+  openPlayerModal(playerName);
+  // Inject test banner at top of modal content
+  const content = document.getElementById('player-modal-content');
+  if (content) {
+    const banner = document.createElement('div');
+    banner.style.cssText = 'background:rgba(251,146,60,.12);border:1px solid #fb923c;border-radius:6px;padding:8px 14px;margin-bottom:14px;display:flex;align-items:center;gap:8px;font-size:12px;color:#fb923c;font-weight:600';
+    banner.innerHTML = '⚠️ <span>TEST MODE — showing Arena statistics. Remember to switch to Elite S1 stats after matches are uploaded.</span>';
+    content.insertBefore(banner, content.firstChild);
+  }
+}
+
 
 
 // ============================================================
@@ -4221,7 +4233,8 @@ const ELITE_SCHEDULE = [
   {round:11,date:'June 28',day:'Sun',time:'20:00',home:'ARAB SHEIKS',away:'INFURIA ESPORTS'},
 ];
 
-function renderSchedule() {
+async function renderSchedule() {
+  await fetchDraftCache();
   if (!state.eliteResults) state.eliteResults = {};
   var results = state.eliteResults;
 
@@ -4266,7 +4279,10 @@ function renderSchedule() {
       // Game row
       html += '<div style="display:flex;align-items:center;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:9px 14px;gap:8px">';
       html += '<div style="font-size:11px;color:var(--text3);min-width:115px">' + g.date + ' · ' + g.day + ' ' + g.time + '</div>';
-      html += '<div style="flex:1;text-align:right;font-family:\'Barlow Condensed\',sans-serif;font-size:15px;font-weight:700;color:' + (homeWin ? 'var(--gold)' : 'var(--white)') + '">' + g.home + '</div>';
+      html += '<div style="flex:1;display:flex;align-items:center;justify-content:flex-end;gap:6px;cursor:pointer" data-team="' + g.home + '" onclick="openTeamModal(this.dataset.team)">';
+      html += getDraftLogoHTML(g.home, 22);
+      html += '<span style="font-family:\'Barlow Condensed\',sans-serif;font-size:15px;font-weight:700;color:' + (homeWin ? 'var(--gold)' : 'var(--white)') + '">' + g.home + '</span>';
+      html += '</div>';
       html += '<div style="min-width:72px;text-align:center;font-family:\'Barlow Condensed\',sans-serif;font-size:18px;font-weight:900">';
       if (played) {
         html += '<span style="color:' + (homeWin ? 'var(--gold)' : 'var(--text2)') + '">' + gres.hs + '</span>';
@@ -4276,7 +4292,10 @@ function renderSchedule() {
         html += '<span style="color:var(--text3);font-size:14px;font-weight:400">vs</span>';
       }
       html += '</div>';
-      html += '<div style="flex:1;font-family:\'Barlow Condensed\',sans-serif;font-size:15px;font-weight:700;color:' + (awayWin ? 'var(--gold)' : 'var(--white)') + '">' + g.away + '</div>';
+      html += '<div style="flex:1;display:flex;align-items:center;gap:6px;cursor:pointer" data-team="' + g.away + '" onclick="openTeamModal(this.dataset.team)">';
+      html += getDraftLogoHTML(g.away, 22);
+      html += '<span style="font-family:\'Barlow Condensed\',sans-serif;font-size:15px;font-weight:700;color:' + (awayWin ? 'var(--gold)' : 'var(--white)') + '">' + g.away + '</span>';
+      html += '</div>';
       if (isAdmin) {
         if (played) {
           html += '<button onclick="editEliteResult(' + g.gid + ')" title="Edit result" style="background:transparent;border:1px solid var(--border2);border-radius:3px;padding:3px 8px;font-size:11px;color:var(--text3);cursor:pointer;margin-left:4px;flex-shrink:0">✏</button>';
@@ -4528,9 +4547,10 @@ async function renderRosters() {
         var p = playerMap[pick.playerId] || {id: pick.playerId, pos:'?', ovr:0};
         var posColors = {PG:'#f0c060',SG:'#60a5fa',SF:'#a78bfa',LCK:'#a78bfa',PF:'#4ade80',C:'#fb923c'};
         var posCol = posColors[p.pos] || 'var(--text2)';
-        html += '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04)">';
+        var pName = p.id || pick.playerId;
+        html += '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer" onclick="openElitePlayerModal(\'' + pName.replace(/'/g,"\\'") + '\')" title="Open player card">';
         html += '<span style="font-size:10px;font-family:\'Barlow Condensed\',sans-serif;font-weight:700;color:' + posCol + ';min-width:28px">' + (p.pos || '?') + '</span>';
-        html += '<span style="font-size:13px;color:var(--white);flex:1">' + (p.id || pick.playerId) + '</span>';
+        html += '<span style="font-size:13px;color:var(--white);flex:1;border-bottom:1px dashed rgba(212,168,67,.3)">' + pName + '</span>';
         if (p.ovr) html += '<span style="font-size:11px;color:var(--text3)">' + p.ovr + ' OVR</span>';
         html += '<span style="font-size:10px;color:var(--text3);min-width:22px;text-align:right">#' + (pick.pickNum != null ? pick.pickNum + 1 : '?') + '</span>';
         html += '</div>';
