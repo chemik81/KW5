@@ -356,8 +356,8 @@
     <button onclick="showSection('boxscores',this)">Box Scores</button>
     <button id="admin-nav-btn" onclick="showSection('admin',this)" style="display:none">⚙ Admin</button>
     <button id="chemistry-nav-btn" onclick="showSection('chemistry',this)">🔗 Chemistry</button>
-    <button onclick="showSection('schedule',this)">📅 Schedule</button>
-    <button onclick="showSection('standings',this)">🏆 Standings</button>
+    <button id="schedule-nav-btn" onclick="showSection('schedule',this)" style="display:none">📅 Schedule</button>
+    <button id="standings-nav-btn" onclick="showSection('standings',this)" style="display:none">🏆 Standings</button>
     <button id="rosters-nav-btn" onclick="showSection('rosters',this)" style="display:none">👥 Rosters</button>
     <button id="superadmin-nav-btn" onclick="showSection('superadmin',this)" style="display:none">👑 Super Admin</button>
   </nav>
@@ -1087,8 +1087,12 @@ function updateAdminUI() {
   document.getElementById('login-btn').style.display          = a  ? 'none' : '';
   document.getElementById('logout-btn').style.display         = a  ? ''     : 'none';
   document.getElementById('admin-nav-btn').style.display      = a  ? ''     : 'none';
-  const rostersBtn = document.getElementById('rosters-nav-btn');
-  if (rostersBtn) rostersBtn.style.display = a ? '' : 'none';
+  const scheduleBtn  = document.getElementById('schedule-nav-btn');
+  const standingsBtn = document.getElementById('standings-nav-btn');
+  const rostersBtn   = document.getElementById('rosters-nav-btn');
+  if (scheduleBtn)  scheduleBtn.style.display  = a ? '' : 'none';
+  if (standingsBtn) standingsBtn.style.display = a ? '' : 'none';
+  if (rostersBtn)   rostersBtn.style.display   = a ? '' : 'none';
   // Superadmin nav — hidden element, only shown when logged in as super
   const saBtn = document.getElementById('superadmin-nav-btn');
   if (saBtn) saBtn.style.display = sa ? '' : 'none';
