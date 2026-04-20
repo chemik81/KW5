@@ -903,6 +903,7 @@ let posFilter    = '';
 let pendingMatch  = null;
 let screenshotB64 = null;
 let currentLeague = 'arena'; // 'arena' | 'elite'
+let _draftCache = null; // cached draftState from /draft-data
 
 let screenshotMimeType = 'image/jpeg';
 
@@ -3866,6 +3867,33 @@ function renderChemistrySF() {
 }
 
 // ============================================================
+// DRAFT DATA CACHE — logos for standings / schedule / modal
+// ============================================================
+async function fetchDraftCache() {
+  if (_draftCache) return _draftCache;
+  try {
+    const res = await fetch(WORKER_URL.replace(/\/+$/, '') + '/draft-data');
+    if (res.ok) {
+      const j = await res.json();
+      _draftCache = j.record || j;
+    }
+  } catch(e) {}
+  return _draftCache;
+}
+
+function getDraftLogoHTML(teamName, size) {
+  size = size || 28;
+  const idx = ELITE_TEAMS.indexOf(teamName);
+  const col = TEAM_COLORS[idx % TEAM_COLORS.length] || 'var(--gold)';
+  const initials = teamName.split(' ').map(function(w){return w[0];}).join('').substring(0,3).toUpperCase();
+  const team = _draftCache && (_draftCache.teams || []).find(function(t){ return t.name === teamName; });
+  if (team && team.logoB64) {
+    return '<img src="' + team.logoB64 + '" style="width:' + size + 'px;height:' + size + 'px;object-fit:contain;border-radius:3px;flex-shrink:0">';
+  }
+  return '<div style="width:' + size + 'px;height:' + size + 'px;border-radius:5px;background:' + col + '22;border:1.5px solid ' + col + ';display:flex;align-items:center;justify-content:center;font-family:\'Bebas Neue\',sans-serif;font-size:' + Math.round(size*0.38) + 'px;color:' + col + ';flex-shrink:0">' + initials + '</div>';
+}
+
+// ============================================================
 // LEAGUE TOGGLE
 // ============================================================
 function setLeague(l) {
@@ -3978,7 +4006,8 @@ function renderEliteStats() {
 const TEAM_COLORS = ['#d4a843','#60a5fa','#4ade80','#f87171','#a78bfa','#fb923c',
                      '#f0c040','#34d399','#e879f9','#2dd4bf','#fbbf24','#f472b6'];
 
-function openTeamModal(teamName) {
+async function openTeamModal(teamName) {
+  await fetchDraftCache();
   if (!state.eliteResults) state.eliteResults = {};
   if (!state.eliteMatches) state.eliteMatches = [];
   const results = state.eliteResults;
@@ -3997,14 +4026,9 @@ function openTeamModal(teamName) {
     }
   });
 
-  // Team color + initials
-  const idx = ELITE_TEAMS.indexOf(teamName);
-  const col = TEAM_COLORS[idx % TEAM_COLORS.length] || 'var(--gold)';
-  const initials = teamName.split(' ').map(w=>w[0]).join('').substring(0,3).toUpperCase();
-
   // Logo element
   const logoEl = document.getElementById('team-modal-logo');
-  if (logoEl) { logoEl.style.background = col + '22'; logoEl.style.border = '2px solid ' + col; logoEl.style.color = col; logoEl.textContent = initials; }
+  if (logoEl) logoEl.innerHTML = getDraftLogoHTML(teamName, 44);
 
   document.getElementById('team-modal-name').textContent = teamName;
   const gp = w + l;
@@ -4326,7 +4350,8 @@ function deleteEliteResult(gid) {
   notify('Result removed', 'info');
 }
 
-function renderStandings() {
+async function renderStandings() {
+  await fetchDraftCache();
   if (!state.eliteResults) state.eliteResults = {};
   var results = state.eliteResults;
 
@@ -4384,11 +4409,8 @@ function renderStandings() {
     var diffCol = r.diff > 0 ? '#4ade80' : r.diff < 0 ? '#f87171' : 'var(--text3)';
     html += '<tr style="background:' + rowBg + ';border-bottom:' + borderBottom + '">';
     html += '<td style="padding:10px 8px;font-family:\'Barlow Condensed\',sans-serif;font-size:16px;font-weight:700;color:' + (isPlayoff ? 'var(--gold)' : 'var(--text3)') + '">' + (i + 1) + '</td>';
-    var tIdx = ELITE_TEAMS.indexOf(r.team);
-    var tCol = TEAM_COLORS[tIdx % TEAM_COLORS.length] || 'var(--gold)';
-    var tInit = r.team.split(' ').map(function(w){return w[0];}).join('').substring(0,3).toUpperCase();
     html += '<td style="padding:8px 12px"><div style="display:flex;align-items:center;gap:8px;cursor:pointer" data-team="' + r.team + '" onclick="openTeamModal(this.dataset.team)">';
-    html += '<div style="width:28px;height:28px;border-radius:5px;background:' + tCol + '22;border:1.5px solid ' + tCol + ';display:flex;align-items:center;justify-content:center;font-family:\'Bebas Neue\',sans-serif;font-size:10px;color:' + tCol + ';flex-shrink:0">' + tInit + '</div>';
+    html += getDraftLogoHTML(r.team, 28);
     html += '<span style="font-family:\'Barlow Condensed\',sans-serif;font-size:16px;font-weight:700;color:var(--white);border-bottom:1px dotted rgba(255,255,255,.25)">' + (isPlayoff ? '🏅 ' : '') + r.team + '</span>';
     html += '</div></td>';
     html += '<td style="padding:10px 8px;text-align:center;color:var(--text2)">' + r.gp + '</td>';
