@@ -356,6 +356,9 @@
     <button onclick="showSection('boxscores',this)">Box Scores</button>
     <button id="admin-nav-btn" onclick="showSection('admin',this)" style="display:none">⚙ Admin</button>
     <button id="chemistry-nav-btn" onclick="showSection('chemistry',this)">🔗 Chemistry</button>
+    <button onclick="showSection('schedule',this)">📅 Schedule</button>
+    <button onclick="showSection('standings',this)">🏆 Standings</button>
+    <button id="rosters-nav-btn" onclick="showSection('rosters',this)" style="display:none">👥 Rosters</button>
     <button id="superadmin-nav-btn" onclick="showSection('superadmin',this)" style="display:none">👑 Super Admin</button>
   </nav>
   <div class="header-right">
@@ -456,6 +459,27 @@
       </select>
     </div>
     <div id="chem-sf-content"></div>
+  </div>
+</section>
+
+<!-- SCHEDULE SECTION -->
+<section class="section" id="sec-schedule">
+  <div class="stats-wrap">
+    <div id="schedule-content"></div>
+  </div>
+</section>
+
+<!-- STANDINGS SECTION -->
+<section class="section" id="sec-standings">
+  <div class="stats-wrap">
+    <div id="standings-content"></div>
+  </div>
+</section>
+
+<!-- ROSTERS SECTION -->
+<section class="section" id="sec-rosters">
+  <div class="stats-wrap">
+    <div id="rosters-content"></div>
   </div>
 </section>
 
@@ -830,7 +854,7 @@ let isAdmin      = false;
 let isSuperAdmin = false;
 let loginTarget  = 'admin';
 
-let state = { matches: [], roster: [], corrections: {} };
+let state = { matches: [], roster: [], corrections: {}, eliteResults: {} };
 let sortCol = 'per';
 let sortDir = 'desc';
 let posFilter    = '';
@@ -961,8 +985,9 @@ async function loadFromDb() {
         };
       });
     }
-    if (rec && rec.roster)      state.roster      = rec.roster;
-    if (rec && rec.corrections) state.corrections = rec.corrections;
+    if (rec && rec.roster)        state.roster        = rec.roster;
+    if (rec && rec.corrections)   state.corrections   = rec.corrections;
+    if (rec && rec.eliteResults)  state.eliteResults  = rec.eliteResults;
     setDbStatus('✅ Connected — data loaded', 'ok');
     // Re-render after loading
     if (typeof renderBoxScores === 'function') renderBoxScores();
@@ -1062,6 +1087,8 @@ function updateAdminUI() {
   document.getElementById('login-btn').style.display          = a  ? 'none' : '';
   document.getElementById('logout-btn').style.display         = a  ? ''     : 'none';
   document.getElementById('admin-nav-btn').style.display      = a  ? ''     : 'none';
+  const rostersBtn = document.getElementById('rosters-nav-btn');
+  if (rostersBtn) rostersBtn.style.display = a ? '' : 'none';
   // Superadmin nav — hidden element, only shown when logged in as super
   const saBtn = document.getElementById('superadmin-nav-btn');
   if (saBtn) saBtn.style.display = sa ? '' : 'none';
@@ -1090,6 +1117,9 @@ function showSection(name, btn) {
   if (name === 'stats') renderStats();
   if (name === 'boxscores') renderBoxScores();
   if (name === 'chemistry') { initChemistry(); initChemistrySF(); }
+  if (name === 'schedule') renderSchedule();
+  if (name === 'standings') renderStandings();
+  if (name === 'rosters') renderRosters();
   if (name === 'superadmin') fillSuperAdminFields();
 }
 
@@ -3774,6 +3804,316 @@ function renderChemistrySF() {
   html += '<div style="margin-top:12px;font-size:11px;color:var(--text3)">🟢 Best DEF Score &nbsp; 🔴 Worst DEF Score &nbsp; · Stats per game in that pairing · Sorted by DEF Score</div>';
 
   el.innerHTML = html;
+}
+
+// ============================================================
+// ELITE LEAGUE — SCHEDULE / STANDINGS / ROSTERS
+// ============================================================
+
+const ELITE_TEAMS = [
+  'TEAM KW5','HOF','AKA HERO','94 ESPORTS','SATURLITY','UPA',
+  'WLG','TWENTY STARS','INF ESPORTS','INFURIA ESPORTS','MAYBEAST','ARAB SHEIKS'
+];
+
+const ELITE_SCHEDULE = [
+  // Round 1
+  {round:1,date:'May 11',day:'Mon',time:'19:00',home:'TEAM KW5',away:'HOF'},
+  {round:1,date:'May 11',day:'Mon',time:'20:00',home:'AKA HERO',away:'94 ESPORTS'},
+  {round:1,date:'May 13',day:'Wed',time:'19:00',home:'SATURLITY',away:'UPA'},
+  {round:1,date:'May 13',day:'Wed',time:'20:00',home:'WLG',away:'TWENTY STARS'},
+  {round:1,date:'May 15',day:'Fri',time:'19:00',home:'INF ESPORTS',away:'INFURIA ESPORTS'},
+  {round:1,date:'May 15',day:'Fri',time:'20:00',home:'MAYBEAST',away:'ARAB SHEIKS'},
+  // Round 2
+  {round:2,date:'May 17',day:'Sun',time:'19:00',home:'TEAM KW5',away:'94 ESPORTS'},
+  {round:2,date:'May 17',day:'Sun',time:'20:00',home:'HOF',away:'UPA'},
+  {round:2,date:'May 18',day:'Mon',time:'19:00',home:'AKA HERO',away:'TWENTY STARS'},
+  {round:2,date:'May 18',day:'Mon',time:'20:00',home:'SATURLITY',away:'INFURIA ESPORTS'},
+  {round:2,date:'May 20',day:'Wed',time:'19:00',home:'WLG',away:'ARAB SHEIKS'},
+  {round:2,date:'May 20',day:'Wed',time:'20:00',home:'INF ESPORTS',away:'MAYBEAST'},
+  // Round 3
+  {round:3,date:'May 22',day:'Fri',time:'19:00',home:'TEAM KW5',away:'UPA'},
+  {round:3,date:'May 22',day:'Fri',time:'20:00',home:'94 ESPORTS',away:'TWENTY STARS'},
+  {round:3,date:'May 24',day:'Sun',time:'19:00',home:'HOF',away:'INFURIA ESPORTS'},
+  {round:3,date:'May 24',day:'Sun',time:'20:00',home:'AKA HERO',away:'ARAB SHEIKS'},
+  {round:3,date:'May 25',day:'Mon',time:'19:00',home:'SATURLITY',away:'MAYBEAST'},
+  {round:3,date:'May 25',day:'Mon',time:'20:00',home:'WLG',away:'INF ESPORTS'},
+  // Round 4
+  {round:4,date:'May 27',day:'Wed',time:'19:00',home:'TEAM KW5',away:'TWENTY STARS'},
+  {round:4,date:'May 27',day:'Wed',time:'20:00',home:'UPA',away:'INFURIA ESPORTS'},
+  {round:4,date:'May 29',day:'Fri',time:'19:00',home:'94 ESPORTS',away:'ARAB SHEIKS'},
+  {round:4,date:'May 29',day:'Fri',time:'20:00',home:'HOF',away:'MAYBEAST'},
+  {round:4,date:'May 31',day:'Sun',time:'19:00',home:'AKA HERO',away:'INF ESPORTS'},
+  {round:4,date:'May 31',day:'Sun',time:'20:00',home:'SATURLITY',away:'WLG'},
+  // Round 5
+  {round:5,date:'June 01',day:'Mon',time:'19:00',home:'TEAM KW5',away:'INFURIA ESPORTS'},
+  {round:5,date:'June 01',day:'Mon',time:'20:00',home:'TWENTY STARS',away:'ARAB SHEIKS'},
+  {round:5,date:'June 03',day:'Wed',time:'19:00',home:'UPA',away:'MAYBEAST'},
+  {round:5,date:'June 03',day:'Wed',time:'20:00',home:'94 ESPORTS',away:'INF ESPORTS'},
+  {round:5,date:'June 05',day:'Fri',time:'19:00',home:'HOF',away:'WLG'},
+  {round:5,date:'June 05',day:'Fri',time:'20:00',home:'AKA HERO',away:'SATURLITY'},
+  // Round 6
+  {round:6,date:'June 07',day:'Sun',time:'19:00',home:'TEAM KW5',away:'ARAB SHEIKS'},
+  {round:6,date:'June 07',day:'Sun',time:'20:00',home:'INFURIA ESPORTS',away:'MAYBEAST'},
+  {round:6,date:'June 08',day:'Mon',time:'19:00',home:'TWENTY STARS',away:'INF ESPORTS'},
+  {round:6,date:'June 08',day:'Mon',time:'20:00',home:'UPA',away:'WLG'},
+  {round:6,date:'June 10',day:'Wed',time:'19:00',home:'94 ESPORTS',away:'SATURLITY'},
+  {round:6,date:'June 10',day:'Wed',time:'20:00',home:'HOF',away:'AKA HERO'},
+  // Round 7
+  {round:7,date:'June 12',day:'Fri',time:'19:00',home:'TEAM KW5',away:'MAYBEAST'},
+  {round:7,date:'June 12',day:'Fri',time:'20:00',home:'ARAB SHEIKS',away:'INF ESPORTS'},
+  {round:7,date:'June 14',day:'Sun',time:'19:00',home:'INFURIA ESPORTS',away:'WLG'},
+  {round:7,date:'June 14',day:'Sun',time:'20:00',home:'TWENTY STARS',away:'SATURLITY'},
+  {round:7,date:'June 15',day:'Mon',time:'19:00',home:'UPA',away:'AKA HERO'},
+  {round:7,date:'June 15',day:'Mon',time:'20:00',home:'94 ESPORTS',away:'HOF'},
+  // Round 8
+  {round:8,date:'June 17',day:'Wed',time:'19:00',home:'TEAM KW5',away:'INF ESPORTS'},
+  {round:8,date:'June 17',day:'Wed',time:'20:00',home:'MAYBEAST',away:'WLG'},
+  {round:8,date:'June 19',day:'Fri',time:'19:00',home:'ARAB SHEIKS',away:'SATURLITY'},
+  {round:8,date:'June 19',day:'Fri',time:'20:00',home:'INFURIA ESPORTS',away:'AKA HERO'},
+  {round:8,date:'June 21',day:'Sun',time:'19:00',home:'TWENTY STARS',away:'HOF'},
+  {round:8,date:'June 21',day:'Sun',time:'20:00',home:'UPA',away:'94 ESPORTS'},
+  // Round 9
+  {round:9,date:'June 22',day:'Mon',time:'19:00',home:'TEAM KW5',away:'WLG'},
+  {round:9,date:'June 22',day:'Mon',time:'20:00',home:'INF ESPORTS',away:'SATURLITY'},
+  {round:9,date:'June 24',day:'Wed',time:'19:00',home:'MAYBEAST',away:'AKA HERO'},
+  {round:9,date:'June 24',day:'Wed',time:'20:00',home:'ARAB SHEIKS',away:'HOF'},
+  {round:9,date:'June 26',day:'Fri',time:'19:00',home:'INFURIA ESPORTS',away:'94 ESPORTS'},
+  {round:9,date:'June 26',day:'Fri',time:'20:00',home:'TWENTY STARS',away:'UPA'},
+  // Round 10
+  {round:10,date:'June 27',day:'Sat',time:'19:00',home:'TEAM KW5',away:'SATURLITY'},
+  {round:10,date:'June 27',day:'Sat',time:'20:00',home:'WLG',away:'AKA HERO'},
+  {round:10,date:'June 27',day:'Sat',time:'19:00',home:'INF ESPORTS',away:'HOF'},
+  {round:10,date:'June 27',day:'Sat',time:'20:00',home:'MAYBEAST',away:'94 ESPORTS'},
+  {round:10,date:'June 27',day:'Sat',time:'19:00',home:'ARAB SHEIKS',away:'UPA'},
+  {round:10,date:'June 27',day:'Sat',time:'20:00',home:'INFURIA ESPORTS',away:'TWENTY STARS'},
+  // Round 11
+  {round:11,date:'June 28',day:'Sun',time:'19:00',home:'TEAM KW5',away:'AKA HERO'},
+  {round:11,date:'June 28',day:'Sun',time:'20:00',home:'SATURLITY',away:'HOF'},
+  {round:11,date:'June 28',day:'Sun',time:'19:00',home:'WLG',away:'94 ESPORTS'},
+  {round:11,date:'June 28',day:'Sun',time:'20:00',home:'INF ESPORTS',away:'UPA'},
+  {round:11,date:'June 28',day:'Sun',time:'19:00',home:'MAYBEAST',away:'TWENTY STARS'},
+  {round:11,date:'June 28',day:'Sun',time:'20:00',home:'ARAB SHEIKS',away:'INFURIA ESPORTS'},
+];
+
+function renderSchedule() {
+  if (!state.eliteResults) state.eliteResults = {};
+  var results = state.eliteResults;
+
+  var html = '';
+  html += '<div style="margin-bottom:24px">';
+  html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:28px;font-weight:900;color:var(--gold);letter-spacing:.05em;margin-bottom:4px">📅 SEASON 1 SCHEDULE</div>';
+  html += '<div style="font-size:13px;color:var(--text3)">KW5 Elite League · 12 Teams · 11 Regular Season Rounds + Playoffs</div>';
+  html += '</div>';
+
+  // Group by round
+  var rounds = {};
+  ELITE_SCHEDULE.forEach(function(g, i) {
+    if (!rounds[g.round]) rounds[g.round] = [];
+    rounds[g.round].push(Object.assign({}, g, {gid: i}));
+  });
+
+  for (var rn = 1; rn <= 11; rn++) {
+    var games = rounds[rn];
+    if (!games) continue;
+    var dates = [];
+    games.forEach(function(g) { if (dates.indexOf(g.date) < 0) dates.push(g.date); });
+    var dateLabel = dates.length === 1 ? dates[0] : dates[0] + ' — ' + dates[dates.length - 1];
+    var playedCount = games.filter(function(g) { return results[g.gid] != null; }).length;
+
+    html += '<div style="margin-bottom:20px">';
+    html += '<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border2)">';
+    html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:18px;font-weight:900;color:var(--gold);letter-spacing:.1em;min-width:90px">ROUND ' + rn + '</div>';
+    html += '<div style="font-size:13px;color:var(--text3)">' + dateLabel + '</div>';
+    if (playedCount > 0) html += '<div style="margin-left:auto;font-size:12px;color:var(--text2)">' + playedCount + '/' + games.length + ' played</div>';
+    html += '</div>';
+
+    html += '<div style="display:flex;flex-direction:column;gap:4px">';
+    games.forEach(function(g) {
+      var gres = results[g.gid];
+      var played = gres != null;
+      var homeWin = played && gres.hs > gres.as;
+      var awayWin = played && gres.as > gres.hs;
+      var hsVal = played ? gres.hs : '';
+      var asVal = played ? gres.as : '';
+
+      html += '<div>';
+      // Game row
+      html += '<div style="display:flex;align-items:center;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:9px 14px;gap:8px">';
+      html += '<div style="font-size:11px;color:var(--text3);min-width:115px">' + g.date + ' · ' + g.day + ' ' + g.time + '</div>';
+      html += '<div style="flex:1;text-align:right;font-family:\'Barlow Condensed\',sans-serif;font-size:15px;font-weight:700;color:' + (homeWin ? 'var(--gold)' : 'var(--white)') + '">' + g.home + '</div>';
+      html += '<div style="min-width:72px;text-align:center;font-family:\'Barlow Condensed\',sans-serif;font-size:18px;font-weight:900">';
+      if (played) {
+        html += '<span style="color:' + (homeWin ? 'var(--gold)' : 'var(--text2)') + '">' + gres.hs + '</span>';
+        html += '<span style="color:var(--text3);font-size:13px;margin:0 3px">—</span>';
+        html += '<span style="color:' + (awayWin ? 'var(--gold)' : 'var(--text2)') + '">' + gres.as + '</span>';
+      } else {
+        html += '<span style="color:var(--text3);font-size:14px;font-weight:400">vs</span>';
+      }
+      html += '</div>';
+      html += '<div style="flex:1;font-family:\'Barlow Condensed\',sans-serif;font-size:15px;font-weight:700;color:' + (awayWin ? 'var(--gold)' : 'var(--white)') + '">' + g.away + '</div>';
+      if (isAdmin) {
+        if (played) {
+          html += '<button onclick="editEliteResult(' + g.gid + ')" title="Edit result" style="background:transparent;border:1px solid var(--border2);border-radius:3px;padding:3px 8px;font-size:11px;color:var(--text3);cursor:pointer;margin-left:4px;flex-shrink:0">✏</button>';
+        } else {
+          html += '<button onclick="editEliteResult(' + g.gid + ')" style="background:var(--gold);border:none;border-radius:3px;padding:4px 10px;font-size:11px;color:#000;font-weight:700;cursor:pointer;font-family:\'Barlow Condensed\',sans-serif;margin-left:4px;flex-shrink:0">+ SCORE</button>';
+        }
+      }
+      html += '</div>';
+      // Inline edit form
+      html += '<div id="edit-' + g.gid + '" style="display:none;background:var(--bg4);border:1px solid var(--gold);border-top:none;border-radius:0 0 6px 6px;padding:10px 14px">';
+      html += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">';
+      html += '<span style="font-size:13px;color:var(--text2);font-family:\'Barlow Condensed\',sans-serif;font-weight:700">' + g.home + '</span>';
+      html += '<input type="number" id="hs-' + g.gid + '" min="0" max="250" value="' + hsVal + '" placeholder="0" style="width:55px;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;padding:4px 6px;color:var(--white);font-size:15px;text-align:center">';
+      html += '<span style="color:var(--text3);font-size:14px">—</span>';
+      html += '<input type="number" id="as-' + g.gid + '" min="0" max="250" value="' + asVal + '" placeholder="0" style="width:55px;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;padding:4px 6px;color:var(--white);font-size:15px;text-align:center">';
+      html += '<span style="font-size:13px;color:var(--text2);font-family:\'Barlow Condensed\',sans-serif;font-weight:700">' + g.away + '</span>';
+      html += '<button onclick="saveEliteResult(' + g.gid + ')" style="background:var(--gold);border:none;border-radius:3px;padding:5px 14px;font-size:12px;color:#000;font-weight:700;cursor:pointer;font-family:\'Barlow Condensed\',sans-serif;letter-spacing:.06em">SAVE</button>';
+      if (played) html += '<button onclick="deleteEliteResult(' + g.gid + ')" style="background:transparent;border:1px solid #ef4444;border-radius:3px;padding:5px 8px;font-size:11px;color:#ef4444;cursor:pointer">Remove</button>';
+      html += '<button onclick="cancelEliteEdit(' + g.gid + ')" style="background:transparent;border:1px solid var(--border2);border-radius:3px;padding:5px 8px;font-size:11px;color:var(--text3);cursor:pointer">Cancel</button>';
+      html += '</div></div>';
+      html += '</div>'; // close game wrapper
+    });
+    html += '</div></div>'; // close games column + round block
+  }
+
+  // Playoffs
+  html += '<div style="margin-top:12px;padding-top:20px;border-top:2px solid rgba(212,168,67,0.4)">';
+  html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:22px;font-weight:900;color:var(--gold);letter-spacing:.1em;margin-bottom:12px">🏆 PLAYOFFS</div>';
+  [['Quarter Finals','July 10'],['Semi Finals','July 17'],['Grand Final','July 24']].forEach(function(p) {
+    html += '<div style="display:flex;align-items:center;gap:16px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:12px 16px;margin-bottom:8px">';
+    html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:16px;font-weight:700;color:var(--gold);min-width:140px">' + p[0] + '</div>';
+    html += '<div style="font-size:13px;color:var(--text3)">' + p[1] + '</div>';
+    html += '<div style="margin-left:auto;font-size:13px;color:var(--text3)">TBD</div>';
+    html += '</div>';
+  });
+  html += '</div>';
+
+  document.getElementById('schedule-content').innerHTML = html;
+}
+
+function editEliteResult(gid) {
+  document.querySelectorAll('[id^="edit-"]').forEach(function(el) { el.style.display = 'none'; });
+  var el = document.getElementById('edit-' + gid);
+  if (el) el.style.display = 'block';
+}
+
+function cancelEliteEdit(gid) {
+  var el = document.getElementById('edit-' + gid);
+  if (el) el.style.display = 'none';
+}
+
+function saveEliteResult(gid) {
+  var hs = parseInt(document.getElementById('hs-' + gid).value, 10);
+  var as = parseInt(document.getElementById('as-' + gid).value, 10);
+  if (isNaN(hs) || isNaN(as) || hs < 0 || as < 0) { notify('Enter valid scores for both teams', 'error'); return; }
+  if (hs === as) { notify('Scores cannot be equal — no ties in basketball', 'error'); return; }
+  if (!state.eliteResults) state.eliteResults = {};
+  state.eliteResults[gid] = {hs: hs, as: as};
+  saveState();
+  renderSchedule();
+  if (document.getElementById('sec-standings') && document.getElementById('sec-standings').classList.contains('active')) renderStandings();
+  notify('Result saved ✓', 'success');
+}
+
+function deleteEliteResult(gid) {
+  if (!state.eliteResults) return;
+  delete state.eliteResults[gid];
+  saveState();
+  renderSchedule();
+  if (document.getElementById('sec-standings') && document.getElementById('sec-standings').classList.contains('active')) renderStandings();
+  notify('Result removed', 'info');
+}
+
+function renderStandings() {
+  if (!state.eliteResults) state.eliteResults = {};
+  var results = state.eliteResults;
+
+  // Build standings table
+  var table = {};
+  ELITE_TEAMS.forEach(function(t) { table[t] = {w:0, l:0, pf:0, pa:0}; });
+
+  ELITE_SCHEDULE.forEach(function(g, i) {
+    var gres = results[i];
+    if (!gres) return;
+    if (gres.hs > gres.as) {
+      table[g.home].w++;
+      table[g.away].l++;
+    } else {
+      table[g.away].w++;
+      table[g.home].l++;
+    }
+    table[g.home].pf += gres.hs;
+    table[g.home].pa += gres.as;
+    table[g.away].pf += gres.as;
+    table[g.away].pa += gres.hs;
+  });
+
+  var rows = ELITE_TEAMS.map(function(t) {
+    var s = table[t];
+    return {team: t, w: s.w, l: s.l, gp: s.w + s.l, pts: s.w * 2, pf: s.pf, pa: s.pa, diff: s.pf - s.pa};
+  });
+  rows.sort(function(a, b) { return b.w !== a.w ? b.w - a.w : b.diff - a.diff; });
+
+  var totalGames = Object.keys(results).length;
+  var html = '';
+  html += '<div style="margin-bottom:24px">';
+  html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:28px;font-weight:900;color:var(--gold);letter-spacing:.05em;margin-bottom:4px">🏆 STANDINGS</div>';
+  html += '<div style="font-size:13px;color:var(--text3)">KW5 Elite League Season 1 · Win = 2 pts · Loss = 0 pts' + (totalGames === 0 ? ' · No results yet' : ' · ' + totalGames + ' game' + (totalGames !== 1 ? 's' : '') + ' played') + '</div>';
+  html += '</div>';
+
+  html += '<div class="table-wrap"><table style="width:100%;border-collapse:collapse;font-size:14px">';
+  html += '<thead><tr style="border-bottom:2px solid var(--gold);text-align:left">';
+  html += '<th style="padding:10px 8px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.06em;width:36px">#</th>';
+  html += '<th style="padding:10px 12px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.06em">Team</th>';
+  html += '<th style="padding:10px 8px;color:var(--text3);font-weight:700;text-align:center">GP</th>';
+  html += '<th style="padding:10px 8px;color:var(--text3);font-weight:700;text-align:center">W</th>';
+  html += '<th style="padding:10px 8px;color:var(--text3);font-weight:700;text-align:center">L</th>';
+  html += '<th style="padding:10px 12px;color:var(--gold);font-weight:700;text-align:center">PTS</th>';
+  html += '<th style="padding:10px 8px;color:var(--text3);font-weight:700;text-align:center">PF</th>';
+  html += '<th style="padding:10px 8px;color:var(--text3);font-weight:700;text-align:center">PA</th>';
+  html += '<th style="padding:10px 8px;color:var(--text3);font-weight:700;text-align:center">DIFF</th>';
+  html += '</tr></thead><tbody>';
+
+  rows.forEach(function(r, i) {
+    var isPlayoff = i < 4;
+    var rowBg = i % 2 === 0 ? 'var(--bg4)' : 'transparent';
+    var borderBottom = i === 3 ? '2px solid rgba(212,168,67,0.35)' : '1px solid var(--border)';
+    var diffStr = r.diff === 0 ? (r.gp > 0 ? '0' : '—') : (r.diff > 0 ? '+' + r.diff : r.diff);
+    var diffCol = r.diff > 0 ? '#4ade80' : r.diff < 0 ? '#f87171' : 'var(--text3)';
+    html += '<tr style="background:' + rowBg + ';border-bottom:' + borderBottom + '">';
+    html += '<td style="padding:10px 8px;font-family:\'Barlow Condensed\',sans-serif;font-size:16px;font-weight:700;color:' + (isPlayoff ? 'var(--gold)' : 'var(--text3)') + '">' + (i + 1) + '</td>';
+    html += '<td style="padding:10px 12px;font-family:\'Barlow Condensed\',sans-serif;font-size:16px;font-weight:700;color:var(--white)">' + (isPlayoff ? '🏅 ' : '') + r.team + '</td>';
+    html += '<td style="padding:10px 8px;text-align:center;color:var(--text2)">' + r.gp + '</td>';
+    html += '<td style="padding:10px 8px;text-align:center;font-weight:700;color:' + (r.w > 0 ? '#4ade80' : 'var(--text3)') + '">' + r.w + '</td>';
+    html += '<td style="padding:10px 8px;text-align:center;color:' + (r.l > 0 ? '#f87171' : 'var(--text3)') + '">' + r.l + '</td>';
+    html += '<td style="padding:10px 12px;text-align:center;font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;color:var(--gold)">' + r.pts + '</td>';
+    html += '<td style="padding:10px 8px;text-align:center;color:var(--text2)">' + (r.gp > 0 ? r.pf : '—') + '</td>';
+    html += '<td style="padding:10px 8px;text-align:center;color:var(--text2)">' + (r.gp > 0 ? r.pa : '—') + '</td>';
+    html += '<td style="padding:10px 8px;text-align:center;color:' + diffCol + ';font-weight:600">' + diffStr + '</td>';
+    html += '</tr>';
+  });
+
+  html += '</tbody></table></div>';
+  html += '<div style="margin-top:12px;font-size:11px;color:var(--text3)">🏅 Top 4 qualify for playoffs · Sorted by wins, then point differential</div>';
+
+  document.getElementById('standings-content').innerHTML = html;
+}
+
+function renderRosters() {
+  var html = '';
+  html += '<div style="margin-bottom:24px">';
+  html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:28px;font-weight:900;color:var(--gold);letter-spacing:.05em;margin-bottom:4px">👥 TEAM ROSTERS</div>';
+  html += '<div style="font-size:13px;color:var(--text3)">Drafted players assigned to teams — Season 1</div>';
+  html += '</div>';
+  html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px">';
+  ELITE_TEAMS.forEach(function(team) {
+    html += '<div style="background:var(--bg3);border:1px solid var(--border2);border-top:2px solid var(--gold3);border-radius:4px;padding:16px">';
+    html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:17px;font-weight:900;color:var(--gold);margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--border2)">' + team + '</div>';
+    html += '<div style="color:var(--text3);font-size:13px;font-style:italic">Roster data coming soon</div>';
+    html += '</div>';
+  });
+  html += '</div>';
+  document.getElementById('rosters-content').innerHTML = html;
 }
 </script>
 
