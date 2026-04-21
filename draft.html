@@ -260,7 +260,7 @@ select.form-input{width:100%}
           </div>
           <div class="form-group">
             <label class="form-label">Players per Team</label>
-            <input class="form-input" id="cfg-perteam" type="number" min="5" max="15" value="5">
+            <input class="form-input" id="cfg-perteam" type="number" min="1" max="15" value="7">
           </div>
           <div class="form-group">
             <label class="form-label">Seconds per Pick</label>
@@ -1050,7 +1050,7 @@ async function loadSetupFromState() {
     if (draftState && draftState.config) {
       const c = draftState.config;
       document.getElementById('cfg-teams').value  = c.teams  || 12;
-      document.getElementById('cfg-perteam').value = c.perTeam || 5;
+      document.getElementById('cfg-perteam').value = c.perTeam || 7;
       document.getElementById('cfg-timer').value   = c.timerSecs || 120;
       document.getElementById('cfg-format').value  = c.format || 'snake';
       document.getElementById('cfg-name').value    = c.name   || 'KW5 Draft';
@@ -1477,7 +1477,7 @@ function renderAdminBoard() {
     const picks = getTeamPicks(draftState, t.id);
     return `<div style="margin-bottom:8px">
       <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:13px;padding:4px 0;border-bottom:1px solid var(--border)">
-        ${t.name} <span style="color:var(--muted);font-weight:400">(${picks.length}/${draftState.config?.perTeam||5})</span>
+        ${t.name} <span style="color:var(--muted);font-weight:400">(${picks.length}/${draftState.config?.perTeam||7})</span>
       </div>
       ${picks.map(p => {
         const pl = (draftState.players||[]).find(x=>x.id===p.playerId)||{};
@@ -1908,7 +1908,7 @@ function renderNeedsIndicator(myPicks, allPlayers) {
 function renderGmMyRoster() {
   if (!draftState) return;
   const teams = draftState.teams || [];
-  const perTeam = draftState.config?.perTeam || 5;
+  const perTeam = draftState.config?.perTeam || 7;
 
   // Determine which team to show
   let viewTeam;
@@ -2022,7 +2022,7 @@ function renderGmAllTeams() {
   const el = document.getElementById('gm-all-teams');
   if (gmTeamsView === 'grid') {
     // Grid view — like board
-    const perTeam = draftState.config?.perTeam || 5;
+    const perTeam = draftState.config?.perTeam || 7;
     el.style.display = 'grid';
     el.style.gridTemplateColumns = 'repeat(2,1fr)';
     el.style.gap = '8px';
@@ -2080,7 +2080,7 @@ function renderGmAllTeams() {
           <div style="flex:1;min-width:0">
             <div style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:14px;display:flex;align-items:center;gap:6px">
               ${isMe?'⭐ ':''}<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.name}</span>
-              <span style="font-size:11px;color:var(--muted);font-weight:400;flex-shrink:0">${picks.length}/${draftState.config?.perTeam||5}</span>
+              <span style="font-size:11px;color:var(--muted);font-weight:400;flex-shrink:0">${picks.length}/${draftState.config?.perTeam||7}</span>
             </div>
             <div style="font-size:11px;color:var(--muted)">${t.gmName||''}</div>
           </div>
@@ -2298,7 +2298,7 @@ function renderBoard() {
   renderDraftGrades();
 
   // Board grid
-  const perTeam = draftState.config?.perTeam||5;
+  const perTeam = draftState.config?.perTeam||7;
   const cols = Math.min(draftState.teams?.length||6, 6);
   const grid = document.getElementById('board-grid');
   grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
