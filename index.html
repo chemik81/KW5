@@ -1054,7 +1054,7 @@ async function syncToDb() {
     const res = await fetch(_kw5url2, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', 'X-Admin-Token': adminToken },
-      body: JSON.stringify({ record: { matches: state.matches, roster: state.roster, corrections: state.corrections } })
+      body: JSON.stringify({ record: { matches: state.matches, roster: state.roster, corrections: state.corrections, eliteMatches: state.eliteMatches, eliteResults: state.eliteResults } })
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     notify('✅ Saved to cloud', 'success');
