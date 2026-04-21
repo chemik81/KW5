@@ -4607,26 +4607,57 @@ async function renderRosters() {
     if (tPicks.length === 0) {
       html += '<div style="font-size:12px;color:var(--text3);font-style:italic">No picks yet</div>';
     } else {
-      var posOrder = {PG:0,SG:1,SF:2,LCK:2,PF:3,C:4};
-      tPicks.sort(function(a,b){
-        var pa = playerMap[a.playerId];
-        var pb = playerMap[b.playerId];
-        var posA = posOrder[pa?.pos] ?? 9;
-        var posB = posOrder[pb?.pos] ?? 9;
-        return posA !== posB ? posA - posB : a.pickNum - b.pickNum;
-      });
+      tPicks.sort(function(a,b){ return a.pickNum - b.pickNum; });
+
+      var posColors = {PG:'#f0c060',SG:'#60a5fa',SF:'#a78bfa',LCK:'#a78bfa',PF:'#4ade80',C:'#fb923c'};
+      var STARTING_SLOTS = ['PG','SG','LCK','PF','C'];
+      var filledSlots = {};
+      var flexPicks = [];
+
+      // Assign picks to position slots; overflow → flex
       tPicks.forEach(function(pick) {
         var p = playerMap[pick.playerId] || {id: pick.playerId, pos:'?', ovr:0};
-        var posColors = {PG:'#f0c060',SG:'#60a5fa',SF:'#a78bfa',LCK:'#a78bfa',PF:'#4ade80',C:'#fb923c'};
-        var posCol = posColors[p.pos] || 'var(--text2)';
-        var pName = p.id || pick.playerId;
-        html += '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer" onclick="openElitePlayerModal(\'' + pName.replace(/'/g,"\\'") + '\')" title="Open player card">';
-        html += '<span style="font-size:10px;font-family:\'Barlow Condensed\',sans-serif;font-weight:700;color:' + posCol + ';min-width:28px">' + (p.pos || '?') + '</span>';
-        html += '<span style="font-size:13px;color:var(--white);flex:1;border-bottom:1px dashed rgba(212,168,67,.3)">' + pName + '</span>';
-        if (p.ovr) html += '<span style="font-size:11px;color:var(--text3)">' + p.ovr + ' OVR</span>';
-        html += '<span style="font-size:10px;color:var(--text3);min-width:22px;text-align:right">#' + (pick.pickNum != null ? pick.pickNum + 1 : '?') + '</span>';
-        html += '</div>';
+        var pos = p.pos || '?';
+        var slotKey = (pos === 'SF') ? 'LCK' : pos;
+        if (STARTING_SLOTS.indexOf(slotKey) !== -1 && !filledSlots[slotKey]) {
+          filledSlots[slotKey] = { pick: pick, p: p };
+        } else {
+          flexPicks.push({ pick: pick, p: p });
+        }
       });
+
+      function renderPickRow(pick, p, slotLabel) {
+        var posCol = posColors[slotLabel] || posColors[p.pos] || 'var(--text2)';
+        var pName = p.id || pick.playerId;
+        var row = '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer" onclick="openElitePlayerModal(\'' + pName.replace(/'/g,"\\'") + '\')" title="Open player card">';
+        row += '<span style="font-size:10px;font-family:\'Barlow Condensed\',sans-serif;font-weight:700;color:' + posCol + ';min-width:28px">' + slotLabel + '</span>';
+        row += '<span style="font-size:13px;color:var(--white);flex:1">' + pName + '</span>';
+        if (p.ovr) row += '<span style="font-size:11px;color:var(--text3)">' + p.ovr + ' OVR</span>';
+        row += '<span style="font-size:10px;color:var(--text3);min-width:22px;text-align:right">#' + (pick.pickNum != null ? pick.pickNum : '?') + '</span>';
+        row += '</div>';
+        return row;
+      }
+
+      // Render starting 5 in fixed slot order
+      STARTING_SLOTS.forEach(function(slot) {
+        if (filledSlots[slot]) {
+          html += renderPickRow(filledSlots[slot].pick, filledSlots[slot].p, slot);
+        } else {
+          html += '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);opacity:.35">';
+          html += '<span style="font-size:10px;font-family:\'Barlow Condensed\',sans-serif;font-weight:700;color:' + (posColors[slot]||'var(--text2)') + ';min-width:28px">' + slot + '</span>';
+          html += '<span style="font-size:12px;color:var(--text3)">—</span></div>';
+        }
+      });
+
+      // Flex / bench divider + picks 6-7
+      if (flexPicks.length > 0) {
+        html += '<div style="display:flex;align-items:center;gap:6px;margin:8px 0 4px">';
+        html += '<span style="font-size:10px;font-family:\'Barlow Condensed\',sans-serif;font-weight:700;color:var(--text3);letter-spacing:.08em">BENCH</span>';
+        html += '<div style="flex:1;height:1px;background:rgba(255,255,255,.1)"></div></div>';
+        flexPicks.forEach(function(entry) {
+          html += renderPickRow(entry.pick, entry.p, entry.p.pos || 'FLEX');
+        });
+      }
     }
     html += '</div>';
   });

@@ -819,10 +819,18 @@ async function loadDraftState() {
   } catch(e) { console.warn('loadDraftState:', e.message); return null; }
 }
 
+let _saveQueue = Promise.resolve();
+let _pendingSave = false;
 async function saveDraftState() {
-  try {
-    await apiPut('/draft-data', { record: draftState });
-  } catch(e) { notify('Save failed: ' + e.message, 'error'); }
+  if (_pendingSave) return; // already a save queued, it will pick up latest state
+  _pendingSave = true;
+  _saveQueue = _saveQueue.then(async () => {
+    _pendingSave = false;
+    try {
+      await apiPut('/draft-data', { record: draftState });
+    } catch(e) { notify('Save failed: ' + e.message, 'error'); }
+  });
+  await _saveQueue;
 }
 
 async function loadKw5Players() {
@@ -2336,7 +2344,7 @@ function renderBoard() {
           }
         });
         return slots.map(slot => {
-          const entry = filled[slot] || (slot.startsWith('FLEX') && flexPicks.length ? { p: flexPicks.shift(), pl: {} } : null);
+          const entry = filled[slot] || (slot.startsWith('FLEX') && flexPicks.length ? flexPicks.shift() : null);
           const posBadgeColor = {'PG':'rgba(96,165,250,.15)','SG':'rgba(96,165,250,.15)','LCK':'rgba(196,181,253,.15)','PF':'rgba(196,181,253,.15)','C':'rgba(134,239,172,.15)'}[slot]||'rgba(255,255,255,.08)';
           const posTextColor = {'PG':'#93c5fd','SG':'#93c5fd','LCK':'#c4b5fd','PF':'#c4b5fd','C':'#86efac'}[slot]||'var(--muted)';
           if (!entry) {
