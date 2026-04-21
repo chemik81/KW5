@@ -4114,18 +4114,20 @@ async function openTeamModal(teamName) {
   if (!state.eliteMatches) state.eliteMatches = [];
   const results = state.eliteResults;
 
-  // Record from schedule
+  // Record from schedule — count per-game wins (same as standings)
   let w = 0, l = 0, pf = 0, pa = 0;
   ELITE_SCHEDULE.forEach(function(g, i) {
     const r = results[i];
     if (!r) return;
-    if (g.home === teamName || g.away === teamName) {
-      const isHome = g.home === teamName;
-      const ts = isHome ? r.hs : r.as;
-      const to = isHome ? r.as : r.hs;
+    if (g.home !== teamName && g.away !== teamName) return;
+    const isHome = g.home === teamName;
+    [r.g1, r.g2].forEach(function(game) {
+      if (!game) return;
+      const ts = isHome ? game.hs : game.as;
+      const to = isHome ? game.as : game.hs;
       pf += ts; pa += to;
       if (ts > to) w++; else l++;
-    }
+    });
   });
 
   // Logo element
@@ -4135,7 +4137,7 @@ async function openTeamModal(teamName) {
   document.getElementById('team-modal-name').textContent = teamName;
   const gp = w + l;
   document.getElementById('team-modal-record').textContent =
-    gp > 0 ? w + 'W — ' + l + 'L · PTS: ' + (w*2) + ' · PF: ' + pf + ' · PA: ' + pa + ' · DIFF: ' + (pf>pa?'+':'') + (pf-pa)
+    gp > 0 ? w + 'W — ' + l + 'L · PTS: ' + w + ' · PF: ' + pf + ' · PA: ' + pa + ' · DIFF: ' + (pf>pa?'+':'') + (pf-pa)
            : 'No results yet';
 
   // Player stats from elite matches for this team
@@ -4184,13 +4186,22 @@ async function openTeamModal(teamName) {
     const r = results[i];
     const isHome = g.home === teamName;
     const opp = isHome ? g.away : g.home;
-    const ts = r ? (isHome ? r.hs : r.as) : null;
-    const os = r ? (isHome ? r.as : r.hs) : null;
-    // Find matching elite match for box score link
-    const boxMatch = state.eliteMatches.find(function(m) {
-      return (m.team1 === g.home && m.team2 === g.away) || (m.team1 === g.away && m.team2 === g.home);
+    // Compute series score from per-game results
+    let seriesW = 0, seriesL = 0;
+    if (r) {
+      [r.g1, r.g2].forEach(function(game) {
+        if (!game) return;
+        const ts = isHome ? game.hs : game.as;
+        const to = isHome ? game.as : game.hs;
+        if (ts > to) seriesW++; else seriesL++;
+      });
+    }
+    // Find linked elite matches for box score buttons
+    const linkedMs = state.eliteMatches.filter(function(m) {
+      return String(m.scheduleGameId) === String(i);
     });
-    teamGames.push({ round: g.round, date: g.date, opp: opp, ts: ts, os: os, played: r != null, won: ts !== null && ts > os, boxMatch: boxMatch });
+    teamGames.push({ round: g.round, date: g.date, opp: opp, seriesW: seriesW, seriesL: seriesL,
+      played: r != null, won: seriesW > seriesL, linkedMs: linkedMs });
   });
 
   if (!teamGames.length) {
@@ -4199,16 +4210,20 @@ async function openTeamModal(teamName) {
     html += '<table style="width:100%;border-collapse:collapse;font-size:13px">';
     html += '<thead><tr style="border-bottom:1px solid var(--border2)"><th style="padding:7px 6px;color:var(--text3);font-size:11px;text-transform:uppercase;letter-spacing:.06em;text-align:left">Round</th><th style="padding:7px 6px;color:var(--text3);font-size:11px;text-transform:uppercase;letter-spacing:.06em;text-align:left">Date</th><th style="padding:7px 6px;color:var(--text3);font-size:11px;text-transform:uppercase;letter-spacing:.06em;text-align:center">W/L</th><th style="padding:7px 6px;color:var(--text3);font-size:11px;text-transform:uppercase;letter-spacing:.06em">Opponent</th><th style="padding:7px 6px;color:var(--text3);font-size:11px;text-transform:uppercase;letter-spacing:.06em;text-align:center">Result</th><th style="padding:7px 6px"></th></tr></thead><tbody>';
     teamGames.forEach(function(g, i) {
-      const wlCol = g.played ? (g.won ? '#4ade80' : '#f87171') : 'var(--text3)';
-      const wl = g.played ? (g.won ? 'W' : 'L') : '—';
-      const scoreStr = g.played ? (g.ts + ' — ' + g.os) : 'vs';
+      const wlCol = g.played ? (g.won ? '#4ade80' : g.seriesW === g.seriesL ? 'var(--gold)' : '#f87171') : 'var(--text3)';
+      const wl = g.played ? (g.seriesW > g.seriesL ? 'W' : g.seriesW === g.seriesL ? 'D' : 'L') : '—';
+      const scoreStr = g.played ? (g.seriesW + ':' + g.seriesL) : 'vs';
+      const boxBtns = g.linkedMs.map(function(m) {
+        const gameNum = m.scheduleGameNum || '?';
+        return '<button onclick="openMatchDetail(\'' + m.id + '\',\'elite\');closeModal(\'team-overlay\')" style="background:transparent;border:1px solid var(--border2);border-radius:3px;padding:2px 6px;font-size:10px;color:var(--text2);cursor:pointer;margin-right:2px">📊G' + gameNum + '</button>';
+      }).join('');
       html += '<tr style="background:' + (i%2===0?'var(--bg4)':'transparent') + ';border-bottom:1px solid var(--border)">';
       html += '<td style="padding:7px 6px;color:var(--text3)">R' + g.round + '</td>';
       html += '<td style="padding:7px 6px;color:var(--text2)">' + g.date + '</td>';
       html += '<td style="padding:7px 6px;text-align:center;font-weight:900;font-family:\'Barlow Condensed\',sans-serif;font-size:16px;color:' + wlCol + '">' + wl + '</td>';
       html += '<td style="padding:7px 6px;font-family:\'Barlow Condensed\',sans-serif;font-size:14px;font-weight:700;color:var(--white)">' + g.opp + '</td>';
       html += '<td style="padding:7px 6px;text-align:center;font-family:\'Barlow Condensed\',sans-serif;font-size:16px;font-weight:900;color:' + (g.played?'var(--gold)':'var(--text3)') + '">' + scoreStr + '</td>';
-      html += '<td style="padding:7px 6px;text-align:center">' + (g.boxMatch ? '<button onclick="openMatchDetail(\'' + g.boxMatch.id + '\',\'elite\');closeModal(\'team-overlay\')" style="background:transparent;border:1px solid var(--border2);border-radius:3px;padding:3px 8px;font-size:11px;color:var(--text2);cursor:pointer">📊</button>' : '') + '</td>';
+      html += '<td style="padding:7px 6px;text-align:center">' + boxBtns + '</td>';
       html += '</tr>';
     });
     html += '</tbody></table>';
@@ -4225,10 +4240,64 @@ function openMatchDetail(id, league) {
   if (!m) return;
   const title = document.getElementById('detail-title');
   const content = document.getElementById('detail-content');
-  if (title) title.textContent = 'BOX SCORE · ' + (m.date || '');
-  if (content && typeof buildDetailHTML === 'function') content.innerHTML = buildDetailHTML(m);
-  else if (content) content.innerHTML = '<div style="color:var(--text3);padding:20px">Box score not available.</div>';
   const editBtn = document.getElementById('detail-edit-btn');
+
+  // Build title
+  let titleText = 'BOX SCORE · ' + (m.date || '');
+  if (league === 'elite' && m.scheduleGameId != null) {
+    const sg = ELITE_SCHEDULE[parseInt(m.scheduleGameId)];
+    if (sg) titleText = 'ELITE G' + (m.scheduleGameNum || '1') + ' · ' + sg.home + ' vs ' + sg.away;
+  }
+  if (title) title.textContent = titleText;
+
+  if (content) {
+    const s1 = +m.score1 || 0, s2 = +m.score2 || 0;
+    const t1 = m.team1 || 'Team 1';
+    const t2 = m.team2 || 'Team 2';
+
+    // Schedule context banner for elite matches
+    let schedCtx = '';
+    if (league === 'elite' && m.scheduleGameId != null) {
+      const sg = ELITE_SCHEDULE[parseInt(m.scheduleGameId)];
+      const res = state.eliteResults && state.eliteResults[m.scheduleGameId];
+      if (sg) {
+        let seriesHtml = '';
+        if (res) {
+          const g1r = res.g1, g2r = res.g2;
+          const hw = (g1r && g1r.hs > g1r.as ? 1 : 0) + (g2r && g2r.hs > g2r.as ? 1 : 0);
+          const aw = (g1r && g1r.as > g1r.hs ? 1 : 0) + (g2r && g2r.as > g2r.hs ? 1 : 0);
+          const hwCol = hw > aw ? '#4ade80' : hw < aw ? '#ef4444' : 'var(--gold)';
+          const awCol = aw > hw ? '#4ade80' : aw < hw ? '#ef4444' : 'var(--gold)';
+          seriesHtml = ' · <span style="font-weight:700;font-family:\'Barlow Condensed\',sans-serif;font-size:14px">Series <span style="color:' + hwCol + '">' + hw + '</span>:<span style="color:' + awCol + '">' + aw + '</span></span>';
+        }
+        schedCtx = '<div style="background:rgba(212,168,67,.08);border:1px solid rgba(212,168,67,.25);border-radius:4px;padding:8px 14px;margin-bottom:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">';
+        schedCtx += '<span style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em">Round ' + sg.round + ' · ' + sg.date + '</span>';
+        schedCtx += '<span style="font-size:13px;font-weight:700;font-family:\'Barlow Condensed\',sans-serif;color:var(--white)">' + sg.home + ' vs ' + sg.away + seriesHtml + '</span>';
+        schedCtx += '<span style="font-size:11px;color:var(--gold);font-family:\'Barlow Condensed\',sans-serif;font-weight:700;margin-left:auto">GAME ' + (m.scheduleGameNum || '1') + '</span>';
+        schedCtx += '</div>';
+      }
+    }
+
+    content.innerHTML = schedCtx + `
+      <div style="display:flex;justify-content:center;gap:32px;margin-bottom:20px;text-align:center;">
+        <div><div style="font-size:16px;font-weight:700;color:var(--text2)">${t1}</div><div style="font-family:'Bebas Neue';font-size:56px;color:${s1>s2?'var(--gold)':'var(--text3)'}">${s1}</div></div>
+        <div style="font-family:'Bebas Neue';font-size:28px;color:var(--text3);padding-top:20px">VS</div>
+        <div><div style="font-size:16px;font-weight:700;color:var(--text2)">${t2}</div><div style="font-family:'Bebas Neue';font-size:56px;color:${s2>s1?'var(--gold)':'var(--text3)'}">${s2}</div></div>
+      </div>
+      ${(m.quarters1||[]).length ? `
+      <div style="display:flex;justify-content:center;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+        ${(m.quarters1||[]).map((q,i) => `
+          <div style="text-align:center;background:rgba(255,255,255,.05);border-radius:6px;padding:4px 10px;min-width:48px">
+            <div style="font-size:.65rem;color:#888;font-weight:700">Q${i+1}</div>
+            <div style="font-weight:700;color:${q>(m.quarters2||[])[i]?'var(--gold)':'var(--text2)'}">${q}</div>
+            <div style="font-size:.7rem;color:#888">${(m.quarters2||[])[i]||0}</div>
+          </div>`).join('')}
+      </div>` : ''}
+      ${renderPlayerDetailTable(m.team1_players, t1)}
+      ${renderPlayerDetailTable(m.team2_players, t2)}
+    `;
+  }
+
   if (editBtn) {
     if (isAdmin) {
       editBtn.style.display = '';
@@ -4377,10 +4446,17 @@ async function renderSchedule() {
       var homeWin = homeWins > awayWins;
       var awayWin = awayWins > homeWins;
 
+      // Pre-compute linked matches for this schedule game
+      var linkedMatches = (state.eliteMatches || []).filter(function(m) { return String(m.scheduleGameId) === String(g.gid); });
+      var linkedG1 = linkedMatches.find(function(m) { return m.scheduleGameNum === '1' || m.scheduleGameNum === 1; }) || (linkedMatches.length === 1 ? linkedMatches[0] : null);
+      var linkedG2 = linkedMatches.find(function(m) { return m.scheduleGameNum === '2' || m.scheduleGameNum === 2; });
+      var hasLinked = linkedMatches.length > 0;
+
       html += '<div>';
       // Main matchup row
       var borderCol = played ? (homeWins > awayWins ? 'rgba(74,222,128,.5)' : homeWins === awayWins ? 'rgba(212,168,67,.4)' : 'rgba(239,68,68,.4)') : 'var(--border)';
-      html += '<div style="display:flex;align-items:center;background:var(--bg3);border:1px solid ' + borderCol + ';border-radius:' + (played ? '6px 6px 0 0' : '6px') + ';padding:9px 14px;gap:8px">';
+      var hasStrip = played || hasLinked;
+      html += '<div id="mainrow-' + g.gid + '" style="display:flex;align-items:center;background:var(--bg3);border:1px solid ' + borderCol + ';border-radius:' + (hasStrip ? '6px 6px 0 0' : '6px') + ';padding:9px 14px;gap:8px">';
       html += '<div style="min-width:110px"><div style="font-size:12px;font-weight:700;color:var(--white)">' + g.date + ' · ' + g.day + '</div><div style="font-size:12px;color:var(--gold);font-weight:700">' + g.time + ' <span style="font-size:10px;color:var(--text3);font-weight:400">(UK)</span></div></div>';
       html += '<div style="flex:1;display:flex;align-items:center;justify-content:flex-end;gap:6px;cursor:pointer" data-team="' + g.home + '" onclick="openTeamModal(this.dataset.team)">';
       html += getDraftLogoHTML(g.home, 22);
@@ -4408,20 +4484,16 @@ async function renderSchedule() {
         }
       }
       html += '</div>';
-      // Game 1 / Game 2 detail strip (shown when results exist)
-      var linkedMatches = (state.eliteMatches || []).filter(function(m) { return String(m.scheduleGameId) === String(g.gid); });
-      var linkedG1 = linkedMatches.find(function(m) { return m.scheduleGameNum === '1' || m.scheduleGameNum === 1; }) || (linkedMatches.length === 1 ? linkedMatches[0] : null);
-      var linkedG2 = linkedMatches.find(function(m) { return m.scheduleGameNum === '2' || m.scheduleGameNum === 2; });
-      var hasLinked = linkedMatches.length > 0;
-
-      if (played || hasLinked) {
+      // Game 1 / Game 2 detail strip (shown when results exist or linked box scores exist)
+      if (hasStrip) {
         var stripBorder = played ? borderCol : 'var(--border)';
-        html += '<div style="background:rgba(0,0,0,.25);border:1px solid ' + stripBorder + ';border-top:none;border-radius:0 0 6px 6px;display:flex;gap:0">';
+        html += '<div id="strip-' + g.gid + '" style="background:rgba(0,0,0,.25);border:1px solid ' + stripBorder + ';border-top:none;border-radius:0 0 6px 6px;display:flex;gap:0">';
         [['G1', g1, linkedG1], ['G2', g2, linkedG2]].forEach(function(trio, idx) {
           var label = trio[0], game = trio[1], lm = trio[2];
           if (idx > 0) html += '<div style="width:1px;background:rgba(255,255,255,.06)"></div>';
           html += '<div style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:5px 10px;flex-wrap:wrap">';
-          html += '<span style="font-size:10px;font-family:\'Barlow Condensed\',sans-serif;font-weight:700;color:var(--text3);letter-spacing:.06em">' + label + '</span>';
+          var isForfeit = game && ((game.hs === 60 && game.as === 40) || (game.hs === 40 && game.as === 60));
+          html += '<span style="font-size:10px;font-family:\'Barlow Condensed\',sans-serif;font-weight:700;color:var(--text3);letter-spacing:.06em">' + label + (isForfeit ? ' <span style="color:#ef4444;font-size:9px">FF</span>' : '') + '</span>';
           if (game) {
             html += '<span style="font-size:13px;font-family:\'Barlow Condensed\',sans-serif;font-weight:700;color:' + (game.hs > game.as ? 'var(--white)' : 'var(--text3)') + '">' + game.hs + '</span>';
             html += '<span style="font-size:11px;color:var(--text3)">–</span>';
@@ -4490,14 +4562,38 @@ async function renderSchedule() {
 }
 
 function editEliteResult(gid) {
-  document.querySelectorAll('[id^="edit-"]').forEach(function(el) { el.style.display = 'none'; });
-  var el = document.getElementById('edit-' + gid);
-  if (el) el.style.display = 'block';
+  // Close all other edit forms and restore their visual state
+  document.querySelectorAll('[id^="edit-"]').forEach(function(el) {
+    if (el.style.display !== 'none') {
+      var otherId = el.id.replace('edit-', '');
+      var otherStrip = document.getElementById('strip-' + otherId);
+      var otherRow = document.getElementById('mainrow-' + otherId);
+      if (otherStrip) otherStrip.style.borderRadius = '0 0 6px 6px';
+      if (otherRow && !otherStrip) otherRow.style.borderRadius = '6px';
+      el.style.display = 'none';
+    }
+  });
+  var editEl = document.getElementById('edit-' + gid);
+  var mainRow = document.getElementById('mainrow-' + gid);
+  var stripEl = document.getElementById('strip-' + gid);
+  if (editEl) editEl.style.display = 'block';
+  // Ensure main row has flat bottom for the edit form to attach
+  if (mainRow) mainRow.style.borderRadius = '6px 6px 0 0';
+  // Flatten the strip's bottom so edit form attaches cleanly below it
+  if (stripEl) stripEl.style.borderRadius = '0';
 }
 
 function cancelEliteEdit(gid) {
-  var el = document.getElementById('edit-' + gid);
-  if (el) el.style.display = 'none';
+  var editEl = document.getElementById('edit-' + gid);
+  var mainRow = document.getElementById('mainrow-' + gid);
+  var stripEl = document.getElementById('strip-' + gid);
+  if (editEl) editEl.style.display = 'none';
+  // Restore border-radius
+  if (stripEl) {
+    stripEl.style.borderRadius = '0 0 6px 6px';
+  } else if (mainRow) {
+    mainRow.style.borderRadius = '6px';
+  }
 }
 
 function applyForfeit(gid, winner) {
