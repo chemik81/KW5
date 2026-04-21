@@ -1599,10 +1599,12 @@ function renderPlayerDetailTable(players, label) {
 }
 
 
-function editMatch(id) {
+function editMatch(id, league) {
   if (!isAdmin) return;
-  const m = state.matches.find(x=>String(x.id)===String(id));
+  const arr = (league === 'elite') ? (state.eliteMatches || []) : state.matches;
+  const m = arr.find(x=>String(x.id)===String(id)) || state.matches.find(x=>String(x.id)===String(id));
   if (!m) return;
+  if (league === 'elite') { currentLeague = 'elite'; setLeague('elite'); }
   // Deep copy to pendingMatch so we can edit freely
   pendingMatch = JSON.parse(JSON.stringify(m));
   pendingMatch._editId = id; // mark as edit mode
@@ -2052,26 +2054,57 @@ function updateP(teamIdx, pi, field, val) {
 
 function suggestScheduleMatch(team1, team2) {
   if (currentLeague !== 'elite') return;
-  var matches = [];
+  var el = document.getElementById('schedule-match-suggest');
+  if (!el) return;
+
+  // Auto-detect best matching game
+  var bestMatches = new Set();
   ELITE_SCHEDULE.forEach(function(g, i) {
     var t1 = (team1||'').toLowerCase(), t2 = (team2||'').toLowerCase();
     var gh = g.home.toLowerCase(), ga = g.away.toLowerCase();
-    if ((gh.includes(t1.split(' ')[0]) || t1.includes(gh.split(' ')[0])) &&
-        (ga.includes(t2.split(' ')[0]) || t2.includes(ga.split(' ')[0]))) matches.push({g, i});
-    else if ((gh.includes(t2.split(' ')[0]) || t2.includes(gh.split(' ')[0])) &&
-             (ga.includes(t1.split(' ')[0]) || t1.includes(ga.split(' ')[0]))) matches.push({g, i});
+    var w1 = t1.split(' ')[0], w2 = t2.split(' ')[0];
+    var ghw = gh.split(' ')[0], gaw = ga.split(' ')[0];
+    if ((gh.includes(w1)||w1.includes(ghw)) && (ga.includes(w2)||w2.includes(gaw))) bestMatches.add(i);
+    else if ((gh.includes(w2)||w2.includes(ghw)) && (ga.includes(w1)||w1.includes(gaw))) bestMatches.add(i);
   });
-  var el = document.getElementById('schedule-match-suggest');
-  if (!el) return;
-  if (!matches.length) { el.style.display = 'none'; return; }
-  var html = '<div style="margin-bottom:12px;padding:10px 14px;background:rgba(212,168,67,.08);border:1px solid rgba(212,168,67,.3);border-radius:6px">';
-  html += '<div style="font-size:11px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">📅 Link to schedule game</div>';
-  matches.forEach(function(m) {
-    html += '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:4px 0">';
-    html += '<input type="radio" name="schedule-link" value="' + m.i + '" style="accent-color:var(--gold)">';
-    html += '<span style="font-size:13px;color:var(--white)">Round ' + m.g.round + ' · ' + m.g.date + ' · ' + m.g.home + ' vs ' + m.g.away + '</span>';
+
+  var html = '<div style="margin-bottom:12px;padding:12px 14px;background:rgba(212,168,67,.08);border:1px solid rgba(212,168,67,.3);border-radius:6px">';
+  html += '<div style="font-size:11px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">📅 Link to schedule game</div>';
+
+  html += '<div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">';
+
+  // Game select
+  html += '<div style="flex:1;min-width:220px">';
+  html += '<div style="font-size:10px;color:var(--text3);margin-bottom:4px;letter-spacing:.05em">SCHEDULE GAME</div>';
+  html += '<select id="schedule-link-select" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;padding:6px 8px;color:var(--white);font-size:12px">';
+  html += '<option value="">— not linked —</option>';
+  var lastRound = 0;
+  ELITE_SCHEDULE.forEach(function(g, i) {
+    if (g.round !== lastRound) {
+      if (lastRound > 0) html += '</optgroup>';
+      html += '<optgroup label="Round ' + g.round + '">';
+      lastRound = g.round;
+    }
+    var autoSel = (bestMatches.size === 1 && bestMatches.has(i)) ? ' selected' : '';
+    html += '<option value="' + i + '"' + autoSel + '>' + g.date + ' · ' + g.home + ' vs ' + g.away + '</option>';
+  });
+  if (lastRound > 0) html += '</optgroup>';
+  html += '</select></div>';
+
+  // G1 / G2
+  html += '<div>';
+  html += '<div style="font-size:10px;color:var(--text3);margin-bottom:4px;letter-spacing:.05em">GAME #</div>';
+  html += '<div style="display:flex;gap:6px">';
+  ['1','2'].forEach(function(n) {
+    html += '<label style="display:flex;align-items:center;gap:4px;cursor:pointer;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;padding:5px 10px;font-size:12px;color:var(--white)">';
+    html += '<input type="radio" name="schedule-game-num" value="' + n + '" style="accent-color:var(--gold)"' + (n==='1'?' checked':'') + '> G' + n;
     html += '</label>';
   });
+  html += '</div></div></div>';
+
+  if (bestMatches.size === 1) {
+    html += '<div style="font-size:11px;color:var(--gold);margin-top:6px">✓ Auto-matched — confirm game number</div>';
+  }
   html += '</div>';
   el.style.display = 'block';
   el.innerHTML = html;
@@ -2088,8 +2121,15 @@ function saveMatch() {
   };
   delete match._editId;
   // Link to schedule game if selected
-  const schedLink = document.querySelector('input[name="schedule-link"]:checked');
-  if (schedLink) match.scheduleGameId = schedLink.value;
+  const schedSel = document.getElementById('schedule-link-select');
+  const schedNum = document.querySelector('input[name="schedule-game-num"]:checked');
+  if (schedSel && schedSel.value) {
+    match.scheduleGameId = schedSel.value;
+    match.scheduleGameNum = schedNum ? schedNum.value : '1';
+  } else {
+    delete match.scheduleGameId;
+    delete match.scheduleGameNum;
+  }
 
   const matchStore = currentLeague === 'elite' ? 'eliteMatches' : 'matches';
   if (!state[matchStore]) state[matchStore] = [];
@@ -4183,15 +4223,25 @@ function openMatchDetail(id, league) {
   const arr = league === 'elite' ? (state.eliteMatches || []) : state.matches;
   const m = arr.find(function(x) { return String(x.id) === String(id); });
   if (!m) return;
-  // Reuse existing detail modal
   const title = document.getElementById('detail-title');
   const content = document.getElementById('detail-content');
-  if (title) title.textContent = (m.team1||'?') + ' vs ' + (m.team2||'?');
+  if (title) title.textContent = 'BOX SCORE · ' + (m.date || '');
   if (content && typeof buildDetailHTML === 'function') content.innerHTML = buildDetailHTML(m);
-  else if (content) content.innerHTML = '<div style="color:var(--text3);padding:20px">Box score detail not available.</div>';
+  else if (content) content.innerHTML = '<div style="color:var(--text3);padding:20px">Box score not available.</div>';
   const editBtn = document.getElementById('detail-edit-btn');
-  if (editBtn) editBtn.style.display = 'none';
+  if (editBtn) {
+    if (isAdmin) {
+      editBtn.style.display = '';
+      editBtn.onclick = function() { editMatch(id, league); document.getElementById('detail-overlay').classList.remove('active'); };
+    } else {
+      editBtn.style.display = 'none';
+    }
+  }
   document.getElementById('detail-overlay').classList.add('active');
+}
+
+function openEliteMatchDetail(id) {
+  openMatchDetail(id, 'elite');
 }
 
 // ============================================================
@@ -4359,12 +4409,18 @@ async function renderSchedule() {
       }
       html += '</div>';
       // Game 1 / Game 2 detail strip (shown when results exist)
-      if (played) {
-        html += '<div style="background:rgba(0,0,0,.25);border:1px solid ' + borderCol + ';border-top:none;border-radius:0 0 6px 6px;display:flex;gap:0">';
-        [['G1', g1], ['G2', g2]].forEach(function(pair, idx) {
-          var label = pair[0], game = pair[1];
+      var linkedMatches = (state.eliteMatches || []).filter(function(m) { return String(m.scheduleGameId) === String(g.gid); });
+      var linkedG1 = linkedMatches.find(function(m) { return m.scheduleGameNum === '1' || m.scheduleGameNum === 1; }) || (linkedMatches.length === 1 ? linkedMatches[0] : null);
+      var linkedG2 = linkedMatches.find(function(m) { return m.scheduleGameNum === '2' || m.scheduleGameNum === 2; });
+      var hasLinked = linkedMatches.length > 0;
+
+      if (played || hasLinked) {
+        var stripBorder = played ? borderCol : 'var(--border)';
+        html += '<div style="background:rgba(0,0,0,.25);border:1px solid ' + stripBorder + ';border-top:none;border-radius:0 0 6px 6px;display:flex;gap:0">';
+        [['G1', g1, linkedG1], ['G2', g2, linkedG2]].forEach(function(trio, idx) {
+          var label = trio[0], game = trio[1], lm = trio[2];
           if (idx > 0) html += '<div style="width:1px;background:rgba(255,255,255,.06)"></div>';
-          html += '<div style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:5px 10px">';
+          html += '<div style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:5px 10px;flex-wrap:wrap">';
           html += '<span style="font-size:10px;font-family:\'Barlow Condensed\',sans-serif;font-weight:700;color:var(--text3);letter-spacing:.06em">' + label + '</span>';
           if (game) {
             html += '<span style="font-size:13px;font-family:\'Barlow Condensed\',sans-serif;font-weight:700;color:' + (game.hs > game.as ? 'var(--white)' : 'var(--text3)') + '">' + game.hs + '</span>';
@@ -4372,6 +4428,9 @@ async function renderSchedule() {
             html += '<span style="font-size:13px;font-family:\'Barlow Condensed\',sans-serif;font-weight:700;color:' + (game.as > game.hs ? 'var(--white)' : 'var(--text3)') + '">' + game.as + '</span>';
           } else {
             html += '<span style="font-size:11px;color:var(--text3)">—</span>';
+          }
+          if (lm) {
+            html += '<button onclick="openEliteMatchDetail(\'' + lm.id + '\')" style="background:transparent;border:1px solid var(--border2);border-radius:3px;padding:2px 7px;font-size:10px;color:var(--text2);cursor:pointer;font-family:\'Barlow Condensed\',sans-serif;font-weight:700;margin-left:4px">📊 BOX</button>';
           }
           html += '</div>';
         });
