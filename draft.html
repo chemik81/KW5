@@ -819,10 +819,18 @@ async function loadDraftState() {
   } catch(e) { console.warn('loadDraftState:', e.message); return null; }
 }
 
+let _saveQueue = Promise.resolve();
+let _pendingSave = false;
 async function saveDraftState() {
-  try {
-    await apiPut('/draft-data', { record: draftState });
-  } catch(e) { notify('Save failed: ' + e.message, 'error'); }
+  if (_pendingSave) return; // already a save queued, it will pick up latest state
+  _pendingSave = true;
+  _saveQueue = _saveQueue.then(async () => {
+    _pendingSave = false;
+    try {
+      await apiPut('/draft-data', { record: draftState });
+    } catch(e) { notify('Save failed: ' + e.message, 'error'); }
+  });
+  await _saveQueue;
 }
 
 async function loadKw5Players() {
