@@ -4328,19 +4328,20 @@ async function renderSchedule() {
       var awayWin = awayWins > homeWins;
 
       html += '<div>';
-      // Game row
-      html += '<div style="display:flex;align-items:center;background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:9px 14px;gap:8px">';
-      html += '<div style="min-width:120px"><div style="font-size:12px;font-weight:700;color:var(--white)">' + g.date + ' · ' + g.day + '</div><div style="font-size:12px;color:var(--gold);font-weight:700">' + g.time + ' <span style="font-size:10px;color:var(--text3);font-weight:400">(UK)</span></div></div>';
+      // Main matchup row
+      var borderCol = played ? (homeWins > awayWins ? 'rgba(74,222,128,.5)' : homeWins === awayWins ? 'rgba(212,168,67,.4)' : 'rgba(239,68,68,.4)') : 'var(--border)';
+      html += '<div style="display:flex;align-items:center;background:var(--bg3);border:1px solid ' + borderCol + ';border-radius:' + (played ? '6px 6px 0 0' : '6px') + ';padding:9px 14px;gap:8px">';
+      html += '<div style="min-width:110px"><div style="font-size:12px;font-weight:700;color:var(--white)">' + g.date + ' · ' + g.day + '</div><div style="font-size:12px;color:var(--gold);font-weight:700">' + g.time + ' <span style="font-size:10px;color:var(--text3);font-weight:400">(UK)</span></div></div>';
       html += '<div style="flex:1;display:flex;align-items:center;justify-content:flex-end;gap:6px;cursor:pointer" data-team="' + g.home + '" onclick="openTeamModal(this.dataset.team)">';
       html += getDraftLogoHTML(g.home, 22);
       html += '<span style="font-family:\'Barlow Condensed\',sans-serif;font-size:15px;font-weight:700;color:' + (homeWin ? 'var(--gold)' : 'var(--white)') + '">' + g.home + '</span>';
       html += '</div>';
-      html += '<div style="min-width:72px;text-align:center;font-family:\'Barlow Condensed\',sans-serif;font-size:18px;font-weight:900">';
+      // Series score in center
+      html += '<div style="min-width:64px;text-align:center">';
       if (played) {
-        var scoreLines = [];
-        if (g1) scoreLines.push('<span style="color:' + (g1.hs>g1.as?'var(--gold)':'var(--text2)') + ';font-size:15px">' + g1.hs + '</span><span style="color:var(--text3);font-size:11px;margin:0 2px">–</span><span style="color:' + (g1.as>g1.hs?'var(--gold)':'var(--text2)') + ';font-size:15px">' + g1.as + '</span>');
-        if (g2) scoreLines.push('<span style="color:' + (g2.hs>g2.as?'var(--gold)':'var(--text2)') + ';font-size:15px">' + g2.hs + '</span><span style="color:var(--text3);font-size:11px;margin:0 2px">–</span><span style="color:' + (g2.as>g2.hs?'var(--gold)':'var(--text2)') + ';font-size:15px">' + g2.as + '</span>');
-        html += '<div style="display:flex;flex-direction:column;align-items:center;gap:1px;font-family:\'Barlow Condensed\',sans-serif;font-weight:900">' + scoreLines.join('<div style="font-size:9px;color:var(--text3)">·</div>') + '</div>';
+        html += '<span style="font-family:\'Barlow Condensed\',sans-serif;font-size:22px;font-weight:900;color:' + (homeWins > awayWins ? '#4ade80' : homeWins === awayWins ? 'var(--gold)' : '#ef4444') + '">' + homeWins + '</span>';
+        html += '<span style="font-family:\'Barlow Condensed\',sans-serif;font-size:16px;font-weight:700;color:var(--text3);margin:0 3px">:</span>';
+        html += '<span style="font-family:\'Barlow Condensed\',sans-serif;font-size:22px;font-weight:900;color:' + (awayWins > homeWins ? '#4ade80' : awayWins === homeWins ? 'var(--gold)' : '#ef4444') + '">' + awayWins + '</span>';
       } else {
         html += '<span style="color:var(--text3);font-size:14px;font-weight:400">vs</span>';
       }
@@ -4357,6 +4358,25 @@ async function renderSchedule() {
         }
       }
       html += '</div>';
+      // Game 1 / Game 2 detail strip (shown when results exist)
+      if (played) {
+        html += '<div style="background:rgba(0,0,0,.25);border:1px solid ' + borderCol + ';border-top:none;border-radius:0 0 6px 6px;display:flex;gap:0">';
+        [['G1', g1], ['G2', g2]].forEach(function(pair, idx) {
+          var label = pair[0], game = pair[1];
+          if (idx > 0) html += '<div style="width:1px;background:rgba(255,255,255,.06)"></div>';
+          html += '<div style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:5px 10px">';
+          html += '<span style="font-size:10px;font-family:\'Barlow Condensed\',sans-serif;font-weight:700;color:var(--text3);letter-spacing:.06em">' + label + '</span>';
+          if (game) {
+            html += '<span style="font-size:13px;font-family:\'Barlow Condensed\',sans-serif;font-weight:700;color:' + (game.hs > game.as ? 'var(--white)' : 'var(--text3)') + '">' + game.hs + '</span>';
+            html += '<span style="font-size:11px;color:var(--text3)">–</span>';
+            html += '<span style="font-size:13px;font-family:\'Barlow Condensed\',sans-serif;font-weight:700;color:' + (game.as > game.hs ? 'var(--white)' : 'var(--text3)') + '">' + game.as + '</span>';
+          } else {
+            html += '<span style="font-size:11px;color:var(--text3)">—</span>';
+          }
+          html += '</div>';
+        });
+        html += '</div>';
+      }
       // Inline edit form
       var g1hs = gres && gres.g1 ? gres.g1.hs : '';
       var g1as = gres && gres.g1 ? gres.g1.as : '';
@@ -4468,7 +4488,7 @@ async function renderStandings() {
 
   var rows = ELITE_TEAMS.map(function(t) {
     var s = table[t];
-    return {team: t, w: s.w, l: s.l, gp: s.w + s.l, pts: s.w * 2, pf: s.pf, pa: s.pa, diff: s.pf - s.pa};
+    return {team: t, w: s.w, l: s.l, gp: s.w + s.l, pts: s.w * 1, pf: s.pf, pa: s.pa, diff: s.pf - s.pa};
   });
   rows.sort(function(a, b) { return b.w !== a.w ? b.w - a.w : b.diff - a.diff; });
 
@@ -4476,7 +4496,7 @@ async function renderStandings() {
   var html = '';
   html += '<div style="margin-bottom:24px">';
   html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:28px;font-weight:900;color:var(--gold);letter-spacing:.05em;margin-bottom:4px">🏆 STANDINGS</div>';
-  html += '<div style="font-size:13px;color:var(--text3)">KW5 Elite League Season 1 · Win = 2 pts · Loss = 0 pts' + (totalGames === 0 ? ' · No results yet' : ' · ' + totalGames + ' game' + (totalGames !== 1 ? 's' : '') + ' played') + '</div>';
+  html += '<div style="font-size:13px;color:var(--text3)">KW5 Elite League Season 1 · Win = 1 pt · Loss = 0 pts · max 2 pts per matchup' + (totalGames === 0 ? ' · No results yet' : ' · ' + totalGames + ' game' + (totalGames !== 1 ? 's' : '') + ' played') + '</div>';
   html += '</div>';
 
   html += '<div class="table-wrap"><table style="width:100%;border-collapse:collapse;font-size:14px">';
