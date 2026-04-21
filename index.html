@@ -570,6 +570,7 @@
     <div class="card-title">Review & Save</div>
     <p style="color:var(--text2);font-size:13px;margin-bottom:16px;">Check the data below, correct if needed, then save.</p>
     <div id="review-content"></div>
+    <div id="schedule-match-suggest" style="display:none"></div>
     <div class="btn-row">
       <button class="btn btn-gold" id="save-btn" onclick="saveMatch()">✅ Save Box Score</button>
       <button class="btn btn-outline" onclick="cancelReview()">Cancel</button>
@@ -2001,6 +2002,7 @@ function showReview(data) {
   `;
   document.getElementById('review-card').style.display = 'block';
   document.getElementById('review-card').scrollIntoView({ behavior:'smooth', block:'start' });
+  if (currentLeague === 'elite' && pendingMatch) suggestScheduleMatch(pendingMatch.team1, pendingMatch.team2);
 }
 
 // Fix name from suggestion click
@@ -2048,6 +2050,33 @@ function updateP(teamIdx, pi, field, val) {
   if (arr && arr[pi]) arr[pi][field] = numFields.includes(field) ? (+val || 0) : val;
 }
 
+function suggestScheduleMatch(team1, team2) {
+  if (currentLeague !== 'elite') return;
+  var matches = [];
+  ELITE_SCHEDULE.forEach(function(g, i) {
+    var t1 = (team1||'').toLowerCase(), t2 = (team2||'').toLowerCase();
+    var gh = g.home.toLowerCase(), ga = g.away.toLowerCase();
+    if ((gh.includes(t1.split(' ')[0]) || t1.includes(gh.split(' ')[0])) &&
+        (ga.includes(t2.split(' ')[0]) || t2.includes(ga.split(' ')[0]))) matches.push({g, i});
+    else if ((gh.includes(t2.split(' ')[0]) || t2.includes(gh.split(' ')[0])) &&
+             (ga.includes(t1.split(' ')[0]) || t1.includes(ga.split(' ')[0]))) matches.push({g, i});
+  });
+  var el = document.getElementById('schedule-match-suggest');
+  if (!el) return;
+  if (!matches.length) { el.style.display = 'none'; return; }
+  var html = '<div style="margin-bottom:12px;padding:10px 14px;background:rgba(212,168,67,.08);border:1px solid rgba(212,168,67,.3);border-radius:6px">';
+  html += '<div style="font-size:11px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">📅 Link to schedule game</div>';
+  matches.forEach(function(m) {
+    html += '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:4px 0">';
+    html += '<input type="radio" name="schedule-link" value="' + m.i + '" style="accent-color:var(--gold)">';
+    html += '<span style="font-size:13px;color:var(--white)">Round ' + m.g.round + ' · ' + m.g.date + ' · ' + m.g.home + ' vs ' + m.g.away + '</span>';
+    html += '</label>';
+  });
+  html += '</div>';
+  el.style.display = 'block';
+  el.innerHTML = html;
+}
+
 function saveMatch() {
   if (!pendingMatch) return;
   const isEdit = !!pendingMatch._editId;
@@ -2058,6 +2087,9 @@ function saveMatch() {
     note: document.getElementById('match-note').value
   };
   delete match._editId;
+  // Link to schedule game if selected
+  const schedLink = document.querySelector('input[name="schedule-link"]:checked');
+  if (schedLink) match.scheduleGameId = schedLink.value;
 
   const matchStore = currentLeague === 'elite' ? 'eliteMatches' : 'matches';
   if (!state[matchStore]) state[matchStore] = [];
@@ -4436,7 +4468,7 @@ async function renderStandings() {
 
   var rows = ELITE_TEAMS.map(function(t) {
     var s = table[t];
-    return {team: t, w: s.w, l: s.l, gp: s.w + s.l, pts: s.w * 1, pf: s.pf, pa: s.pa, diff: s.pf - s.pa};
+    return {team: t, w: s.w, l: s.l, gp: s.w + s.l, pts: s.w * 2, pf: s.pf, pa: s.pa, diff: s.pf - s.pa};
   });
   rows.sort(function(a, b) { return b.w !== a.w ? b.w - a.w : b.diff - a.diff; });
 
@@ -4444,7 +4476,7 @@ async function renderStandings() {
   var html = '';
   html += '<div style="margin-bottom:24px">';
   html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:28px;font-weight:900;color:var(--gold);letter-spacing:.05em;margin-bottom:4px">🏆 STANDINGS</div>';
-  html += '<div style="font-size:13px;color:var(--text3)">KW5 Elite League Season 1 · Win = 1 pt · Loss = 0 pts' + (totalGames === 0 ? ' · No results yet' : ' · ' + totalGames + ' game' + (totalGames !== 1 ? 's' : '') + ' played') + '</div>';
+  html += '<div style="font-size:13px;color:var(--text3)">KW5 Elite League Season 1 · Win = 2 pts · Loss = 0 pts' + (totalGames === 0 ? ' · No results yet' : ' · ' + totalGames + ' game' + (totalGames !== 1 ? 's' : '') + ' played') + '</div>';
   html += '</div>';
 
   html += '<div class="table-wrap"><table style="width:100%;border-collapse:collapse;font-size:14px">';
