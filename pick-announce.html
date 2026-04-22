@@ -136,7 +136,7 @@ function showCard(pick, team, player) {
     <div class="info">
       <div class="pick-label">Pick #${pick.pickNum} · Round ${pick.round}</div>
       <div class="team-name">${team.name || ''}</div>
-      <div class="player-name">${getFlag(pick.playerId)?`<span style="font-size:22px;margin-right:6px;vertical-align:middle">${getFlag(pick.playerId)}</span>`:''}${pick.playerId}</div>
+      <div class="player-name">${pick.playerId}</div>
       <div class="stats">
         <div><div class="stat-val">${player.ppg != null ? (+player.ppg).toFixed(1) : '—'}</div><div class="stat-lbl">PPG</div></div>
         <div><div class="stat-val">${player.rpg != null ? (+player.rpg).toFixed(1) : '—'}</div><div class="stat-lbl">RPG</div></div>

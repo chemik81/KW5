@@ -1888,7 +1888,7 @@ function renderGmPlayers() {
       <td onclick="toggleWatch('${p.id}',event)" style="cursor:pointer;color:${isWatched?'#f87171':'var(--border)'};font-size:14px;padding:4px 6px">${isWatched?'♥':'♡'}</td>
       <td onclick="toggleCompareSet('${p.id}',event)" style="cursor:pointer;padding:4px 6px;font-size:13px;color:${isComparing?'var(--gold)':'var(--border)'}">${isComparing?'☑':'☐'}</td>
       <td style="color:var(--muted)">${i+1}</td>
-      <td style="font-weight:600">${getFlag(p.name)?`<span style="font-size:13px;margin-right:4px">${getFlag(p.name)}</span>`:''}${p.name}</td>
+      <td style="font-weight:600">${p.name}</td>
       <td>${posBadge(p.pos)}</td>
       <td style="color:var(--muted)">${p.gp}</td>
       <td>${(p.ppg||0).toFixed(1)}</td>
