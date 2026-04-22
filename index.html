@@ -900,7 +900,7 @@ let isAdmin      = false;
 let isSuperAdmin = false;
 let loginTarget  = 'admin';
 
-let state = { matches: [], eliteMatches: [], roster: [], corrections: {}, eliteResults: {} };
+let state = { matches: [], eliteMatches: [], roster: [], corrections: {}, eliteResults: {}, eliteSchedule: null };
 let sortCol = 'per';
 let sortDir = 'desc';
 let posFilter    = '';
@@ -1037,6 +1037,7 @@ async function loadFromDb() {
     if (rec && rec.corrections)   state.corrections   = rec.corrections;
     if (rec && rec.eliteResults)  state.eliteResults  = rec.eliteResults;
     if (rec && rec.eliteMatches)  state.eliteMatches  = rec.eliteMatches;
+    if (rec && rec.eliteSchedule) state.eliteSchedule = rec.eliteSchedule;
     setDbStatus('✅ Connected — data loaded', 'ok');
     // Re-render after loading
     if (typeof renderBoxScores === 'function') renderBoxScores();
@@ -1054,7 +1055,7 @@ async function syncToDb() {
     const res = await fetch(_kw5url2, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', 'X-Admin-Token': adminToken },
-      body: JSON.stringify({ record: { matches: state.matches, roster: state.roster, corrections: state.corrections, eliteMatches: state.eliteMatches, eliteResults: state.eliteResults } })
+      body: JSON.stringify({ record: { matches: state.matches, roster: state.roster, corrections: state.corrections, eliteMatches: state.eliteMatches, eliteResults: state.eliteResults, eliteSchedule: state.eliteSchedule } })
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     notify('✅ Saved to cloud', 'success');
@@ -2059,7 +2060,7 @@ function suggestScheduleMatch(team1, team2) {
 
   // Auto-detect best matching game
   var bestMatches = new Set();
-  ELITE_SCHEDULE.forEach(function(g, i) {
+  getEliteSchedule().forEach(function(g, i) {
     var t1 = (team1||'').toLowerCase(), t2 = (team2||'').toLowerCase();
     var gh = g.home.toLowerCase(), ga = g.away.toLowerCase();
     var w1 = t1.split(' ')[0], w2 = t2.split(' ')[0];
@@ -2079,7 +2080,7 @@ function suggestScheduleMatch(team1, team2) {
   html += '<select id="schedule-link-select" style="width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;padding:6px 8px;color:var(--white);font-size:12px">';
   html += '<option value="">— not linked —</option>';
   var lastRound = 0;
-  ELITE_SCHEDULE.forEach(function(g, i) {
+  getEliteSchedule().forEach(function(g, i) {
     if (g.round !== lastRound) {
       if (lastRound > 0) html += '</optgroup>';
       html += '<optgroup label="Round ' + g.round + '">';
@@ -4116,7 +4117,7 @@ async function openTeamModal(teamName) {
 
   // Record from schedule — count per-game wins (same as standings)
   let w = 0, l = 0, pf = 0, pa = 0;
-  ELITE_SCHEDULE.forEach(function(g, i) {
+  getEliteSchedule().forEach(function(g, i) {
     const r = results[i];
     if (!r) return;
     if (g.home !== teamName && g.away !== teamName) return;
@@ -4181,7 +4182,7 @@ async function openTeamModal(teamName) {
   html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:16px;font-weight:900;color:var(--gold);letter-spacing:.08em;margin-bottom:10px">MATCH HISTORY (' + gp + '/' + 11 + ')</div>';
 
   const teamGames = [];
-  ELITE_SCHEDULE.forEach(function(g, i) {
+  getEliteSchedule().forEach(function(g, i) {
     if (g.home !== teamName && g.away !== teamName) return;
     const r = results[i];
     const isHome = g.home === teamName;
@@ -4245,7 +4246,7 @@ function openMatchDetail(id, league) {
   // Build title
   let titleText = 'BOX SCORE · ' + (m.date || '');
   if (league === 'elite' && m.scheduleGameId != null) {
-    const sg = ELITE_SCHEDULE[parseInt(m.scheduleGameId)];
+    const sg = getEliteSchedule()[parseInt(m.scheduleGameId)];
     if (sg) titleText = 'ELITE G' + (m.scheduleGameNum || '1') + ' · ' + sg.home + ' vs ' + sg.away;
   }
   if (title) title.textContent = titleText;
@@ -4258,7 +4259,7 @@ function openMatchDetail(id, league) {
     // Schedule context banner for elite matches
     let schedCtx = '';
     if (league === 'elite' && m.scheduleGameId != null) {
-      const sg = ELITE_SCHEDULE[parseInt(m.scheduleGameId)];
+      const sg = getEliteSchedule()[parseInt(m.scheduleGameId)];
       const res = state.eliteResults && state.eliteResults[m.scheduleGameId];
       if (sg) {
         let seriesHtml = '';
@@ -4402,20 +4403,30 @@ const ELITE_SCHEDULE = [
   {round:11,date:'June 28',day:'Sun',time:'20:00',home:'ARAB SHEIKS',away:'INFURIA ESPORTS'},
 ];
 
+function getEliteSchedule() {
+  if (state.eliteSchedule && state.eliteSchedule.length) return state.eliteSchedule;
+  return ELITE_SCHEDULE;
+}
+
 async function renderSchedule() {
   await fetchDraftCache();
   if (!state.eliteResults) state.eliteResults = {};
   var results = state.eliteResults;
 
   var html = '';
-  html += '<div style="margin-bottom:24px">';
+  html += '<div style="margin-bottom:24px;display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap">';
+  html += '<div>';
   html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:28px;font-weight:900;color:var(--gold);letter-spacing:.05em;margin-bottom:4px">📅 SEASON 1 SCHEDULE</div>';
   html += '<div style="font-size:13px;color:var(--text3)">KW5 Elite League · 12 Teams · 11 Regular Season Rounds + Playoffs</div>';
+  html += '</div>';
+  if (isAdmin && state.eliteSchedule && state.eliteSchedule.length) {
+    html += '<button onclick="resetEliteSchedule()" style="background:transparent;border:1px solid rgba(239,68,68,.4);border-radius:3px;padding:4px 10px;font-size:11px;color:#fca5a5;cursor:pointer;font-family:\'Barlow Condensed\',sans-serif;font-weight:700;margin-left:auto">↺ Reset to default schedule</button>';
+  }
   html += '</div>';
 
   // Group by round
   var rounds = {};
-  ELITE_SCHEDULE.forEach(function(g, i) {
+  getEliteSchedule().forEach(function(g, i) {
     if (!rounds[g.round]) rounds[g.round] = [];
     rounds[g.round].push(Object.assign({}, g, {gid: i}));
   });
@@ -4457,7 +4468,12 @@ async function renderSchedule() {
       var borderCol = played ? (homeWins > awayWins ? 'rgba(74,222,128,.5)' : homeWins === awayWins ? 'rgba(212,168,67,.4)' : 'rgba(239,68,68,.4)') : 'var(--border)';
       var hasStrip = played || hasLinked;
       html += '<div id="mainrow-' + g.gid + '" style="display:flex;align-items:center;background:var(--bg3);border:1px solid ' + borderCol + ';border-radius:' + (hasStrip ? '6px 6px 0 0' : '6px') + ';padding:9px 14px;gap:8px">';
-      html += '<div style="min-width:110px"><div style="font-size:12px;font-weight:700;color:var(--white)">' + g.date + ' · ' + g.day + '</div><div style="font-size:12px;color:var(--gold);font-weight:700">' + g.time + ' <span style="font-size:10px;color:var(--text3);font-weight:400">(UK)</span></div></div>';
+      html += '<div style="min-width:110px">';
+      html += '<div style="font-size:12px;font-weight:700;color:var(--white)">' + g.date + ' · ' + g.day + '</div>';
+      html += '<div style="font-size:12px;color:var(--gold);font-weight:700">' + g.time + ' <span style="font-size:10px;color:var(--text3);font-weight:400">(UK)</span>';
+      if (isAdmin) html += ' <button onclick="editScheduleGame(' + g.gid + ')" title="Edit game details" style="background:transparent;border:none;padding:0 2px;font-size:11px;color:var(--text3);cursor:pointer;opacity:.5;vertical-align:middle">✏</button>';
+      html += '</div>';
+      html += '</div>';
       html += '<div style="flex:1;display:flex;align-items:center;justify-content:flex-end;gap:6px;cursor:pointer" data-team="' + g.home + '" onclick="openTeamModal(this.dataset.team)">';
       html += getDraftLogoHTML(g.home, 22);
       html += '<span style="font-family:\'Barlow Condensed\',sans-serif;font-size:15px;font-weight:700;color:' + (homeWin ? 'var(--gold)' : 'var(--white)') + '">' + g.home + '</span>';
@@ -4484,25 +4500,54 @@ async function renderSchedule() {
         }
       }
       html += '</div>';
+      // Inline schedule edit form (admin only — for team names, date, time)
+      if (isAdmin) {
+        html += '<div id="sched-edit-' + g.gid + '" style="display:none;background:rgba(212,168,67,.05);border:1px solid rgba(212,168,67,.3);border-top:none;padding:10px 14px">';
+        html += '<div style="font-size:10px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px">✏ Edit Schedule Entry</div>';
+        html += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;align-items:flex-end">';
+        html += '<div style="flex:1;min-width:140px"><div style="font-size:10px;color:var(--text3);margin-bottom:3px;text-transform:uppercase;letter-spacing:.05em">Home Team</div>';
+        html += '<input type="text" id="se-home-' + g.gid + '" value="' + g.home + '" style="width:100%;background:var(--bg3);border:1px solid var(--border2);color:var(--white);padding:5px 8px;border-radius:3px;font-size:13px;font-weight:700;box-sizing:border-box"></div>';
+        html += '<div style="flex:1;min-width:140px"><div style="font-size:10px;color:var(--text3);margin-bottom:3px;text-transform:uppercase;letter-spacing:.05em">Away Team</div>';
+        html += '<input type="text" id="se-away-' + g.gid + '" value="' + g.away + '" style="width:100%;background:var(--bg3);border:1px solid var(--border2);color:var(--white);padding:5px 8px;border-radius:3px;font-size:13px;font-weight:700;box-sizing:border-box"></div>';
+        html += '<div style="min-width:90px"><div style="font-size:10px;color:var(--text3);margin-bottom:3px;text-transform:uppercase;letter-spacing:.05em">Date</div>';
+        html += '<input type="text" id="se-date-' + g.gid + '" value="' + g.date + '" placeholder="May 11" style="width:90px;background:var(--bg3);border:1px solid var(--border2);color:var(--white);padding:5px 8px;border-radius:3px;font-size:12px"></div>';
+        html += '<div style="min-width:55px"><div style="font-size:10px;color:var(--text3);margin-bottom:3px;text-transform:uppercase;letter-spacing:.05em">Day</div>';
+        html += '<input type="text" id="se-day-' + g.gid + '" value="' + g.day + '" placeholder="Mon" style="width:55px;background:var(--bg3);border:1px solid var(--border2);color:var(--white);padding:5px 8px;border-radius:3px;font-size:12px"></div>';
+        html += '<div style="min-width:70px"><div style="font-size:10px;color:var(--text3);margin-bottom:3px;text-transform:uppercase;letter-spacing:.05em">Time (UK)</div>';
+        html += '<input type="text" id="se-time-' + g.gid + '" value="' + g.time + '" placeholder="19:00" style="width:70px;background:var(--bg3);border:1px solid var(--border2);color:var(--white);padding:5px 8px;border-radius:3px;font-size:12px"></div>';
+        html += '</div>';
+        html += '<div style="display:flex;gap:8px">';
+        html += '<button onclick="saveScheduleGame(' + g.gid + ')" style="background:var(--gold);border:none;border-radius:3px;padding:5px 14px;font-size:12px;color:#000;font-weight:700;cursor:pointer;font-family:\'Barlow Condensed\',sans-serif;letter-spacing:.05em">SAVE</button>';
+        html += '<button onclick="cancelScheduleEdit(' + g.gid + ')" style="background:transparent;border:1px solid var(--border2);border-radius:3px;padding:5px 10px;font-size:11px;color:var(--text3);cursor:pointer">Cancel</button>';
+        html += '</div></div>';
+      }
       // Game 1 / Game 2 detail strip (shown when results exist or linked box scores exist)
       if (hasStrip) {
         var stripBorder = played ? borderCol : 'var(--border)';
         html += '<div id="strip-' + g.gid + '" style="background:rgba(0,0,0,.25);border:1px solid ' + stripBorder + ';border-top:none;border-radius:0 0 6px 6px;display:flex;gap:0">';
         [['G1', g1, linkedG1], ['G2', g2, linkedG2]].forEach(function(trio, idx) {
           var label = trio[0], game = trio[1], lm = trio[2];
+          // Determine what score to display: prefer linked match score, fall back to eliteResults score
+          var displayScore = null;
+          if (lm) { displayScore = {hs: +lm.score1 || 0, as: +lm.score2 || 0, clickable: true}; }
+          else if (game) { displayScore = {hs: game.hs, as: game.as, clickable: false}; }
+          var isForfeit = displayScore && ((displayScore.hs === 60 && displayScore.as === 40) || (displayScore.hs === 40 && displayScore.as === 60));
           if (idx > 0) html += '<div style="width:1px;background:rgba(255,255,255,.06)"></div>';
-          html += '<div style="flex:1;display:flex;align-items:center;justify-content:center;gap:8px;padding:5px 10px;flex-wrap:wrap">';
-          var isForfeit = game && ((game.hs === 60 && game.as === 40) || (game.hs === 40 && game.as === 60));
+          html += '<div style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:5px 10px;flex-wrap:wrap">';
           html += '<span style="font-size:10px;font-family:\'Barlow Condensed\',sans-serif;font-weight:700;color:var(--text3);letter-spacing:.06em">' + label + (isForfeit ? ' <span style="color:#ef4444;font-size:9px">FF</span>' : '') + '</span>';
-          if (game) {
-            html += '<span style="font-size:13px;font-family:\'Barlow Condensed\',sans-serif;font-weight:700;color:' + (game.hs > game.as ? 'var(--white)' : 'var(--text3)') + '">' + game.hs + '</span>';
-            html += '<span style="font-size:11px;color:var(--text3)">–</span>';
-            html += '<span style="font-size:13px;font-family:\'Barlow Condensed\',sans-serif;font-weight:700;color:' + (game.as > game.hs ? 'var(--white)' : 'var(--text3)') + '">' + game.as + '</span>';
+          if (displayScore) {
+            var hCol = displayScore.hs > displayScore.as ? 'var(--white)' : 'var(--text3)';
+            var aCol = displayScore.as > displayScore.hs ? 'var(--white)' : 'var(--text3)';
+            var scoreInner = '<span style="font-size:13px;font-family:\'Barlow Condensed\',sans-serif;font-weight:700;color:' + hCol + '">' + displayScore.hs + '</span>'
+              + '<span style="font-size:11px;color:var(--text3)">–</span>'
+              + '<span style="font-size:13px;font-family:\'Barlow Condensed\',sans-serif;font-weight:700;color:' + aCol + '">' + displayScore.as + '</span>';
+            if (displayScore.clickable) {
+              html += '<span onclick="openEliteMatchDetail(\'' + lm.id + '\')" style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;border-bottom:1px dashed rgba(255,255,255,.25);padding-bottom:1px" title="View box score">' + scoreInner + '</span>';
+            } else {
+              html += '<span style="display:inline-flex;align-items:center;gap:4px">' + scoreInner + '</span>';
+            }
           } else {
             html += '<span style="font-size:11px;color:var(--text3)">—</span>';
-          }
-          if (lm) {
-            html += '<button onclick="openEliteMatchDetail(\'' + lm.id + '\')" style="background:transparent;border:1px solid var(--border2);border-radius:3px;padding:2px 7px;font-size:10px;color:var(--text2);cursor:pointer;font-family:\'Barlow Condensed\',sans-serif;font-weight:700;margin-left:4px">📊 BOX</button>';
           }
           html += '</div>';
         });
@@ -4596,6 +4641,47 @@ function cancelEliteEdit(gid) {
   }
 }
 
+function resetEliteSchedule() {
+  if (!confirm('Reset schedule to defaults? Custom names/times will be lost.')) return;
+  state.eliteSchedule = null;
+  saveState();
+  renderSchedule();
+  notify('Schedule reset to default ✓', 'info');
+}
+
+function editScheduleGame(gid) {
+  document.querySelectorAll('[id^="sched-edit-"]').forEach(function(el) { el.style.display = 'none'; });
+  var el = document.getElementById('sched-edit-' + gid);
+  if (el) el.style.display = 'block';
+}
+
+function cancelScheduleEdit(gid) {
+  var el = document.getElementById('sched-edit-' + gid);
+  if (el) el.style.display = 'none';
+}
+
+function saveScheduleGame(gid) {
+  var home = (document.getElementById('se-home-' + gid)?.value || '').trim();
+  var away = (document.getElementById('se-away-' + gid)?.value || '').trim();
+  var date = (document.getElementById('se-date-' + gid)?.value || '').trim();
+  var day  = (document.getElementById('se-day-'  + gid)?.value || '').trim();
+  var time = (document.getElementById('se-time-' + gid)?.value || '').trim();
+  if (!home || !away) { notify('Team names cannot be empty', 'error'); return; }
+  if (!state.eliteSchedule || !state.eliteSchedule.length) {
+    state.eliteSchedule = ELITE_SCHEDULE.map(function(g) { return Object.assign({}, g); });
+  }
+  var entry = state.eliteSchedule[parseInt(gid)];
+  if (!entry) { notify('Game not found', 'error'); return; }
+  entry.home = home;
+  entry.away = away;
+  if (date) entry.date = date;
+  if (day)  entry.day  = day;
+  if (time) entry.time = time;
+  saveState();
+  renderSchedule();
+  notify('Schedule updated ✓', 'success');
+}
+
 function applyForfeit(gid, winner) {
   var hs = winner === 'home' ? 60 : 40;
   var as = winner === 'home' ? 40 : 60;
@@ -4644,7 +4730,7 @@ async function renderStandings() {
   var table = {};
   ELITE_TEAMS.forEach(function(t) { table[t] = {w:0, l:0, pf:0, pa:0}; });
 
-  ELITE_SCHEDULE.forEach(function(g, i) {
+  getEliteSchedule().forEach(function(g, i) {
     var gres = results[i];
     if (!gres) return;
     [gres.g1, gres.g2].forEach(function(game) {
