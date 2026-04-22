@@ -4199,29 +4199,47 @@ async function openTeamModal(teamName) {
       return String(m.scheduleGameId) === String(i);
     });
     teamGames.push({ round: g.round, date: g.date, opp: opp, seriesW: seriesW, seriesL: seriesL,
-      played: eff.g1 !== null || eff.g2 !== null, won: seriesW > seriesL, linkedMs: linkedMs });
+      played: eff.g1 !== null || eff.g2 !== null, won: seriesW > seriesL, linkedMs: linkedMs,
+      eff: eff, isHome: isHome });
   });
 
   if (!teamGames.length) {
     html += '<div style="color:var(--text3);font-size:13px;font-style:italic">No games found in schedule.</div>';
   } else {
     html += '<table style="width:100%;border-collapse:collapse;font-size:13px">';
-    html += '<thead><tr style="border-bottom:1px solid var(--border2)"><th style="padding:7px 6px;color:var(--text3);font-size:11px;text-transform:uppercase;letter-spacing:.06em;text-align:left">Round</th><th style="padding:7px 6px;color:var(--text3);font-size:11px;text-transform:uppercase;letter-spacing:.06em;text-align:left">Date</th><th style="padding:7px 6px;color:var(--text3);font-size:11px;text-transform:uppercase;letter-spacing:.06em;text-align:center">W/L</th><th style="padding:7px 6px;color:var(--text3);font-size:11px;text-transform:uppercase;letter-spacing:.06em">Opponent</th><th style="padding:7px 6px;color:var(--text3);font-size:11px;text-transform:uppercase;letter-spacing:.06em;text-align:center">Result</th><th style="padding:7px 6px"></th></tr></thead><tbody>';
+    html += '<thead><tr style="border-bottom:1px solid var(--border2)"><th style="padding:7px 6px;color:var(--text3);font-size:11px;text-transform:uppercase;letter-spacing:.06em;text-align:left">Round</th><th style="padding:7px 6px;color:var(--text3);font-size:11px;text-transform:uppercase;letter-spacing:.06em;text-align:left">Date</th><th style="padding:7px 6px;color:var(--text3);font-size:11px;text-transform:uppercase;letter-spacing:.06em;text-align:center">W/L</th><th style="padding:7px 6px;color:var(--text3);font-size:11px;text-transform:uppercase;letter-spacing:.06em">Opponent</th><th style="padding:7px 6px;color:var(--text3);font-size:11px;text-transform:uppercase;letter-spacing:.06em;text-align:center">Result</th><th style="padding:7px 6px;color:var(--text3);font-size:11px;text-transform:uppercase;letter-spacing:.06em;text-align:center">G1</th><th style="padding:7px 6px;color:var(--text3);font-size:11px;text-transform:uppercase;letter-spacing:.06em;text-align:center">G2</th></tr></thead><tbody>';
     teamGames.forEach(function(g, i) {
       const wlCol = g.played ? (g.won ? '#4ade80' : g.seriesW === g.seriesL ? 'var(--gold)' : '#f87171') : 'var(--text3)';
       const wl = g.played ? (g.seriesW > g.seriesL ? 'W' : g.seriesW === g.seriesL ? 'D' : 'L') : '—';
       const scoreStr = g.played ? (g.seriesW + ':' + g.seriesL) : 'vs';
-      const boxBtns = g.linkedMs.map(function(m) {
-        const gameNum = m.scheduleGameNum || '?';
-        return '<button onclick="openMatchDetail(\'' + m.id + '\',\'elite\');closeModal(\'team-overlay\')" style="background:transparent;border:1px solid var(--border2);border-radius:3px;padding:2px 6px;font-size:10px;color:var(--text2);cursor:pointer;margin-right:2px">📊G' + gameNum + '</button>';
-      }).join('');
+      // Build G1/G2 score cells
+      function gameScoreCell(gameScore, linkedM) {
+        if (!gameScore && !linkedM) return '<td style="padding:7px 6px;text-align:center;color:var(--text3);font-size:11px">—</td>';
+        var hs = linkedM ? (+linkedM.score1||0) : gameScore.hs;
+        var as = linkedM ? (+linkedM.score2||0) : gameScore.as;
+        // From team perspective: team score vs opp score
+        var ts = g.isHome ? hs : as;
+        var os = g.isHome ? as : hs;
+        var tCol = ts > os ? 'var(--white)' : 'var(--text3)';
+        var oCol = os > ts ? 'var(--white)' : 'var(--text3)';
+        var isFf = (hs===60&&as===40)||(hs===40&&as===60);
+        var inner = '<span style="font-family:\'Barlow Condensed\',sans-serif;font-weight:700;font-size:13px;color:' + tCol + '">' + ts + '</span>'
+          + '<span style="color:var(--text3);font-size:11px">–</span>'
+          + '<span style="font-family:\'Barlow Condensed\',sans-serif;font-weight:700;font-size:13px;color:' + oCol + '">' + os + '</span>'
+          + (isFf ? '<span style="font-size:9px;color:#ef4444;margin-left:2px">FF</span>' : '');
+        if (linkedM) {
+          return '<td style="padding:7px 6px;text-align:center"><span onclick="openMatchDetail(\'' + linkedM.id + '\',\'elite\');closeModal(\'team-overlay\')" style="cursor:pointer;border-bottom:1px dashed rgba(255,255,255,.25);padding-bottom:1px;white-space:nowrap">' + inner + '</span></td>';
+        }
+        return '<td style="padding:7px 6px;text-align:center;white-space:nowrap">' + inner + '</td>';
+      }
       html += '<tr style="background:' + (i%2===0?'var(--bg4)':'transparent') + ';border-bottom:1px solid var(--border)">';
       html += '<td style="padding:7px 6px;color:var(--text3)">R' + g.round + '</td>';
       html += '<td style="padding:7px 6px;color:var(--text2)">' + g.date + '</td>';
       html += '<td style="padding:7px 6px;text-align:center;font-weight:900;font-family:\'Barlow Condensed\',sans-serif;font-size:16px;color:' + wlCol + '">' + wl + '</td>';
       html += '<td style="padding:7px 6px;font-family:\'Barlow Condensed\',sans-serif;font-size:14px;font-weight:700;color:var(--white)">' + g.opp + '</td>';
       html += '<td style="padding:7px 6px;text-align:center;font-family:\'Barlow Condensed\',sans-serif;font-size:16px;font-weight:900;color:' + (g.played?'var(--gold)':'var(--text3)') + '">' + scoreStr + '</td>';
-      html += '<td style="padding:7px 6px;text-align:center">' + boxBtns + '</td>';
+      html += gameScoreCell(g.eff.g1, g.eff.lG1);
+      html += gameScoreCell(g.eff.g2, g.eff.lG2);
       html += '</tr>';
     });
     html += '</tbody></table>';
