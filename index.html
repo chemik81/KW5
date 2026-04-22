@@ -4115,14 +4115,13 @@ async function openTeamModal(teamName) {
   if (!state.eliteMatches) state.eliteMatches = [];
   const results = state.eliteResults;
 
-  // Record from schedule — count per-game wins (same as standings)
+  // Record from schedule — count per-game wins using effective scores (linked box scores take priority)
   let w = 0, l = 0, pf = 0, pa = 0;
   getEliteSchedule().forEach(function(g, i) {
-    const r = results[i];
-    if (!r) return;
     if (g.home !== teamName && g.away !== teamName) return;
+    const eff = getEffectiveMatchScores(i);
     const isHome = g.home === teamName;
-    [r.g1, r.g2].forEach(function(game) {
+    [eff.g1, eff.g2].forEach(function(game) {
       if (!game) return;
       const ts = isHome ? game.hs : game.as;
       const to = isHome ? game.as : game.hs;
@@ -4184,25 +4183,23 @@ async function openTeamModal(teamName) {
   const teamGames = [];
   getEliteSchedule().forEach(function(g, i) {
     if (g.home !== teamName && g.away !== teamName) return;
-    const r = results[i];
     const isHome = g.home === teamName;
     const opp = isHome ? g.away : g.home;
-    // Compute series score from per-game results
+    // Compute series score using effective scores (linked box scores take priority)
+    const eff = getEffectiveMatchScores(i);
     let seriesW = 0, seriesL = 0;
-    if (r) {
-      [r.g1, r.g2].forEach(function(game) {
-        if (!game) return;
-        const ts = isHome ? game.hs : game.as;
-        const to = isHome ? game.as : game.hs;
-        if (ts > to) seriesW++; else seriesL++;
-      });
-    }
+    [eff.g1, eff.g2].forEach(function(game) {
+      if (!game) return;
+      const ts = isHome ? game.hs : game.as;
+      const to = isHome ? game.as : game.hs;
+      if (ts > to) seriesW++; else seriesL++;
+    });
     // Find linked elite matches for box score buttons
     const linkedMs = state.eliteMatches.filter(function(m) {
       return String(m.scheduleGameId) === String(i);
     });
     teamGames.push({ round: g.round, date: g.date, opp: opp, seriesW: seriesW, seriesL: seriesL,
-      played: r != null, won: seriesW > seriesL, linkedMs: linkedMs });
+      played: eff.g1 !== null || eff.g2 !== null, won: seriesW > seriesL, linkedMs: linkedMs });
   });
 
   if (!teamGames.length) {
@@ -4408,6 +4405,18 @@ function getEliteSchedule() {
   return ELITE_SCHEDULE;
 }
 
+// Returns effective G1/G2 scores for a schedule slot:
+// linked box score match scores take priority over manual eliteResults entries.
+function getEffectiveMatchScores(gid) {
+  var linked = (state.eliteMatches || []).filter(function(m) { return String(m.scheduleGameId) === String(gid); });
+  var lG1 = linked.find(function(m) { return String(m.scheduleGameNum) === '1'; }) || (linked.length === 1 ? linked[0] : null);
+  var lG2 = linked.find(function(m) { return String(m.scheduleGameNum) === '2'; });
+  var gres = (state.eliteResults || {})[gid];
+  var g1 = lG1 ? {hs: +lG1.score1 || 0, as: +lG1.score2 || 0} : (gres && gres.g1 ? gres.g1 : null);
+  var g2 = lG2 ? {hs: +lG2.score1 || 0, as: +lG2.score2 || 0} : (gres && gres.g2 ? gres.g2 : null);
+  return {g1: g1, g2: g2, lG1: lG1, lG2: lG2, gres: gres};
+}
+
 async function renderSchedule() {
   await fetchDraftCache();
   if (!state.eliteResults) state.eliteResults = {};
@@ -4437,7 +4446,7 @@ async function renderSchedule() {
     var dates = [];
     games.forEach(function(g) { if (dates.indexOf(g.date) < 0) dates.push(g.date); });
     var dateLabel = dates.length === 1 ? dates[0] : dates[0] + ' — ' + dates[dates.length - 1];
-    var playedCount = games.filter(function(g) { return results[g.gid] != null; }).length;
+    var playedCount = games.filter(function(g) { var e = getEffectiveMatchScores(g.gid); return e.g1 !== null || e.g2 !== null; }).length;
 
     html += '<div style="margin-bottom:20px">';
     html += '<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border2)">';
@@ -4449,19 +4458,17 @@ async function renderSchedule() {
     html += '<div style="display:flex;flex-direction:column;gap:4px">';
     games.forEach(function(g) {
       var gres = results[g.gid];
-      var played = gres != null;
-      var g1 = gres && gres.g1;
-      var g2 = gres && gres.g2;
+      // Use getEffectiveMatchScores so linked box score match scores auto-flow into the series
+      var eff = getEffectiveMatchScores(g.gid);
+      var linkedG1 = eff.lG1, linkedG2 = eff.lG2;
+      var linkedMatches = (state.eliteMatches || []).filter(function(m) { return String(m.scheduleGameId) === String(g.gid); });
+      var hasLinked = linkedMatches.length > 0;
+      var g1 = eff.g1, g2 = eff.g2;
+      var played = g1 !== null || g2 !== null;
       var homeWins = (g1 && g1.hs > g1.as ? 1 : 0) + (g2 && g2.hs > g2.as ? 1 : 0);
       var awayWins = (g1 && g1.as > g1.hs ? 1 : 0) + (g2 && g2.as > g2.hs ? 1 : 0);
       var homeWin = homeWins > awayWins;
       var awayWin = awayWins > homeWins;
-
-      // Pre-compute linked matches for this schedule game
-      var linkedMatches = (state.eliteMatches || []).filter(function(m) { return String(m.scheduleGameId) === String(g.gid); });
-      var linkedG1 = linkedMatches.find(function(m) { return m.scheduleGameNum === '1' || m.scheduleGameNum === 1; }) || (linkedMatches.length === 1 ? linkedMatches[0] : null);
-      var linkedG2 = linkedMatches.find(function(m) { return m.scheduleGameNum === '2' || m.scheduleGameNum === 2; });
-      var hasLinked = linkedMatches.length > 0;
 
       html += '<div>';
       // Main matchup row
@@ -4553,38 +4560,53 @@ async function renderSchedule() {
         });
         html += '</div>';
       }
-      // Inline edit form
+      // Inline score edit form — only needed for FF or games without linked box scores
+      var needsManualG1 = !linkedG1, needsManualG2 = !linkedG2;
       var g1hs = gres && gres.g1 ? gres.g1.hs : '';
       var g1as = gres && gres.g1 ? gres.g1.as : '';
       var g2hs = gres && gres.g2 ? gres.g2.hs : '';
       var g2as = gres && gres.g2 ? gres.g2.as : '';
       html += '<div id="edit-' + g.gid + '" style="display:none;background:var(--bg4);border:1px solid var(--gold);border-top:none;border-radius:0 0 6px 6px;padding:10px 14px">';
       // Forfeit section
-      html += '<div style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.25);border-radius:4px;padding:8px 12px;margin-bottom:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">';
-      html += '<span style="font-size:11px;font-family:\'Barlow Condensed\',sans-serif;font-weight:700;color:#ef4444;letter-spacing:.08em">🚩 FORFEIT (60–40)</span>';
-      html += '<button onclick="applyForfeit(' + g.gid + ',\'home\')" style="background:transparent;border:1px solid rgba(239,68,68,.4);border-radius:3px;padding:3px 10px;font-size:11px;color:#fca5a5;cursor:pointer;font-family:\'Barlow Condensed\',sans-serif;font-weight:700">' + g.home + ' wins</button>';
-      html += '<button onclick="applyForfeit(' + g.gid + ',\'away\')" style="background:transparent;border:1px solid rgba(239,68,68,.4);border-radius:3px;padding:3px 10px;font-size:11px;color:#fca5a5;cursor:pointer;font-family:\'Barlow Condensed\',sans-serif;font-weight:700">' + g.away + ' wins</button>';
-      html += '</div>';
-      html += '<div style="font-size:11px;color:var(--text3);margin-bottom:8px;font-weight:700;letter-spacing:.06em;text-transform:uppercase">Game 1</div>';
-      html += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">';
-      html += '<span style="font-size:13px;color:var(--text2);font-family:\'Barlow Condensed\',sans-serif;font-weight:700">' + g.home + '</span>';
-      html += '<input type="number" id="g1hs-' + g.gid + '" min="0" max="250" value="' + g1hs + '" placeholder="0" style="width:55px;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;padding:4px 6px;color:var(--white);font-size:15px;text-align:center">';
-      html += '<span style="color:var(--text3);font-size:14px">—</span>';
-      html += '<input type="number" id="g1as-' + g.gid + '" min="0" max="250" value="' + g1as + '" placeholder="0" style="width:55px;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;padding:4px 6px;color:var(--white);font-size:15px;text-align:center">';
-      html += '<span style="font-size:13px;color:var(--text2);font-family:\'Barlow Condensed\',sans-serif;font-weight:700">' + g.away + '</span>';
-      html += '</div>';
-      html += '<div style="font-size:11px;color:var(--text3);margin-bottom:8px;font-weight:700;letter-spacing:.06em;text-transform:uppercase">Game 2</div>';
-      html += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">';
-      html += '<span style="font-size:13px;color:var(--text2);font-family:\'Barlow Condensed\',sans-serif;font-weight:700">' + g.home + '</span>';
-      html += '<input type="number" id="g2hs-' + g.gid + '" min="0" max="250" value="' + g2hs + '" placeholder="0" style="width:55px;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;padding:4px 6px;color:var(--white);font-size:15px;text-align:center">';
-      html += '<span style="color:var(--text3);font-size:14px">—</span>';
-      html += '<input type="number" id="g2as-' + g.gid + '" min="0" max="250" value="' + g2as + '" placeholder="0" style="width:55px;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;padding:4px 6px;color:var(--white);font-size:15px;text-align:center">';
-      html += '<span style="font-size:13px;color:var(--text2);font-family:\'Barlow Condensed\',sans-serif;font-weight:700">' + g.away + '</span>';
-      html += '</div>';
+      if (needsManualG1 || needsManualG2) {
+        html += '<div style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.25);border-radius:4px;padding:8px 12px;margin-bottom:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">';
+        html += '<span style="font-size:11px;font-family:\'Barlow Condensed\',sans-serif;font-weight:700;color:#ef4444;letter-spacing:.08em">🚩 FORFEIT (60–40)</span>';
+        html += '<button onclick="applyForfeit(' + g.gid + ',\'home\')" style="background:transparent;border:1px solid rgba(239,68,68,.4);border-radius:3px;padding:3px 10px;font-size:11px;color:#fca5a5;cursor:pointer;font-family:\'Barlow Condensed\',sans-serif;font-weight:700">' + g.home + ' wins</button>';
+        html += '<button onclick="applyForfeit(' + g.gid + ',\'away\')" style="background:transparent;border:1px solid rgba(239,68,68,.4);border-radius:3px;padding:3px 10px;font-size:11px;color:#fca5a5;cursor:pointer;font-family:\'Barlow Condensed\',sans-serif;font-weight:700">' + g.away + ' wins</button>';
+        html += '</div>';
+      }
+      // G1
+      html += '<div style="font-size:11px;color:var(--text3);margin-bottom:6px;font-weight:700;letter-spacing:.06em;text-transform:uppercase">Game 1</div>';
+      if (linkedG1) {
+        html += '<div style="font-size:12px;color:#4ade80;margin-bottom:10px;padding:5px 8px;background:rgba(74,222,128,.06);border:1px solid rgba(74,222,128,.2);border-radius:3px">✓ Score auto-detected from linked box score: <strong>' + (+linkedG1.score1||0) + ' – ' + (+linkedG1.score2||0) + '</strong></div>';
+      } else {
+        html += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">';
+        html += '<span style="font-size:13px;color:var(--text2);font-family:\'Barlow Condensed\',sans-serif;font-weight:700">' + g.home + '</span>';
+        html += '<input type="number" id="g1hs-' + g.gid + '" min="0" max="250" value="' + g1hs + '" placeholder="0" style="width:55px;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;padding:4px 6px;color:var(--white);font-size:15px;text-align:center">';
+        html += '<span style="color:var(--text3);font-size:14px">—</span>';
+        html += '<input type="number" id="g1as-' + g.gid + '" min="0" max="250" value="' + g1as + '" placeholder="0" style="width:55px;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;padding:4px 6px;color:var(--white);font-size:15px;text-align:center">';
+        html += '<span style="font-size:13px;color:var(--text2);font-family:\'Barlow Condensed\',sans-serif;font-weight:700">' + g.away + '</span>';
+        html += '</div>';
+      }
+      // G2
+      html += '<div style="font-size:11px;color:var(--text3);margin-bottom:6px;font-weight:700;letter-spacing:.06em;text-transform:uppercase">Game 2</div>';
+      if (linkedG2) {
+        html += '<div style="font-size:12px;color:#4ade80;margin-bottom:10px;padding:5px 8px;background:rgba(74,222,128,.06);border:1px solid rgba(74,222,128,.2);border-radius:3px">✓ Score auto-detected from linked box score: <strong>' + (+linkedG2.score1||0) + ' – ' + (+linkedG2.score2||0) + '</strong></div>';
+      } else {
+        html += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px">';
+        html += '<span style="font-size:13px;color:var(--text2);font-family:\'Barlow Condensed\',sans-serif;font-weight:700">' + g.home + '</span>';
+        html += '<input type="number" id="g2hs-' + g.gid + '" min="0" max="250" value="' + g2hs + '" placeholder="0" style="width:55px;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;padding:4px 6px;color:var(--white);font-size:15px;text-align:center">';
+        html += '<span style="color:var(--text3);font-size:14px">—</span>';
+        html += '<input type="number" id="g2as-' + g.gid + '" min="0" max="250" value="' + g2as + '" placeholder="0" style="width:55px;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;padding:4px 6px;color:var(--white);font-size:15px;text-align:center">';
+        html += '<span style="font-size:13px;color:var(--text2);font-family:\'Barlow Condensed\',sans-serif;font-weight:700">' + g.away + '</span>';
+        html += '</div>';
+      }
       html += '<div style="display:flex;gap:8px;flex-wrap:wrap">';
-      html += '<button onclick="saveEliteResult(' + g.gid + ')" style="background:var(--gold);border:none;border-radius:3px;padding:5px 14px;font-size:12px;color:#000;font-weight:700;cursor:pointer;font-family:\'Barlow Condensed\',sans-serif;letter-spacing:.06em">SAVE RESULTS</button>';
-      if (played) html += '<button onclick="deleteEliteResult(' + g.gid + ')" style="background:transparent;border:1px solid #ef4444;border-radius:3px;padding:5px 8px;font-size:11px;color:#ef4444;cursor:pointer">Remove</button>';
-      html += '<button onclick="cancelEliteEdit(' + g.gid + ')" style="background:transparent;border:1px solid var(--border2);border-radius:3px;padding:5px 8px;font-size:11px;color:var(--text3);cursor:pointer">Cancel</button>';
+      if (needsManualG1 || needsManualG2) {
+        html += '<button onclick="saveEliteResult(' + g.gid + ')" style="background:var(--gold);border:none;border-radius:3px;padding:5px 14px;font-size:12px;color:#000;font-weight:700;cursor:pointer;font-family:\'Barlow Condensed\',sans-serif;letter-spacing:.06em">SAVE RESULTS</button>';
+        if (gres) html += '<button onclick="deleteEliteResult(' + g.gid + ')" style="background:transparent;border:1px solid #ef4444;border-radius:3px;padding:5px 8px;font-size:11px;color:#ef4444;cursor:pointer">Remove manual</button>';
+      }
+      html += '<button onclick="cancelEliteEdit(' + g.gid + ')" style="background:transparent;border:1px solid var(--border2);border-radius:3px;padding:5px 8px;font-size:11px;color:var(--text3);cursor:pointer">Close</button>';
       html += '</div></div>';
       html += '</div>'; // close game wrapper
     });
@@ -4731,9 +4753,8 @@ async function renderStandings() {
   ELITE_TEAMS.forEach(function(t) { table[t] = {w:0, l:0, pf:0, pa:0}; });
 
   getEliteSchedule().forEach(function(g, i) {
-    var gres = results[i];
-    if (!gres) return;
-    [gres.g1, gres.g2].forEach(function(game) {
+    var eff = getEffectiveMatchScores(i);
+    [eff.g1, eff.g2].forEach(function(game) {
       if (!game) return;
       if (game.hs > game.as) { table[g.home].w++; table[g.away].l++; }
       else { table[g.away].w++; table[g.home].l++; }
@@ -4748,7 +4769,7 @@ async function renderStandings() {
   });
   rows.sort(function(a, b) { return b.w !== a.w ? b.w - a.w : b.diff - a.diff; });
 
-  var totalGames = Object.values(results).reduce(function(acc, r) { return acc + (r.g1?1:0) + (r.g2?1:0); }, 0);
+  var totalGames = getEliteSchedule().reduce(function(acc, g, i) { var e = getEffectiveMatchScores(i); return acc + (e.g1?1:0) + (e.g2?1:0); }, 0);
   var html = '';
   html += '<div style="margin-bottom:24px">';
   html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:28px;font-weight:900;color:var(--gold);letter-spacing:.05em;margin-bottom:4px">🏆 STANDINGS</div>';
