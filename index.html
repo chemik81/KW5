@@ -1049,20 +1049,51 @@ async function loadFromDb() {
   } catch(e) { setDbStatus('❌ ' + e.message, 'error'); return false; }
 }
 
-async function syncToDb() {
-  if (!WORKER_URL) { notify('No worker configured', 'error'); return; }
+// Sync queue state — prevents race conditions where an older PUT overwrites a newer one
+let _syncPending = false;
+let _syncQueued  = false;
+let _syncDebounceTimer = null;
+
+function scheduleSyncToDb() {
+  // Debounce: collapse rapid saves (e.g. adding many matches quickly) into one request
+  clearTimeout(_syncDebounceTimer);
+  _syncDebounceTimer = setTimeout(() => {
+    if (_syncPending) {
+      // A PUT is already in-flight — queue one more to run after it finishes
+      _syncQueued = true;
+    } else {
+      _doSyncToDb();
+    }
+  }, 800);
+}
+
+async function _doSyncToDb() {
+  if (!WORKER_URL) return;
+  _syncPending = true;
+  _syncQueued  = false;
   try {
     const adminToken = localStorage.getItem('kw5_admin_hash') || ADMIN_HASH;
     const _kw5url2 = WORKER_URL.replace(/\/+$/, '') + '/kw5-data';
+    // Snapshot current state at send time — always sends the latest version
+    const body = JSON.stringify({ record: { matches: state.matches, roster: state.roster, corrections: state.corrections, eliteMatches: state.eliteMatches, eliteResults: state.eliteResults, eliteSchedule: state.eliteSchedule } });
     const res = await fetch(_kw5url2, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', 'X-Admin-Token': adminToken },
-      body: JSON.stringify({ record: { matches: state.matches, roster: state.roster, corrections: state.corrections, eliteMatches: state.eliteMatches, eliteResults: state.eliteResults, eliteSchedule: state.eliteSchedule } })
+      body
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     notify('✅ Saved to cloud', 'success');
-  } catch(e) { notify('❌ Sync failed: ' + e.message, 'error'); }
+  } catch(e) {
+    notify('❌ Sync failed: ' + e.message, 'error');
+  } finally {
+    _syncPending = false;
+    // If another save arrived while we were in-flight, send it now with latest state
+    if (_syncQueued) _doSyncToDb();
+  }
 }
+
+// Keep old name as alias so any direct calls from elsewhere still work
+async function syncToDb() { scheduleSyncToDb(); }
 
 async function testDbConnection() {
   if (!WORKER_URL) { setDbStatus('⚠️ No worker configured', 'warn'); return; }
@@ -1129,7 +1160,7 @@ function loadState() {
 
 function saveState() {
   localStorage.setItem('kw5elite_data', JSON.stringify(state));
-  if (WORKER_URL) syncToDb();
+  if (WORKER_URL) scheduleSyncToDb();
 }
 
 function updateAdminUI() {
