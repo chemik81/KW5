@@ -1037,9 +1037,10 @@ async function loadFromDb() {
     }
     if (rec && rec.roster)        state.roster        = rec.roster;
     if (rec && rec.corrections)   state.corrections   = rec.corrections;
-    if (rec && rec.eliteResults)  state.eliteResults  = rec.eliteResults;
-    if (rec && rec.eliteMatches)  state.eliteMatches  = rec.eliteMatches;
-    if (rec && rec.eliteSchedule) state.eliteSchedule = rec.eliteSchedule;
+    if (rec && rec.eliteResults)   state.eliteResults   = rec.eliteResults;
+    if (rec && rec.eliteMatches)   state.eliteMatches   = rec.eliteMatches;
+    if (rec && rec.eliteSchedule)  state.eliteSchedule  = rec.eliteSchedule;
+    if (rec && rec.lastModified)   state.lastModified   = rec.lastModified;
     setDbStatus('✅ Connected — data loaded', 'ok');
     // Re-render after loading
     if (typeof renderBoxScores === 'function') renderBoxScores();
@@ -1075,7 +1076,7 @@ async function _doSyncToDb() {
     const adminToken = localStorage.getItem('kw5_admin_hash') || ADMIN_HASH;
     const _kw5url2 = WORKER_URL.replace(/\/+$/, '') + '/kw5-data';
     // Snapshot current state at send time — always sends the latest version
-    const body = JSON.stringify({ record: { matches: state.matches, roster: state.roster, corrections: state.corrections, eliteMatches: state.eliteMatches, eliteResults: state.eliteResults, eliteSchedule: state.eliteSchedule } });
+    const body = JSON.stringify({ record: { matches: state.matches, roster: state.roster, corrections: state.corrections, eliteMatches: state.eliteMatches, eliteResults: state.eliteResults, eliteSchedule: state.eliteSchedule, lastModified: state.lastModified } });
     const res = await fetch(_kw5url2, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', 'X-Admin-Token': adminToken },
@@ -1119,13 +1120,22 @@ function setDbStatus(msg, type) {
 // ============================================================
 async function init() {
   try {
-    // Always try to load from DB via Worker first
+    // Capture local timestamp BEFORE cloud load — used to detect unsynchronised local changes
+    let localTs = 0;
+    try { const ls = localStorage.getItem('kw5elite_data'); if (ls) localTs = JSON.parse(ls).lastModified || 0; } catch {}
+
     if (WORKER_URL) {
       const ok = await Promise.race([
         loadFromDb(),
         new Promise(resolve => setTimeout(() => resolve(false), 5000)) // 5s timeout
       ]);
-      if (!ok) loadState();
+      if (ok && localTs > (state.lastModified || 0)) {
+        // Cloud load succeeded but localStorage is newer (e.g. user saved then refreshed
+        // before the debounced sync reached KV) — prefer the more recent local data
+        loadState();
+      } else if (!ok) {
+        loadState();
+      }
     } else {
       loadState();
     }
@@ -1159,6 +1169,7 @@ function loadState() {
 }
 
 function saveState() {
+  state.lastModified = Date.now();
   localStorage.setItem('kw5elite_data', JSON.stringify(state));
   if (WORKER_URL) scheduleSyncToDb();
 }
