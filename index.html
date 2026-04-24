@@ -4988,9 +4988,10 @@ async function renderRosters() {
       function renderPickRow(pick, p, slotLabel) {
         var posCol = posColors[slotLabel] || posColors[p.pos] || 'var(--text2)';
         var pName = p.id || pick.playerId;
+        var flag = getFlag(pName);
         var row = '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer" onclick="openElitePlayerModal(\'' + pName.replace(/'/g,"\\'") + '\')" title="Open player card">';
         row += '<span style="font-size:10px;font-family:\'Barlow Condensed\',sans-serif;font-weight:700;color:' + posCol + ';min-width:28px">' + slotLabel + '</span>';
-        row += '<span style="font-size:13px;color:var(--white);flex:1">' + pName + '</span>';
+        row += '<span style="font-size:13px;color:var(--white);flex:1">' + (flag ? '<span style="font-size:15px;line-height:1;margin-right:4px">' + flag + '</span>' : '') + pName + '</span>';
         if (p.ovr) row += '<span style="font-size:11px;color:var(--text3)">' + p.ovr + ' OVR</span>';
         row += '<span style="font-size:10px;color:var(--text3);min-width:22px;text-align:right">#' + (pick.pickNum != null ? pick.pickNum : '?') + '</span>';
         row += '</div>';
