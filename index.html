@@ -360,6 +360,7 @@
     <button id="schedule-nav-btn" onclick="showSection('schedule',this)" style="display:none">📅 Schedule</button>
     <button id="standings-nav-btn" onclick="showSection('standings',this)" style="display:none">🏆 Standings</button>
     <button id="rosters-nav-btn" onclick="showSection('rosters',this)" style="display:none">👥 Rosters</button>
+    <button id="draft-pool-nav-btn" onclick="showSection('draft-pool',this)" style="display:none">🎯 Draft Pool</button>
     <button id="superadmin-nav-btn" onclick="showSection('superadmin',this)" style="display:none">👑 Super Admin</button>
   </nav>
   <div class="header-right">
@@ -513,6 +514,12 @@
 <section class="section" id="sec-rosters">
   <div class="stats-wrap">
     <div id="rosters-content"></div>
+  </div>
+</section>
+
+<section class="section" id="sec-draft-pool">
+  <div class="stats-wrap">
+    <div id="draft-pool-content"></div>
   </div>
 </section>
 
@@ -1206,6 +1213,8 @@ function updateAdminUI() {
   if (scheduleBtn)   scheduleBtn.style.display   = a ? '' : 'none';
   if (standingsBtn)  standingsBtn.style.display  = a ? '' : 'none';
   if (rostersBtn)    rostersBtn.style.display     = a ? '' : 'none';
+  const draftPoolBtn = document.getElementById('draft-pool-nav-btn');
+  if (draftPoolBtn)  draftPoolBtn.style.display  = a ? '' : 'none';
   // Superadmin nav — hidden element, only shown when logged in as super
   const saBtn = document.getElementById('superadmin-nav-btn');
   if (saBtn) saBtn.style.display = sa ? '' : 'none';
@@ -1238,6 +1247,7 @@ function showSection(name, btn) {
   if (name === 'schedule') renderSchedule();
   if (name === 'standings') renderStandings();
   if (name === 'rosters') renderRosters();
+  if (name === 'draft-pool') renderDraftPool();
   if (name === 'superadmin') fillSuperAdminFields();
 }
 
@@ -5040,6 +5050,108 @@ async function renderRosters() {
   });
   html += '</div>';
 
+  el.innerHTML = html;
+}
+
+// ============================================================
+// DRAFT POOL
+// ============================================================
+let dpSort = 'ovr', dpPos = '', dpSearch = '';
+
+function withOvr(players) {
+  if (!players.length) return players;
+  const pctFn = (arr, v) => { const s = [...arr].sort((a,b)=>a-b); return s.filter(x=>x<=v).length / s.length; };
+  const perVals = players.map(p => p.per);
+  const ppgVals = players.map(p => p.ppg);
+  const csaVals = players.map(p => p.csa);
+  players.forEach(p => {
+    const gpBonus = Math.min(p.gp / 20, 1);
+    const raw = pctFn(perVals,p.per)*0.45 + pctFn(csaVals,p.csa)*0.35 + pctFn(ppgVals,p.ppg)*0.15 + gpBonus*0.05;
+    p.ovr = Math.max(40, Math.min(99, Math.round(raw * 0.59 + 40)));
+  });
+  return players;
+}
+
+function renderDraftPool() {
+  const el = document.getElementById('draft-pool-content');
+  if (!el) return;
+
+  let players = withOvr(getAggregates(state.matches));
+  if (dpPos) players = players.filter(p => p.pos === dpPos);
+  const srch = (document.getElementById('dp-search')?.value ?? dpSearch).trim().toLowerCase();
+  if (srch) players = players.filter(p => p.name.toLowerCase().includes(srch));
+  const sortFns = { ovr:(a,b)=>b.ovr-a.ovr, ppg:(a,b)=>b.ppg-a.ppg, rpg:(a,b)=>b.rpg-a.rpg, apg:(a,b)=>b.apg-a.apg, per:(a,b)=>b.per-a.per };
+  players.sort(sortFns[dpSort] || sortFns.ovr);
+
+  const posColors = { PG:'#3b82f6', SG:'#8b5cf6', LCK:'#10b981', PF:'#f97316', C:'#ef4444' };
+  function ovrColor(o) { return o>=90?'#f59e0b':o>=80?'#4ade80':o>=70?'#60a5fa':o>=60?'#94a3b8':'#6b7280'; }
+
+  let html = `
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px">
+      <div>
+        <h2 style="font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--white);margin:0">🎯 DRAFT POOL</h2>
+        <div style="color:var(--text3);font-size:13px;margin-top:3px">KW5 Elite League Season 1 — ${players.length} eligible players</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <input id="dp-search" type="text" placeholder="Search player…" value="${dpSearch.replace(/"/g,'&quot;')}"
+          oninput="dpSearch=this.value;renderDraftPool()"
+          style="background:var(--dark3);border:1px solid var(--border);border-radius:4px;padding:6px 11px;color:var(--white);font-size:13px;width:170px;outline:none">
+        <select onchange="dpSort=this.value;renderDraftPool()"
+          style="background:var(--dark3);border:1px solid var(--border);border-radius:4px;padding:6px 10px;color:var(--white);font-size:13px;cursor:pointer">
+          ${['ovr','ppg','rpg','apg','per'].map(k=>`<option value="${k}"${dpSort===k?' selected':''}>${{ovr:'OVR',ppg:'PPG',rpg:'RPG',apg:'APG',per:'PER'}[k]}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap">
+      ${['','PG','SG','LCK','PF','C'].map(pos=>{
+        const active = pos === dpPos;
+        const col = posColors[pos] || 'var(--gold)';
+        return `<button onclick="dpPos='${pos}';renderDraftPool()"
+          style="padding:5px 16px;border-radius:4px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;letter-spacing:.5px;cursor:pointer;transition:all .15s;
+            border:1px solid ${active?(posColors[pos]||'var(--gold)'):'var(--border)'};
+            background:${active?((posColors[pos]||'var(--gold)')+'33'):'var(--dark3)'};
+            color:${active?(posColors[pos]||'var(--gold)'):'var(--text2)'}">${pos||'ALL'}</button>`;
+      }).join('')}
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:14px">`;
+
+  players.forEach((p, i) => {
+    const posCol = posColors[p.pos] || '#64748b';
+    const flag = getFlag(p.name);
+    html += `
+      <div style="background:var(--dark2);border:1px solid var(--border2);border-radius:8px;overflow:hidden;transition:border-color .15s;cursor:default"
+           onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border2)'">
+        <div style="height:3px;background:${posCol}"></div>
+        <div style="padding:13px 14px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+            <span style="font-size:10px;color:var(--text3);font-family:'Barlow Condensed',sans-serif;font-weight:700;margin-top:2px">#${i+1}</span>
+            <div style="text-align:right">
+              <div style="font-size:34px;font-weight:900;font-family:'Barlow Condensed',sans-serif;color:${ovrColor(p.ovr)};line-height:1">${p.ovr}</div>
+              <div style="font-size:9px;color:var(--text3);font-weight:700;letter-spacing:.8px;text-align:center">OVR</div>
+            </div>
+          </div>
+          <div style="margin-bottom:7px">
+            <span style="font-size:10px;font-family:'Barlow Condensed',sans-serif;font-weight:800;color:${posCol};background:${posCol}22;padding:2px 8px;border-radius:3px;letter-spacing:.5px">${p.pos||'?'}</span>
+          </div>
+          <div style="font-size:13px;font-weight:700;font-family:'Barlow Condensed',sans-serif;letter-spacing:.3px;text-transform:uppercase;color:var(--white);margin-bottom:12px;line-height:1.3;display:flex;align-items:center;gap:3px;min-height:32px;word-break:break-word">
+            ${flag}${p.name}
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:4px;margin-bottom:10px;text-align:center">
+            ${[['PPG',p.ppg.toFixed(1)],['RPG',p.rpg.toFixed(1)],['APG',p.apg.toFixed(1)],['GP',p.gp]].map(([l,v])=>`
+              <div style="background:var(--dark3);border-radius:4px;padding:5px 2px">
+                <div style="font-size:13px;font-weight:700;font-family:'Barlow Condensed',sans-serif;color:var(--white)">${v}</div>
+                <div style="font-size:9px;color:var(--text3);font-weight:700;letter-spacing:.3px">${l}</div>
+              </div>`).join('')}
+          </div>
+          <div style="font-size:11px;text-align:center;color:var(--text3)">
+            <span style="color:#4ade80">${p.wins}W</span> — <span style="color:#f87171">${p.losses}L</span>
+            <span style="margin-left:5px">${p.win_pct}%</span>
+          </div>
+        </div>
+      </div>`;
+  });
+
+  html += '</div>';
   el.innerHTML = html;
 }
 </script>
