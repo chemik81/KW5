@@ -5145,13 +5145,14 @@ let dpSort = 'ovr', dpPos = '', dpSearch = '';
 
 function withOvr(players) {
   if (!players.length) return players;
-  const pctFn = (arr, v) => { const s = [...arr].sort((a,b)=>a-b); return s.filter(x=>x<=v).length / s.length; };
-  const perVals = players.map(p => p.per);
-  const ppgVals = players.map(p => p.ppg);
-  const csaVals = players.map(p => p.csa);
+  // pct returns 0-100 (same scale as draft.html's computeAggregates)
+  const pct = (sorted, v) => Math.round(sorted.filter(x => x <= v).length / sorted.length * 100);
+  const perSorted = [...players.map(p => p.per)].sort((a,b)=>a-b);
+  const ppgSorted = [...players.map(p => p.ppg)].sort((a,b)=>a-b);
+  const csaSorted = [...players.map(p => p.csa)].sort((a,b)=>a-b);
   players.forEach(p => {
-    const gpBonus = Math.min(p.gp / 20, 1);
-    const raw = pctFn(perVals,p.per)*0.45 + pctFn(csaVals,p.csa)*0.35 + pctFn(ppgVals,p.ppg)*0.15 + gpBonus*0.05;
+    const gpBonus = Math.min(p.gp * 2, 10); // up to +10, matches draft.html
+    const raw = pct(perSorted,p.per)*0.45 + pct(csaSorted,p.csa)*0.35 + pct(ppgSorted,p.ppg)*0.15 + gpBonus*0.05;
     p.ovr = Math.max(40, Math.min(99, Math.round(raw * 0.59 + 40)));
   });
   return players;
