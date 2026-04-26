@@ -2453,17 +2453,23 @@ function renderBoard() {
         });
         return slots.map(slot => {
           const entry = filled[slot] || (slot.startsWith('FLEX') && flexPicks.length ? flexPicks.shift() : null);
-          const posBadgeColor = {'PG':'rgba(96,165,250,.15)','SG':'rgba(96,165,250,.15)','LCK':'rgba(196,181,253,.15)','PF':'rgba(196,181,253,.15)','C':'rgba(134,239,172,.15)'}[slot]||'rgba(255,255,255,.08)';
-          const posTextColor = {'PG':'#93c5fd','SG':'#93c5fd','LCK':'#c4b5fd','PF':'#c4b5fd','C':'#86efac'}[slot]||'var(--muted)';
+          const isFlex = slot.startsWith('FLEX');
+          const posColors = (pos) => ({
+            bg: {'PG':'rgba(96,165,250,.15)','SG':'rgba(96,165,250,.15)','LCK':'rgba(196,181,253,.15)','PF':'rgba(196,181,253,.15)','C':'rgba(134,239,172,.15)'}[pos]||'rgba(255,255,255,.08)',
+            tc: {'PG':'#93c5fd','SG':'#93c5fd','LCK':'#c4b5fd','PF':'#c4b5fd','C':'#86efac'}[pos]||'var(--muted)'
+          });
           if (!entry) {
+            const {bg, tc} = posColors(slot);
             return `<div class="pick-slot empty">
-              <span style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:11px;padding:2px 6px;border-radius:3px;background:${posBadgeColor};color:${posTextColor};min-width:34px;text-align:center">${slot}</span>
+              <span style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:11px;padding:2px 6px;border-radius:3px;background:${bg};color:${tc};min-width:34px;text-align:center">${slot}</span>
               <span style="color:var(--muted);font-size:12px">—</span>
             </div>`;
           }
           const { p, pl } = entry;
+          const displayPos = isFlex ? (pl.pos==='SF'?'LCK':(pl.pos||slot)) : slot;
+          const {bg, tc} = posColors(displayPos);
           return `<div class="pick-slot">
-            <span style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:11px;padding:2px 6px;border-radius:3px;background:${posBadgeColor};color:${posTextColor};min-width:34px;text-align:center">${slot}</span>
+            <span style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:11px;padding:2px 6px;border-radius:3px;background:${bg};color:${tc};min-width:34px;text-align:center">${displayPos}</span>
             <div style="flex:1;min-width:0"><div class="pick-name" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.playerId||p}</div></div>
             <span class="ovr-badge ${ovrClass(pl.ovr||50)}" style="font-size:12px">${pl.ovr||''}</span>
           </div>`;
