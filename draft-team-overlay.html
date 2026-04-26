@@ -172,7 +172,8 @@ function renderTeam(team, animate=true) {
 
   roster.innerHTML = slots.map(slot => {
     const entry = filled[slot] || (slot.startsWith('FLEX') && flexQ.length ? flexQ.shift() : null);
-    const posKey = slot.startsWith('FLEX') ? 'FLEX' : slot;
+    const isFlex = slot.startsWith('FLEX');
+    const posKey = isFlex ? 'FLEX' : slot;
     const pc = POS_COLORS[posKey] || POS_COLORS['FLEX'];
     const displayPos = slot === 'LCK' ? 'SF/LCK' : slot;
 
@@ -186,8 +187,11 @@ function renderTeam(team, animate=true) {
 
     const { p, pl } = entry;
     const initials = (p.playerId||'?').slice(0,2).toUpperCase();
-    return '<div class="slot filled" style="--slot-color:'+pc.strip+'">'
-      +'<span class="slot-pos" style="background:'+pc.bg+';color:'+pc.tc+'">'+displayPos+'</span>'
+    const actualPosKey = isFlex ? (pl.pos==='SF'?'LCK':(pl.pos||'FLEX')) : slot;
+    const actualPc = POS_COLORS[actualPosKey] || POS_COLORS['FLEX'];
+    const actualDisplayPos = isFlex ? (pl.pos==='SF'?'SF/LCK':(pl.pos||slot)) : displayPos;
+    return '<div class="slot filled" style="--slot-color:'+actualPc.strip+'">'
+      +'<span class="slot-pos" style="background:'+actualPc.bg+';color:'+actualPc.tc+'">'+actualDisplayPos+'</span>'
       +'<div class="slot-avatar">'+initials+'</div>'
       +'<div style="flex:1;min-width:0">'
       +'<div class="slot-name">'+p.playerId+'</div>'

@@ -428,9 +428,12 @@ function render() {
           +'</div>';
       }
       const { p, pl } = entry;
+      const isFlex = !['PG','SG','LCK','PF','C'].includes(slot);
+      const actualPos = isFlex ? (pl.pos==='SF'?'LCK':(pl.pos||slot)) : slot;
+      const { bg: rowBg, tc: rowTc } = posStyle(actualPos==='LCK'?'SF':actualPos);
       return '<div class="pick-row">'
         +'<span class="pick-num">#'+p.pickNum+'</span>'
-        +'<span class="pick-pos" style="background:'+bg+';color:'+tc+'">'+slot+'</span>'
+        +'<span class="pick-pos" style="background:'+rowBg+';color:'+rowTc+'">'+actualPos+'</span>'
         +'<span class="pick-name">'+p.playerId+'</span>'
         +'<span class="pick-ovr '+ovrClass(pl.ovr||50)+'">'+(pl.ovr||'')+'</span>'
         +'</div>';
