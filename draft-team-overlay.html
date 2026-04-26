@@ -159,16 +159,47 @@ function renderTeam(team, animate=true) {
     else flexQ.push({ p, pl });
   });
 
-  document.body.classList.toggle('compact', slots.length >= 6);
+  const compact = slots.length >= 6;
+  document.body.classList.toggle('compact', compact);
+
+  // Apply inline styles for compact mode so they always override CSS cache
+  const hdr = document.querySelector('.header');
+  const logo = document.getElementById('team-logo');
+  const teamNameEl = document.getElementById('team-name');
+  const gmNameEl = document.getElementById('gm-name');
+  const picksEl = document.getElementById('picks-count');
+  if (compact) {
+    if (hdr) hdr.style.padding = '8px 36px';
+    if (logo) { logo.style.width='60px'; logo.style.height='60px'; logo.style.fontSize='22px'; }
+    if (teamNameEl) teamNameEl.style.fontSize = '38px';
+    if (gmNameEl) gmNameEl.style.fontSize = '16px';
+    if (picksEl) picksEl.style.fontSize = '26px';
+  } else {
+    if (hdr) hdr.style.padding = '';
+    if (logo) { logo.style.width=''; logo.style.height=''; logo.style.fontSize=''; }
+    if (teamNameEl) teamNameEl.style.fontSize = '';
+    if (gmNameEl) gmNameEl.style.fontSize = '';
+    if (picksEl) picksEl.style.fontSize = '';
+  }
 
   const roster = document.getElementById('roster');
   roster.style.gridTemplateColumns = '1fr';
   roster.style.gridTemplateRows = 'repeat('+slots.length+',1fr)';
+  if (compact) { roster.style.padding = '8px 36px'; roster.style.gap = '6px'; }
+  else { roster.style.padding = ''; roster.style.gap = ''; }
 
   if (animate) {
     roster.className = 'roster slide-in';
     setTimeout(() => { roster.className = 'roster'; }, 600);
   }
+
+  const cSlot   = compact ? 'padding:8px 16px;min-height:0;gap:14px;' : '';
+  const cAvatar = compact ? 'width:56px;height:56px;font-size:20px;' : '';
+  const cName   = compact ? 'font-size:27px;' : '';
+  const cStats  = compact ? 'gap:12px;margin-top:2px;' : '';
+  const cStatV  = compact ? 'font-size:14px;' : '';
+  const cStatL  = compact ? 'font-size:9px;' : '';
+  const cOvr    = compact ? 'font-size:40px;min-width:62px;' : '';
 
   roster.innerHTML = slots.map(slot => {
     const entry = filled[slot] || (slot.startsWith('FLEX') && flexQ.length ? flexQ.shift() : null);
@@ -178,9 +209,9 @@ function renderTeam(team, animate=true) {
     const displayPos = slot === 'LCK' ? 'SF/LCK' : slot;
 
     if (!entry) {
-      return '<div class="slot empty" style="--slot-color:'+pc.strip+'">'
+      return '<div class="slot empty" style="--slot-color:'+pc.strip+';'+cSlot+'">'
         +'<span class="slot-pos" style="background:'+pc.bg+';color:'+pc.tc+'">'+displayPos+'</span>'
-        +'<div class="slot-avatar" style="border-color:rgba(255,255,255,.08)">?</div>'
+        +'<div class="slot-avatar" style="border-color:rgba(255,255,255,.08);'+cAvatar+'">?</div>'
         +'<div class="slot-empty-label">Empty Slot</div>'
         +'</div>';
     }
@@ -190,21 +221,21 @@ function renderTeam(team, animate=true) {
     const actualPosKey = isFlex ? (pl.pos==='SF'?'LCK':(pl.pos||'FLEX')) : slot;
     const actualPc = POS_COLORS[actualPosKey] || POS_COLORS['FLEX'];
     const actualDisplayPos = isFlex ? (pl.pos==='SF'?'SF/LCK':(pl.pos||slot)) : displayPos;
-    return '<div class="slot filled" style="--slot-color:'+actualPc.strip+'">'
+    return '<div class="slot filled" style="--slot-color:'+actualPc.strip+';'+cSlot+'">'
       +'<span class="slot-pos" style="background:'+actualPc.bg+';color:'+actualPc.tc+'">'+actualDisplayPos+'</span>'
-      +'<div class="slot-avatar">'+initials+'</div>'
+      +'<div class="slot-avatar" style="'+cAvatar+'">'+initials+'</div>'
       +'<div style="flex:1;min-width:0">'
-      +'<div class="slot-name">'+p.playerId+'</div>'
-      +'<div class="stats-row">'
-      +'<div class="stat-item"><div class="stat-v">'+(pl.ppg!=null?(+pl.ppg).toFixed(1):'—')+'</div><div class="stat-l">PPG</div></div>'
-      +'<div class="stat-item"><div class="stat-v">'+(pl.rpg!=null?(+pl.rpg).toFixed(1):'—')+'</div><div class="stat-l">RPG</div></div>'
-      +'<div class="stat-item"><div class="stat-v">'+(pl.apg!=null?(+pl.apg).toFixed(1):'—')+'</div><div class="stat-l">APG</div></div>'
-      +'<div class="stat-item"><div class="stat-v">'+(pl.per!=null?(+pl.per).toFixed(1):'—')+'</div><div class="stat-l">PER</div></div>'
-      +'<div class="stat-item"><div class="stat-v">'+(pl.gp||'—')+'</div><div class="stat-l">GP</div></div>'
-      +'<div class="stat-item"><div class="stat-v">'+(pl.win_pct!=null?pl.win_pct+'%':'—')+'</div><div class="stat-l">W%</div></div>'
+      +'<div class="slot-name" style="'+cName+'">'+p.playerId+'</div>'
+      +'<div class="stats-row" style="'+cStats+'">'
+      +'<div class="stat-item"><div class="stat-v" style="'+cStatV+'">'+(pl.ppg!=null?(+pl.ppg).toFixed(1):'—')+'</div><div class="stat-l" style="'+cStatL+'">PPG</div></div>'
+      +'<div class="stat-item"><div class="stat-v" style="'+cStatV+'">'+(pl.rpg!=null?(+pl.rpg).toFixed(1):'—')+'</div><div class="stat-l" style="'+cStatL+'">RPG</div></div>'
+      +'<div class="stat-item"><div class="stat-v" style="'+cStatV+'">'+(pl.apg!=null?(+pl.apg).toFixed(1):'—')+'</div><div class="stat-l" style="'+cStatL+'">APG</div></div>'
+      +'<div class="stat-item"><div class="stat-v" style="'+cStatV+'">'+(pl.per!=null?(+pl.per).toFixed(1):'—')+'</div><div class="stat-l" style="'+cStatL+'">PER</div></div>'
+      +'<div class="stat-item"><div class="stat-v" style="'+cStatV+'">'+(pl.gp||'—')+'</div><div class="stat-l" style="'+cStatL+'">GP</div></div>'
+      +'<div class="stat-item"><div class="stat-v" style="'+cStatV+'">'+(pl.win_pct!=null?pl.win_pct+'%':'—')+'</div><div class="stat-l" style="'+cStatL+'">W%</div></div>'
       +'</div></div>'
       +'<div>'
-      +'<div class="ovr-big '+ovrClass(pl.ovr||50)+'">'+(pl.ovr||'?')+'</div>'
+      +'<div class="ovr-big '+ovrClass(pl.ovr||50)+'" style="'+cOvr+'">'+(pl.ovr||'?')+'</div>'
       +'<div class="slot-pick-num" style="text-align:right">Pick #'+p.pickNum+'</div>'
       +'</div>'
       +'</div>';
