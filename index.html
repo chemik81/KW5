@@ -5244,6 +5244,8 @@ function renderDraftPool() {
             <div style="text-align:right">
               <div style="font-size:34px;font-weight:900;font-family:'Barlow Condensed',sans-serif;color:${ovrColor(p.ovr)};line-height:1">${p.ovr}</div>
               <div style="font-size:9px;color:var(--text3);font-weight:700;letter-spacing:.8px;text-align:center">OVR</div>
+              <div style="font-size:10px;font-weight:700;font-family:'Barlow Condensed',sans-serif;color:#a78bfa;margin-top:4px;line-height:1.4">PER ${(p.per||0).toFixed(1)}</div>
+              <div style="font-size:10px;font-weight:700;font-family:'Barlow Condensed',sans-serif;color:#38bdf8;line-height:1.4">CS ${(p.csa||0).toFixed(1)}</div>
             </div>
           </div>
           <div style="display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-bottom:7px">
@@ -5253,22 +5255,12 @@ function renderDraftPool() {
           <div style="font-size:13px;font-weight:700;font-family:'Barlow Condensed',sans-serif;letter-spacing:.3px;text-transform:uppercase;color:var(--white);margin-bottom:12px;line-height:1.3;display:flex;align-items:center;gap:3px;min-height:32px;word-break:break-word">
             ${flag}${p.name}
           </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:4px;margin-bottom:6px;text-align:center">
-            ${[['PPG',p.ppg.toFixed(1)],['RPG',p.rpg.toFixed(1)],['APG',p.apg.toFixed(1)],['GP',p.gp]].map(([l,v])=>`
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:10px;text-align:center">
+            ${[['PPG',p.ppg.toFixed(1)],['RPG',p.rpg.toFixed(1)],['APG',p.apg.toFixed(1)],['SPG',(p.spg||0).toFixed(1)],['BPG',(p.bpg||0).toFixed(1)],['GP',p.gp]].map(([l,v])=>`
               <div style="background:var(--dark3);border-radius:4px;padding:5px 2px">
                 <div style="font-size:13px;font-weight:700;font-family:'Barlow Condensed',sans-serif;color:var(--white)">${v}</div>
                 <div style="font-size:9px;color:var(--text3);font-weight:700;letter-spacing:.3px">${l}</div>
               </div>`).join('')}
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:10px;text-align:center">
-            <div style="background:var(--dark3);border-radius:4px;padding:4px 2px">
-              <div style="font-size:12px;font-weight:700;font-family:'Barlow Condensed',sans-serif;color:#a78bfa">${(p.per||0).toFixed(1)}</div>
-              <div style="font-size:9px;color:var(--text3);font-weight:700;letter-spacing:.3px">PER</div>
-            </div>
-            <div style="background:var(--dark3);border-radius:4px;padding:4px 2px">
-              <div style="font-size:12px;font-weight:700;font-family:'Barlow Condensed',sans-serif;color:#38bdf8">${(p.csa||0).toFixed(1)}</div>
-              <div style="font-size:9px;color:var(--text3);font-weight:700;letter-spacing:.3px">CS</div>
-            </div>
           </div>
           <div style="font-size:11px;text-align:center;color:var(--text3)">
             <span style="color:#4ade80">${p.wins}W</span> — <span style="color:#f87171">${p.losses}L</span>
