@@ -5180,7 +5180,7 @@ function renderDraftPool() {
   if (!el) return;
 
   let players = withOvr(getAggregates(state.matches));
-  if (dpPos) players = players.filter(p => p.pos === dpPos);
+  if (dpPos) players = players.filter(p => dpPos === 'LCK' ? (p.pos === 'SF' || p.pos === 'LCK') : p.pos === dpPos);
   const srch = (document.getElementById('dp-search')?.value ?? dpSearch).trim().toLowerCase();
   if (srch) players = players.filter(p => p.name.toLowerCase().includes(srch));
   const sortFns = { ovr:(a,b)=>b.ovr-a.ovr, ppg:(a,b)=>b.ppg-a.ppg, rpg:(a,b)=>b.rpg-a.rpg, apg:(a,b)=>b.apg-a.apg, per:(a,b)=>b.per-a.per };
