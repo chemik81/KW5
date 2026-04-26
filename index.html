@@ -909,21 +909,38 @@ let loginTarget  = 'admin';
 
 let state = { matches: [], eliteMatches: [], roster: [], corrections: {}, eliteResults: {}, eliteSchedule: null };
 const COUNTRY_FLAGS = {"I-AbuYusuf-I":"🇧🇭","II-Devaporation":"🇷🇸","senseiinos":"🇬🇧","mano_18ttv":"🇮🇱","xpipotato-":"🇮🇹","xKujman":"🇮🇱","XxlDSKlxX":"🇧🇦","Txkeover_2K":"🇦🇹","MaTT M2544":"🇵🇱","Adaax__93":"🇫🇷","Arispunisher":"🇬🇷","xAtomc":"🇮🇱","Redheadreborn":"🇮🇱","Itskrafe":"🇱🇧","MoGeneral-":"🇦🇹","AsuRa_2k":"🇵🇱","Pepeckpanther":"🇩🇪","Lazy2playdefense":"🇭🇺","Iiyan1r31ii":"🇮🇱","Gougz__":"🇫🇷","Austn Reaves":"🏴󠁧󠁢󠁳󠁣󠁴󠁿","vNikos2k":"🇬🇷","Randxh":"🇬🇧","RaZoR_Donaldduck":"🇩🇪","onIyrng":"🇩🇪","bodyIanguage":"🇮🇳","II_SXA_II":"🇬🇧","ReapMyPast":"🇪🇬","EduKOO__":"🇩🇪","its__StefanJZR":"🇨🇭","FeedMoody":"🇪🇬","muqwk":"🇫🇷","llBENEll":"🇩🇪","Tfjuly_":"🇯🇴","IROEIx":"🇮🇱","lmHezii_":"🇮🇱","rbsgogi":"🇷🇸","BONESDONEIT":"🇬🇧","xGogaBitadze":"🇭🇷","ZMikeyTV":"🇪🇸","IlySZN__":"🇮🇹","KazyPeaks":"🇪🇸","IIMSBII":"🇬🇧","Henri__Jones_":"🇵🇹","v-Choper":"🇸🇦","Rayj-_-I":"🇱🇧","PrimeMagiic_":"🇮🇱","KavDaGoon":"🇱🇰","Extreme5K":"🇱🇹","utqh":"🇮🇳","HSDK-_-":"🇬🇧","HHooman":"🇮🇷","nobrainSalazar_":"🇵🇹","SKW":"🇩🇪","TR-Tansu28":"🇹🇷","rKadosh":"🇮🇱","I-BASSY-I":"🇬🇧","llAnti_ll":"🇬🇷","Janox_-":"🇫🇷","IIMAIKG_":"🇵🇹","llAlibgll":"🇩🇪","SplxzhyySZN":"🇦🇹","In Ah Mood":"🇫🇷","MouraBeBallin":"🇵🇹","gulezi":"🇭🇷","Cemnn":"🇩🇪","III-Its_ASIII":"🇮🇱","JustFala":"🇮🇹","lilpoe":"🇺🇸","xGxfted__":"🇫🇷","YagiDepressed-":"🇹🇷","BihLarinho":"🇵🇹","AngelNxcap_":"🇪🇸","SufiBellaou":"🇲🇦","BIlRON":"🇫🇷","SimonBeBallin":"🇵🇹","MarcioC2K":"🇵🇹","o Oiajuwon":"🇦🇹","DyegoTTV":"🇮🇹","WhyAlwaysMoz":"🇬🇧","IIBrxhII":"🇮🇹","Fettis-":"🇬🇧","CanBoymm":"🇹🇷","CxrdiMvp":"🇬🇧","TsT_Rooster":"🇪🇸","Aciverson":"🇸🇪","AIiGotRange":"🇬🇧","Flokic":"🇩🇪","BerkoBzzttt":"🇳🇱","rafaeltgr2k":"🇪🇸","xiraklisx":"🇬🇷","Kxmily":"🇵🇱","KadoTheProblemTR":"🇹🇷","E9REN_YT":"🇹🇷","iKhalidzVT":"🇸🇦","MichaelMyers":"🇫🇷","X_Flamme10":"🇫🇷","vPionne_-":"🇪🇸","CROBoki1911":"🇭🇷","Suupersnuus":"🇫🇷","Cris_bzh":"🇫🇷","ReVeReNd_Gr":"🇬🇷","MoTooTuff":"🇬🇧","Kolsonn-":"🇵🇱","lKhaliddl":"🇪🇬","Lord slime":"🇸🇪","BrkTheBeast":"🇫🇷","HoodieFisk":"🇫🇴","Jacobmargiela":"🇩🇪","WaveyyIV":"🇬🇧","ImThatGreek":"🇩🇪","vLauris":"🇱🇹","ActiveYoga":"🇩🇪","ArmxniBrooks":"🇮🇹","AitorBigBoy":"🇪🇸","FilipecaosNG":"🇵🇱","iKlaw_":"🇫🇷","Jabinky_":"🇩🇪","LevyAdventures":"🇪🇸","xOLALAx642":"🇫🇷","glizvsyou":"🇺🇸","xMambaOut—":"🇫🇷","ReefGeekin":"🇺🇸","JayTuffalo":"🇩🇪","vahram—":"🇫🇷","Leadtiger":"🇸🇦","Jugador-ia":"🇪🇸","Sxmueell":"🇮🇹","lMush":"🇬🇧","hcttr":"🇪🇸","MoHamHeaddd":"🇪🇬","zyngaa1":"🇧🇦","JabbaGotRange":"🇮🇹","SyringLP":"🇹🇷","Play Dxfence":"🇬🇧","IIKenough":"🇪🇪","GioKaradonis":"🇬🇷","kljok93":"🇭🇷","xIceLuci":"🇮🇪","SamDaRuler":"🇬🇧","ReactsBeeso":"🇸🇦","Faiiis—":"🇸🇦","x3Viiizzz":"🇮🇹","JinkyOnTwitch-":"🇬🇧","Mulllii":"🇬🇧","Violizzimo":"🇸🇪","IIMarkMc":"🇮🇪","Lilshowz":"🇺🇸","LuvAmari":"🇸🇪","CliMaxToTheMax":"🇩🇪","xZimbo_":"🇫🇮","ImTomi-_-":"🇵🇱","Jzmie-":"🏴󠁧󠁢󠁳󠁣󠁴󠁿","Stealie_":"🇬🇧","WuZGoodT2k":"🇫🇷","Moves like ad":"🇩🇪","BigBliitz":"🇬🇧","MJ Sascha":"🇩🇪","onedar76":"🇵🇱","MeloMouz":"🇬🇧","DantoTRVP":"🇮🇹","sleezirrr":"🇮🇹","BundyPumpfakes":"🇳🇱","HoodieSomali":"🇸🇪","Killiannn-":"🇮🇪","ilacSGA":"🇩🇪","Omcrx":"🇸🇪","oH Lopez":"🇮🇹","TraphouseRudiger":"🇩🇪","CalmaDirtyWxrk":"🇫🇷","B0lt0n":"🇬🇧","Kxntker":"🇹🇷","kbaronis05":"🇬🇷","IIP2wavvyII":"🇵🇱","TwitchGoomuta":"🇩🇪","IMajin Bou":"🇫🇷","drowzyxs":"🇩🇪","luuudort":"🇭🇺","Slimeeeb2a":"🇺🇸","GuntherTRG":"🇬🇧","Winahs":"🇱🇹","LowkeyMoMoo":"🇭🇷","Juleeekas":"🇱🇹","llPrimo_":"🇵🇹","Sxberiaa":"🇨🇭","ForeverNixa":"🇷🇸","Davontaex":"🇺🇸","SwishLR":"🇧🇪","vBxtta":"🇮🇹","Directboardss":"🇦🇪","LockDownLeo_GR":"🇬🇷","WokayKirk":"🇫🇷","Halal Greens":"🇬🇧","FluffyCat558":"🇩🇪","xDOPEv":"🇩🇪","lindprl":"🇩🇪","fcnt or suprman":"🇬🇧","YeahWePaid_":"🇬🇷","llE24Jll":"🇦🇹","lllzachxslll":"🇬🇷","DestinyGT3_":"🇫🇷","yo Babaa":"🇫🇮","Slime Ky":"🇬🇧","DemiMert":"🇹🇷","Trbaa__5":"🇷🇸","J_Bigna_27":"🇮🇹","Fuzion911_":"🇫🇷","iltuall":"🇬🇧","KaguInBaku":"🇹🇷","Bxrclayy":"🇪🇪","IIIKEREMIII":"🌍","MewtubeSZN":"🇩🇪","CapoFTRB":"🇬🇧","LTDP_Rumopla_RD":"🇪🇸","MuroSL500":"🇩🇪","Da_v-iD15":"🇨🇭","Retiredkk":"🇪🇬","DanzCBFW":"🇬🇧","urm":"🇬🇧","HAZAAARD99":"🇫🇷","vepzj":"🇸🇪","Arrian":"🇬🇧","Calibreeze21":"🇩🇪","YogiMisterFreeZe":"🇨🇭","II VeXizy II":"🇩🇪","yxRami":"🇩🇪","momzinho":"🇬🇧","hqnnessy":"🇫🇷","whyaiz":"🇬🇧","Fliqlaq":"🇮🇱","IsThisLove_":"🇫🇷","LKT9945":"🇮🇹","AntiJae-":"🇺🇸","zyyrooox__":"🇫🇷","Delice-69":"🇫🇷","X_lamal19":"🇫🇷","GRXJAY":"🇬🇧","ImVardii":"🇮🇱","ISW3RVOI":"🇩🇪","FearedCarpet":"🇮🇪","Ellis 4":"🇬🇧","Jovan__ninefour":"🇨🇭","Thuqh":"🇫🇮","doj":"🇬🇧","Aevryx":"🇫🇷","EtiMMVI":"🇩🇪","moallekk":"🇬🇧","yuetty-":"🇳🇱","eishied75":"🇫🇷","ric1off1":"🇩🇪","chokeholdq":"🇺🇦","Luffyz6620":"🇫🇷","ANNOYllNG":"🇩🇪","mZiggyyy":"🇵🇹","XL1NZZZ":"🇮🇹","Llocksy":"🇫🇷","TTokyoxx":"🇫🇷","lUziiiil":"🇺🇸","IIl-chris-lIl":"🇬🇷","JafadenDaben":"🇫🇷","xDebeliMirko":"🇸🇮","rcraigz":"🇩🇪","Dylanwe119":"🇳🇱","FFearedCarpet":"🇮🇪","MladiGaleb":"🇦🇹","LeGrEcBgS":"🇬🇷","ArchieVI":"🇬🇧","LuvRebs":"🇱🇹","Prime Kyve":"🇬🇧","IIPATOIL":"🇪🇸","HelsFifty":"🇬🇧","ItsRapper":"🇪🇸","IIlBenIIl":"🇩🇪","IIXNSII":"🇫🇷","OnR_36":"🇩🇪","AdcmKnewThat":"🇬🇧","xKrel":"🇬🇧","Dinzaa__":"🇧🇦","KJ-XIII":"🇬🇧","Trqe Young":"🏴󠁧󠁢󠁷󠁬󠁳󠁿","They ls dead":"🇬🇧","SlaashGoat_":"🇫🇷","Annes-Twitch":"🇩🇰","lTeqax":"🇺🇸","zKysqc":"🇲🇰","Osamasgg":"🇸🇦","MasterOfJuke701":"🇱🇧","IIAP3II":"🇱🇹","vHxnko":"🇵🇹","JONZSKII":"🇬🇧","RetroSicko":"🇮🇱","XSelye9":"🇫🇷","GAME IS GONE":"🏴󠁧󠁢󠁳󠁣󠁴󠁿","BrdxIngram":"🇫🇷","SheLovessRayyy":"🇫🇷","McPhie-":"🏴󠁧󠁢󠁳󠁣󠁴󠁿","il-kenshin-ll":"🇬🇧","lASTROWRLDl":"🇱🇹","SnxwDL":"🇫🇷","Sneakry Goated":"🇬🇧","godigopt":"🇵🇹","lnMyThoughtss":"🇩🇪","Fatboysean":"🇩🇪","lovebattledead80":"🇹🇷","Evozion_Spirito":"🇫🇷","IIPreachers":"🇹🇳","only timing":"🇸🇪","Hoodiiezo":"🇺🇸"};
+function _lev(a,b){
+  var m=a.length,n=b.length;
+  if(Math.abs(m-n)>2)return 3;
+  var dp=[];for(var i=0;i<=m;i++){dp[i]=[i];}for(var j=0;j<=n;j++){dp[0][j]=j;}
+  for(var i=1;i<=m;i++)for(var j=1;j<=n;j++)dp[i][j]=a[i-1]===b[j-1]?dp[i-1][j-1]:1+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);
+  return dp[m][n];
+}
 function getFlag(n){
   if(!n)return '';
+  // 1. Exact
   var emoji=COUNTRY_FLAGS[n];
-  if(!emoji){if(!getFlag._c){getFlag._c={};for(var k in COUNTRY_FLAGS)getFlag._c[k.toLowerCase()]=COUNTRY_FLAGS[k];}emoji=getFlag._c[n.toLowerCase()];}
+  // 2. Case-insensitive
+  if(!emoji){
+    if(!getFlag._c){getFlag._c={};for(var k in COUNTRY_FLAGS)getFlag._c[k.toLowerCase()]=COUNTRY_FLAGS[k];}
+    emoji=getFlag._c[n.toLowerCase()];
+  }
+  // 3. Fuzzy (Levenshtein ≤ 2) — cached per name
+  if(!emoji){
+    if(!getFlag._f)getFlag._f={};
+    var nl=n.toLowerCase();
+    if(nl in getFlag._f){emoji=getFlag._f[nl];}
+    else{
+      var best='',bestD=3;
+      for(var k in getFlag._c){var d=_lev(nl,k);if(d<bestD){bestD=d;best=getFlag._c[k];}}
+      getFlag._f[nl]=bestD<=2?best:'';
+      emoji=getFlag._f[nl];
+    }
+  }
   if(!emoji)return '';
-  // Subdivision flags (Scotland/Wales/England use tag sequences, not regional indicators)
   var sub={'🏴󠁧󠁢󠁳󠁣󠁴󠁿':'gb-sct','🏴󠁧󠁢󠁷󠁬󠁳󠁿':'gb-wls','🏴󠁧󠁢󠁥󠁮󠁧󠁿':'gb-eng'};
   var code=sub[emoji];
-  if(!code){
-    try{
-      var chars=[...emoji];var cp=chars[0]&&chars[0].codePointAt(0);
-      // Regional indicator letters are U+1F1E6–U+1F1FF; anything outside (e.g. 🌍) is skipped
-      if(cp>=0x1F1E6&&cp<=0x1F1FF)code=chars.slice(0,2).map(function(c){return String.fromCharCode(c.codePointAt(0)-0x1F1E6+65);}).join('').toLowerCase();
-    }catch(e){}
-  }
+  if(!code){try{var chars=[...emoji];var cp=chars[0]&&chars[0].codePointAt(0);if(cp>=0x1F1E6&&cp<=0x1F1FF)code=chars.slice(0,2).map(function(c){return String.fromCharCode(c.codePointAt(0)-0x1F1E6+65);}).join('').toLowerCase();}catch(e){}}
   if(!code)return '';
   return '<img src="https://flagcdn.com/16x12/'+code+'.png" style="width:16px;height:12px;border-radius:1px;vertical-align:middle;margin-right:4px" loading="lazy" onerror="this.style.display=\'none\'">';
 }
