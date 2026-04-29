@@ -310,6 +310,15 @@ select.form-input{width:100%}
             <button class="btn btn-outline btn-sm" onclick="excludeLowGP()">Exclude &lt;2 matches</button>
           </div>
         </div>
+        <div style="display:flex;gap:20px;align-items:center;padding:10px 0 12px;border-bottom:1px solid var(--border);margin-bottom:12px;flex-wrap:wrap">
+          <span style="font-size:13px;font-weight:600;color:var(--text)">Show to GMs during draft:</span>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
+            <input type="checkbox" id="show-stars" checked onchange="renderPool()"> ★ Stars
+          </label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
+            <input type="checkbox" id="show-ovr" checked onchange="renderPool()"> OVR
+          </label>
+        </div>
         <div class="filter-bar">
           <button class="filter-btn active" onclick="filterPool('ALL',this)">ALL</button>
           <button class="filter-btn" onclick="filterPool('PG',this)">PG</button>
@@ -324,7 +333,8 @@ select.form-input{width:100%}
             <thead><tr>
               <th style="width:32px"><input type="checkbox" id="pool-check-all" onchange="toggleAllVisible(this.checked)"></th>
               <th>#</th><th>Player</th><th>Pos</th><th>GP</th>
-              <th>PPG</th><th>RPG</th><th>APG</th><th>PER</th><th>CS</th><th>OVR</th>
+              <th>PPG</th><th>RPG</th><th>APG</th><th>PER</th><th>CS</th>
+              <th title="Edit OVR">OVR ✏</th><th title="Edit stars (0-5)">★ ✏</th>
             </tr></thead>
             <tbody id="pool-body"></tbody>
           </table>
@@ -560,7 +570,8 @@ select.form-input{width:100%}
                 <th onclick="gmSort('rpg')" style="cursor:pointer">RPG <span id="gsort-rpg"></span></th>
                 <th onclick="gmSort('apg')" style="cursor:pointer">APG <span id="gsort-apg"></span></th>
                 <th onclick="gmSort('per')" style="cursor:pointer">PER <span id="gsort-per"></span></th>
-                <th onclick="gmSort('ovr')" style="cursor:pointer">OVR <span id="gsort-ovr">▼</span></th>
+                <th onclick="gmSort('ovr')" style="cursor:pointer" id="gm-ovr-th">OVR <span id="gsort-ovr">▼</span></th>
+                <th onclick="gmSort('stars')" style="cursor:pointer" id="gm-stars-th">★ <span id="gsort-stars"></span></th>
               </tr></thead>
               <tbody id="gm-player-body"></tbody>
             </table>
@@ -1257,17 +1268,28 @@ function saveTeams() {
 // ── Players ──
 function renderPool() {
   if (!kw5Players.length) { loadKw5Players().then(()=>renderPool()); return; }
+  // Restore show-stars/show-ovr from config
+  const cfg = draftState?.config || {};
+  const showStarsEl = document.getElementById('show-stars');
+  const showOvrEl   = document.getElementById('show-ovr');
+  if (showStarsEl && cfg.showStars === false) showStarsEl.checked = false;
+  if (showOvrEl   && cfg.showOvr   === false) showOvrEl.checked   = false;
+
   const search = (document.getElementById('pool-search')?.value||'').toLowerCase();
   const filtered = kw5Players.filter(p => {
     if (poolFilter !== 'ALL' && p.pos !== poolFilter) return false;
     if (search && !p.name.toLowerCase().includes(search)) return false;
     return true;
   });
-  // merge with setupPlayers for exclusion state
-  const excSet = new Set((setupPlayers||[]).filter(p=>p.excluded).map(p=>p.id));
+  // merge with setupPlayers for exclusion/stars/ovr state
+  const spMap = {};
+  (setupPlayers||[]).forEach(p => spMap[p.id] = p);
   const body = document.getElementById('pool-body');
   body.innerHTML = filtered.map((p,i) => {
-    const excluded = excSet.has(p.name);
+    const sp = spMap[p.name] || {};
+    const excluded = sp.excluded || false;
+    const stars = sp.stars ?? 0;
+    const ovr   = sp.ovr   ?? p.ovr;
     return `<tr>
       <td><input type="checkbox" ${excluded?'':'checked'} onchange="togglePlayer('${p.name}',this.checked)"></td>
       <td style="color:var(--muted)">${i+1}</td>
@@ -1279,9 +1301,26 @@ function renderPool() {
       <td>${p.apg.toFixed(1)}</td>
       <td>${p.per.toFixed(1)}</td>
       <td>${p.cs.toFixed(1)}</td>
-      <td><span class="ovr-badge ${ovrClass(p.ovr)}">${p.ovr}</span></td>
+      <td><input type="number" min="40" max="99" value="${ovr}" style="width:48px;background:var(--dark3);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:2px 4px;text-align:center"
+           onchange="setPlayerOvr('${p.name}',+this.value)"></td>
+      <td><input type="number" min="0" max="5" value="${stars}" style="width:40px;background:var(--dark3);color:var(--gold);border:1px solid var(--border);border-radius:4px;padding:2px 4px;text-align:center"
+           onchange="setPlayerStars('${p.name}',+this.value)"></td>
     </tr>`;
   }).join('');
+}
+
+function setPlayerOvr(id, ovr) {
+  if (!setupPlayers) setupPlayers = [];
+  let e = setupPlayers.find(p=>p.id===id);
+  if (!e) { e = {id, excluded:false}; setupPlayers.push(e); }
+  e.ovr = Math.max(40, Math.min(99, ovr));
+}
+
+function setPlayerStars(id, stars) {
+  if (!setupPlayers) setupPlayers = [];
+  let e = setupPlayers.find(p=>p.id===id);
+  if (!e) { e = {id, excluded:false}; setupPlayers.push(e); }
+  e.stars = Math.max(0, Math.min(5, stars));
 }
 
 function filterPool(pos, btn) {
@@ -1324,16 +1363,20 @@ function toggleAllVisible(checked) {
 
 function savePlayers() {
   if (!draftState) draftState = {};
-  // Merge kw5Players with exclusion state
-  const excMap = {};
-  (setupPlayers||[]).forEach(p => excMap[p.id] = p.excluded);
+  const spMap = {};
+  (setupPlayers||[]).forEach(p => spMap[p.id] = p);
   draftState.players = kw5Players.map(p => ({
     id: p.name, name: p.name, pos: p.pos,
     gp: p.gp, ppg: p.ppg, rpg: p.rpg, apg: p.apg,
-    per: p.per, cs: p.cs, ovr: p.ovr,
+    per: p.per, cs: p.cs,
+    ovr:   spMap[p.name]?.ovr   ?? p.ovr,
+    stars: spMap[p.name]?.stars ?? 0,
     wins: p.wins||0, losses: p.losses||0, win_pct: p.win_pct||0,
-    excluded: excMap[p.name] || false
+    excluded: spMap[p.name]?.excluded || false
   }));
+  if (!draftState.config) draftState.config = {};
+  draftState.config.showStars = document.getElementById('show-stars')?.checked !== false;
+  draftState.config.showOvr   = document.getElementById('show-ovr')?.checked   !== false;
   notify('Players saved', 'success');
 }
 
@@ -1670,13 +1713,15 @@ async function notifyGmAutoPick(team, player) {
 
 async function adminUndoPick() {
   if (!draftState || !(draftState.picks||[]).length) return;
+  const last = draftState.picks[draftState.picks.length - 1];
+  if (!confirm(`Cofnąć pick #${last.pickNum} — ${last.playerId}?\n\nTa operacja jest nieodwracalna.`)) return;
   draftState.picks.pop();
   draftState.currentPickNum = Math.max(0, (draftState.currentPickNum||0)-1);
   if (draftState.status === 'done') draftState.status = 'live';
   draftState.timerEnd = new Date(Date.now() + (draftState.config?.timerSecs||120)*1000).toISOString();
   await saveDraftState();
   renderAdmin();
-  notify('Last pick undone', 'info');
+  notify(`Pick #${last.pickNum} (${last.playerId}) cofnięty`, 'info');
 }
 
 async function adminResetDraft() {
@@ -1914,13 +1959,23 @@ function renderGmPlayers() {
     return gmSortAsc ? (va||0) - (vb||0) : (vb||0) - (va||0);
   });
 
+  const showOvr   = draftState?.config?.showOvr   !== false;
+  const showStars = draftState?.config?.showStars !== false;
+  const ovrTh    = document.getElementById('gm-ovr-th');
+  const starsTh  = document.getElementById('gm-stars-th');
+  if (ovrTh)   ovrTh.style.display   = showOvr   ? '' : 'none';
+  if (starsTh) starsTh.style.display = showStars ? '' : 'none';
+
   const body = document.getElementById('gm-player-body');
   body.innerHTML = players.map((p,i) => {
     const isPicked = picked.has(p.id);
     const isSelected = selectedPlayerId === p.id;
     const isWatched = watchlist.has(p.id);
     const isComparing = compareSet.has(p.id);
-    return `<tr class="${isPicked?'picked':''} ${isSelected?'my-pick':''} ${isComparing?'my-pick':''}" 
+    const starsHtml = (p.stars > 0)
+      ? '<span style="color:#f59e0b;font-size:11px">' + '★'.repeat(p.stars) + '</span>'
+      : '<span style="color:#374151;font-size:11px">★★★★★</span>';
+    return `<tr class="${isPicked?'picked':''} ${isSelected?'my-pick':''} ${isComparing?'my-pick':''}"
       onclick="${isPicked?'':'selectPlayer(\''+p.id+'\')'}"
       style="${isPicked?'':'cursor:pointer'}">
       <td onclick="toggleWatch('${p.id}',event)" style="cursor:pointer;color:${isWatched?'#f87171':'var(--border)'};font-size:14px;padding:4px 6px">${isWatched?'♥':'♡'}</td>
@@ -1933,7 +1988,8 @@ function renderGmPlayers() {
       <td>${(p.rpg||0).toFixed(1)}</td>
       <td>${(p.apg||0).toFixed(1)}</td>
       <td>${(p.per||0).toFixed(1)}</td>
-      <td><span class="ovr-badge ${ovrClass(p.ovr||50)}">${p.ovr||50}</span></td>
+      ${showOvr   ? `<td><span class="ovr-badge ${ovrClass(p.ovr||50)}">${p.ovr||50}</span></td>` : ''}
+      ${showStars ? `<td>${starsHtml}</td>` : ''}
     </tr>`;
   }).join('');
 }

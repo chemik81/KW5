@@ -317,6 +317,12 @@ function checkNewPick(ds) {
 
 function showPickFlash(pick, team, player) {
   clearTimeout(paFlashTimeout);
+  const cfg = ds?.config || {};
+  const showOvr   = cfg.showOvr   !== false;
+  const showStars = cfg.showStars !== false;
+  const starsFlash = (showStars && player.stars > 0)
+    ? '<span style="color:#f59e0b;font-size:18px;letter-spacing:2px">'+'★'.repeat(player.stars)+'</span>'
+    : '';
   const wrap = document.getElementById('pa-flash-wrap');
   const { bg, tc } = posStyle(player.pos||'');
   wrap.innerHTML = '<div class="pa-flash">'
@@ -324,9 +330,10 @@ function showPickFlash(pick, team, player) {
     +'<div>'
     +'<div class="pa-flash-label">Pick #'+pick.pickNum+'</div>'
     +'<div class="pa-flash-player">'+pick.playerId+' <span class="pick-pos" style="background:'+bg+';color:'+tc+';font-size:12px;padding:1px 6px;border-radius:3px">'+(player.pos||'?')+'</span></div>'
+    +(starsFlash ? '<div>'+starsFlash+'</div>' : '')
     +'</div>'
     +'<div class="pa-flash-team">'+team.name+'</div>'
-    +'<div style="margin-left:auto;font-family:Barlow Condensed,sans-serif;font-size:32px;font-weight:900;color:var(--gold)">'+(player.ovr||'?')+'</div>'
+    +(showOvr ? '<div style="margin-left:auto;font-family:Barlow Condensed,sans-serif;font-size:32px;font-weight:900;color:var(--gold)">'+(player.ovr||'?')+'</div>' : '')
     +'</div>';
   paFlashTimeout = setTimeout(() => { wrap.innerHTML = ''; }, 6000);
 }
@@ -431,11 +438,17 @@ function render() {
       const isFlex = !['PG','SG','LCK','PF','C'].includes(slot);
       const actualPos = isFlex ? (pl.pos==='SF'?'LCK':(pl.pos||slot)) : slot;
       const { bg: rowBg, tc: rowTc } = posStyle(actualPos==='LCK'?'SF':actualPos);
+      const showOvr   = ds?.config?.showOvr   !== false;
+      const showStars = ds?.config?.showStars !== false;
+      const starsHtml = (showStars && pl.stars > 0)
+        ? '<span style="color:#f59e0b;font-size:9px;letter-spacing:1px">'+'★'.repeat(pl.stars)+'</span>'
+        : '';
       return '<div class="pick-row">'
         +'<span class="pick-num">#'+p.pickNum+'</span>'
         +'<span class="pick-pos" style="background:'+rowBg+';color:'+rowTc+'">'+actualPos+'</span>'
         +'<span class="pick-name">'+p.playerId+'</span>'
-        +'<span class="pick-ovr '+ovrClass(pl.ovr||50)+'">'+(pl.ovr||'')+'</span>'
+        +(starsHtml ? starsHtml : '')
+        +(showOvr ? '<span class="pick-ovr '+ovrClass(pl.ovr||50)+'">'+(pl.ovr||'')+'</span>' : '')
         +'</div>';
     }).join('');
 
