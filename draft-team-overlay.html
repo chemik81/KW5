@@ -225,7 +225,12 @@ function renderTeam(team, animate=true) {
       +'<span class="slot-pos" style="background:'+actualPc.bg+';color:'+actualPc.tc+'">'+actualDisplayPos+'</span>'
       +'<div class="slot-avatar" style="'+cAvatar+'">'+initials+'</div>'
       +'<div style="flex:1;min-width:0">'
+      +'<div style="display:flex;align-items:center;gap:6px">'
       +'<div class="slot-name" style="'+cName+'">'+p.playerId+'</div>'
+      +((ds?.config?.showStars !== false && pl.stars > 0)
+        ? '<span style="color:#f59e0b;font-size:'+(compact?'11':'13')+'px;letter-spacing:1px">'+'★'.repeat(pl.stars)+'</span>'
+        : '')
+      +'</div>'
       +'<div class="stats-row" style="'+cStats+'">'
       +'<div class="stat-item"><div class="stat-v" style="'+cStatV+'">'+(pl.ppg!=null?(+pl.ppg).toFixed(1):'—')+'</div><div class="stat-l" style="'+cStatL+'">PPG</div></div>'
       +'<div class="stat-item"><div class="stat-v" style="'+cStatV+'">'+(pl.rpg!=null?(+pl.rpg).toFixed(1):'—')+'</div><div class="stat-l" style="'+cStatL+'">RPG</div></div>'
@@ -235,7 +240,9 @@ function renderTeam(team, animate=true) {
       +'<div class="stat-item"><div class="stat-v" style="'+cStatV+'">'+(pl.win_pct!=null?pl.win_pct+'%':'—')+'</div><div class="stat-l" style="'+cStatL+'">W%</div></div>'
       +'</div></div>'
       +'<div>'
-      +'<div class="ovr-big '+ovrClass(pl.ovr||50)+'" style="'+cOvr+'">'+(pl.ovr||'?')+'</div>'
+      +(ds?.config?.showOvr !== false
+        ? '<div class="ovr-big '+ovrClass(pl.ovr||50)+'" style="'+cOvr+'">'+(pl.ovr||'?')+'</div>'
+        : '<div style="min-width:'+(compact?'62':'80')+'px"></div>')
       +'<div class="slot-pick-num" style="text-align:right">Pick #'+p.pickNum+'</div>'
       +'</div>'
       +'</div>';
