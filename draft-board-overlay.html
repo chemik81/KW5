@@ -182,12 +182,38 @@ body{
   position:fixed;bottom:72px;left:0;right:0;
   background:rgba(240,192,64,.12);border-top:1px solid rgba(240,192,64,.3);
   padding:8px 32px;display:flex;align-items:center;gap:16px;
-  animation:paIn .3s ease;z-index:50;
+  animation:paIn .3s ease;z-index:170;
 }
 @keyframes paIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 .pa-flash-label{font-size:10px;color:var(--gold);text-transform:uppercase;letter-spacing:.15em;font-weight:800}
 .pa-flash-player{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900}
 .pa-flash-team{font-size:13px;color:var(--muted)}
+
+/* ── CAM OVERLAY ── */
+#cam-overlay{position:fixed;inset:0;z-index:150;display:none;background:#000;animation:fadeInOvl .4s ease}
+@keyframes fadeInOvl{from{opacity:0}to{opacity:1}}
+#cam-overlay iframe{position:absolute;inset:0;width:100%;height:100%;border:none}
+#cam-info-bar{
+  position:absolute;top:0;left:0;right:0;height:100px;
+  background:linear-gradient(180deg,rgba(13,15,20,.92) 0%,transparent 100%);
+  z-index:1;display:flex;align-items:center;padding:0 44px;gap:18px;pointer-events:none;
+}
+#cam-pick-bar{
+  position:absolute;bottom:0;left:0;right:0;height:72px;
+  background:linear-gradient(0deg,rgba(13,15,20,.95) 0%,transparent 100%);
+  border-top:3px solid var(--gold);
+  z-index:1;display:flex;align-items:center;padding:0 32px;gap:16px;pointer-events:none;
+}
+
+/* ── HIGHLIGHT OVERLAY ── */
+#hl-overlay{position:fixed;inset:0;z-index:160;display:none;background:#000;animation:fadeInOvl .3s ease}
+#hl-overlay iframe{position:absolute;top:0;left:0;width:100%;height:calc(100% - 96px);border:none}
+#hl-bar{
+  position:absolute;bottom:0;left:0;right:0;height:96px;
+  background:linear-gradient(0deg,rgba(13,15,20,.98) 0%,rgba(13,15,20,.6) 100%);
+  border-top:3px solid var(--gold);
+  display:flex;align-items:center;padding:0 40px;gap:20px;
+}
 </style>
 </head>
 <body>
@@ -239,11 +265,49 @@ body{
 <!-- PICK ANNOUNCE FLASH -->
 <div id="pa-flash-wrap"></div>
 
+<!-- CAM OVERLAY -->
+<div id="cam-overlay">
+  <iframe id="cam-iframe" allow="camera;microphone;autoplay" allowfullscreen></iframe>
+  <div id="cam-info-bar">
+    <div style="width:10px;height:10px;border-radius:50%;background:var(--gold);animation:blink 1s infinite alternate;flex-shrink:0"></div>
+    <div id="cam-team-logo-el"></div>
+    <div>
+      <div style="font-size:11px;color:var(--gold);text-transform:uppercase;letter-spacing:.15em;font-weight:700">On The Clock</div>
+      <div id="cam-team-name" style="font-family:'Barlow Condensed',sans-serif;font-size:44px;font-weight:900;line-height:1;color:#fff"></div>
+    </div>
+    <div style="margin-left:auto;text-align:right">
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em">Time Left</div>
+      <div id="cam-timer" style="font-family:'Barlow Condensed',sans-serif;font-size:44px;font-weight:900;color:#fff">—</div>
+    </div>
+  </div>
+  <div id="cam-pick-bar">
+    <div id="cam-pick-info" style="font-family:'Barlow Condensed',sans-serif;font-size:14px;color:var(--muted)"></div>
+  </div>
+</div>
+
+<!-- HIGHLIGHT OVERLAY -->
+<div id="hl-overlay">
+  <iframe id="hl-iframe" allowfullscreen></iframe>
+  <div id="hl-bar">
+    <div id="hl-team-logo-el"></div>
+    <div style="flex:1;min-width:0">
+      <div id="hl-pick-label" style="font-size:11px;color:var(--gold);text-transform:uppercase;letter-spacing:.15em;font-weight:700"></div>
+      <div id="hl-player-name" style="font-family:'Barlow Condensed',sans-serif;font-size:52px;font-weight:900;line-height:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
+    </div>
+    <div id="hl-pos-badge"></div>
+    <div style="margin-left:auto;text-align:right;flex-shrink:0">
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Highlight ends in</div>
+      <div id="hl-countdown" style="font-family:'Barlow Condensed',sans-serif;font-size:32px;font-weight:900;color:var(--muted)"></div>
+    </div>
+  </div>
+</div>
+
 <script>
 const params = new URLSearchParams(location.search);
 const WORKER_URL = (params.get('w') || '').replace(/\/+$/, '');
 
 let ds = null, timerInterval = null, lastPickNum = -1, lastRound = 0, paFlashTimeout = null;
+let currentCamTeamId = null, hlTimeout = null, hlCountInterval = null, timerPaused = false, timerEndsAt = null;
 
 // ── HELPERS ──
 function buildSeq(ds) {
@@ -294,11 +358,14 @@ function logoHtml(team, size=22) {
 // ── TIMER ──
 function startTimer(endsAt) {
   clearInterval(timerInterval);
-  const el = document.getElementById('pb-timer');
+  timerEndsAt = endsAt;
+  const el    = document.getElementById('pb-timer');
+  const camEl = document.getElementById('cam-timer');
   timerInterval = setInterval(() => {
     const left = Math.max(0, Math.round((new Date(endsAt) - Date.now()) / 1000));
-    el.textContent = String(Math.floor(left/60)).padStart(2,'0')+':'+String(left%60).padStart(2,'0');
-    el.classList.toggle('urgent', left <= 15);
+    const str  = String(Math.floor(left/60)).padStart(2,'0')+':'+String(left%60).padStart(2,'0');
+    if (el)    { el.textContent = str; el.classList.toggle('urgent', left <= 15); }
+    if (camEl)   camEl.textContent = str;
   }, 500);
 }
 
@@ -313,6 +380,7 @@ function checkNewPick(ds) {
   const team   = ds.teams.find(t=>t.id===latest.teamId)||{};
   const player = (ds.players||[]).find(p=>p.id===latest.playerId)||{};
   showPickFlash(latest, team, player);
+  showHighlight(latest, team, player);
 }
 
 function showPickFlash(pick, team, player) {
@@ -379,8 +447,8 @@ function render() {
     document.getElementById('pb-round').textContent = 'Round '+pick.round+' · Pick #'+pick.pickNum+' of '+pick.totalPicks;
     document.getElementById('pb-label').textContent = 'ON THE CLOCK';
     document.getElementById('pb-mid').innerHTML = '<div style="font-family:Barlow Condensed,sans-serif;font-size:16px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Waiting for pick...</div>';
-    if (status==='live' && ds.timerEnd) startTimer(ds.timerEnd);
-    else { clearInterval(timerInterval); document.getElementById('pb-timer').textContent='—'; }
+    if (status==='live' && ds.timerEnd && !timerPaused) startTimer(ds.timerEnd);
+    else if (!ds.timerEnd) { clearInterval(timerInterval); document.getElementById('pb-timer').textContent='—'; const c=document.getElementById('cam-timer'); if(c) c.textContent='—'; }
   } else if (status==='done') {
     document.getElementById('pb-label').textContent = '';
     document.getElementById('pb-team').textContent  = 'DRAFT COMPLETE';
@@ -389,6 +457,15 @@ function render() {
     document.getElementById('pb-mid').innerHTML     = '';
     document.getElementById('pb-timer').textContent = '—';
     clearInterval(timerInterval);
+  }
+
+  // Cam overlay — update when OTC team changes (don't touch if highlight is playing)
+  if (!timerPaused) {
+    if (pick && status === 'live' && pick.team?.camUrl) {
+      if (pick.teamId !== currentCamTeamId) showCam(pick.team, pick);
+    } else if (!pick || status !== 'live') {
+      hideCam();
+    }
   }
 
   // Board
@@ -466,6 +543,80 @@ function render() {
     }).join('')
     + '</div>';
   }).join('');
+}
+
+// ── CAM OVERLAY ──
+function showCam(team, pick) {
+  currentCamTeamId = team.id;
+  const overlay = document.getElementById('cam-overlay');
+  const iframe  = document.getElementById('cam-iframe');
+  iframe.src = team.camUrl;
+  document.getElementById('cam-team-name').textContent = team.name;
+  const logoEl = document.getElementById('cam-team-logo-el');
+  logoEl.innerHTML = team.logoB64
+    ? '<img src="'+team.logoB64+'" style="width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid var(--gold)">'
+    : '<div style="width:56px;height:56px;border-radius:50%;background:var(--dark4);display:flex;align-items:center;justify-content:center;font-family:Barlow Condensed,sans-serif;font-weight:900;font-size:22px;color:var(--gold);border:2px solid var(--gold)">'+((team.name||'?')[0])+'</div>';
+  const pickInfo = document.getElementById('cam-pick-info');
+  if (pick) pickInfo.textContent = 'Round '+pick.round+' · Pick #'+pick.pickNum+' of '+pick.totalPicks;
+  overlay.style.display = 'block';
+}
+
+function hideCam() {
+  currentCamTeamId = null;
+  const overlay = document.getElementById('cam-overlay');
+  const iframe  = document.getElementById('cam-iframe');
+  overlay.style.display = 'none';
+  iframe.src = '';
+}
+
+// ── HIGHLIGHT OVERLAY ──
+function showHighlight(pick, team, player) {
+  const highlights = ds?.config?.highlights || {};
+  const fileId = highlights[player.id] || highlights[player.name];
+  if (!fileId) return;
+
+  hideCam();
+  clearTimeout(hlTimeout);
+  clearInterval(hlCountInterval);
+  clearInterval(timerInterval);
+  timerPaused = true;
+
+  const overlay = document.getElementById('hl-overlay');
+  document.getElementById('hl-iframe').src = 'https://drive.google.com/file/d/'+fileId+'/preview';
+  document.getElementById('hl-pick-label').textContent = 'Pick #'+pick.pickNum+' · '+team.name;
+  document.getElementById('hl-player-name').textContent = player.name || pick.playerId;
+  const logoEl = document.getElementById('hl-team-logo-el');
+  logoEl.innerHTML = team.logoB64
+    ? '<img src="'+team.logoB64+'" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid var(--gold);flex-shrink:0">'
+    : '<div style="width:64px;height:64px;border-radius:50%;background:var(--dark4);display:flex;align-items:center;justify-content:center;font-family:Barlow Condensed,sans-serif;font-weight:900;font-size:26px;color:var(--gold);border:2px solid var(--gold);flex-shrink:0">'+((team.name||'?')[0])+'</div>';
+  const { bg, tc } = posStyle(player.pos||'');
+  const posBadge = document.getElementById('hl-pos-badge');
+  posBadge.innerHTML = '<span style="font-family:Barlow Condensed,sans-serif;font-weight:800;font-size:22px;padding:5px 16px;border-radius:6px;background:'+bg+';color:'+tc+'">'+(player.pos||'?')+'</span>';
+  overlay.style.display = 'block';
+
+  const duration = (ds?.config?.highlightDuration || 90);
+  let remaining = duration;
+  const cntEl = document.getElementById('hl-countdown');
+  if (cntEl) cntEl.textContent = remaining+'s';
+  hlCountInterval = setInterval(() => {
+    remaining--;
+    if (cntEl) cntEl.textContent = remaining > 0 ? remaining+'s' : '';
+    if (remaining <= 0) clearInterval(hlCountInterval);
+  }, 1000);
+
+  hlTimeout = setTimeout(hideHighlight, duration * 1000);
+}
+
+function hideHighlight() {
+  clearTimeout(hlTimeout);
+  clearInterval(hlCountInterval);
+  timerPaused = false;
+  const overlay = document.getElementById('hl-overlay');
+  overlay.style.display = 'none';
+  document.getElementById('hl-iframe').src = '';
+  if (ds?.timerEnd && ds?.status === 'live') startTimer(ds.timerEnd);
+  const pick = getCurrentPick(ds);
+  if (pick?.team?.camUrl) showCam(pick.team, pick);
 }
 
 async function load() {

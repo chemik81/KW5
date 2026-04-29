@@ -381,6 +381,23 @@ select.form-input{width:100%}
         </div>
       </div>
       <div class="card" style="margin-bottom:16px">
+        <div class="card-title">Streaming</div>
+        <div style="margin-bottom:16px;display:flex;align-items:center;gap:12px">
+          <div>
+            <div class="form-label">Max highlight duration (seconds)</div>
+            <input class="form-input" id="cfg-hl-duration" type="number" min="10" max="600" value="90" style="width:100px">
+          </div>
+          <div style="font-size:12px;color:var(--muted);margin-top:16px">VDO.Ninja URLs are configured per team in step 2.</div>
+        </div>
+        <div class="form-label" style="margin-bottom:8px">Player Highlights — Google Drive</div>
+        <div style="display:flex;gap:8px;margin-bottom:8px">
+          <input class="form-input" id="hl-player-input" placeholder="Player name (exact)" style="width:220px">
+          <input class="form-input" id="hl-url-input" placeholder="Drive URL or file ID" style="flex:1">
+          <button class="btn btn-gold btn-sm" onclick="addHighlight()">Add</button>
+        </div>
+        <div id="highlights-list" style="display:flex;flex-direction:column;gap:4px;max-height:220px;overflow-y:auto"></div>
+      </div>
+      <div class="card" style="margin-bottom:16px">
         <div class="card-title">Share Links</div>
         <div style="display:flex;flex-direction:column;gap:8px;font-size:13px">
           <div style="display:flex;align-items:center;gap:8px">
@@ -1429,6 +1446,7 @@ let currentStep = 0;
 let setupTeams = [];
 let setupPlayers = [];
 let setupOrder = [];
+let setupHighlights = {};
 
 async function initSetup() {
   document.getElementById('cfg-worker').value = WORKER_URL;
@@ -1505,7 +1523,7 @@ function goStep(n) {
   if (n===1) renderTeamsGrid();
   if (n===2) renderPool();
   if (n===3) renderOrder();
-  if (n===4) { renderLaunchSummary(); startGmStatusPolling(); }
+  if (n===4) { renderLaunchSummary(); startGmStatusPolling(); initStreaming(); }
 }
 
 function saveConfig() {
@@ -1572,6 +1590,10 @@ function renderTeamsGrid() {
       <div>
         <div class="form-label">GM Name</div>
         <input class="form-input" style="width:100%" placeholder="Display name" value="${t.gmName||''}" oninput="setupTeams[${i}].gmName=this.value">
+      </div>
+      <div>
+        <div class="form-label">VDO.Ninja URL <span style="color:var(--muted);font-weight:400">(camera overlay)</span></div>
+        <input class="form-input" style="width:100%" placeholder="https://vdo.ninja/?view=..." value="${t.camUrl||''}" oninput="setupTeams[${i}].camUrl=this.value">
       </div>
     </div>
   `).join('');
@@ -1748,6 +1770,60 @@ function saveOrder() {
   notify('Order saved', 'success');
 }
 
+// ── Streaming ──
+function initStreaming() {
+  setupHighlights = { ...(draftState?.config?.highlights || {}) };
+  const dur = draftState?.config?.highlightDuration || 90;
+  const el = document.getElementById('cfg-hl-duration');
+  if (el) el.value = dur;
+  renderHighlightsList();
+}
+
+function saveStreamingConfig() {
+  if (!draftState) draftState = {};
+  if (!draftState.config) draftState.config = {};
+  draftState.config.highlights = { ...setupHighlights };
+  draftState.config.highlightDuration = +(document.getElementById('cfg-hl-duration')?.value) || 90;
+}
+
+function addHighlight() {
+  const nameEl = document.getElementById('hl-player-input');
+  const urlEl  = document.getElementById('hl-url-input');
+  const name   = nameEl.value.trim();
+  const url    = urlEl.value.trim();
+  if (!name || !url) { notify('Enter player name and Drive URL', 'error'); return; }
+  const match  = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  const fileId = match ? match[1] : url;
+  setupHighlights[name] = fileId;
+  nameEl.value = '';
+  urlEl.value  = '';
+  renderHighlightsList();
+  saveStreamingConfig();
+}
+
+function removeHighlight(name) {
+  delete setupHighlights[name];
+  renderHighlightsList();
+  saveStreamingConfig();
+}
+
+function renderHighlightsList() {
+  const list = document.getElementById('highlights-list');
+  if (!list) return;
+  const entries = Object.entries(setupHighlights);
+  if (!entries.length) {
+    list.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:4px 0">No highlights added yet.</div>';
+    return;
+  }
+  list.innerHTML = entries.map(([name, id]) =>
+    `<div style="display:flex;align-items:center;gap:8px;padding:5px 10px;background:var(--dark3);border-radius:4px">
+      <span style="flex:1;font-size:13px;font-weight:600">${name}</span>
+      <span style="color:var(--muted);font-size:11px;font-family:monospace">${id.substring(0,24)}…</span>
+      <button class="btn btn-red btn-sm" onclick="removeHighlight(${JSON.stringify(name)})">✕</button>
+    </div>`
+  ).join('');
+}
+
 // ── Launch ──
 function renderLaunchSummary() {
   const c = draftState?.config || {};
@@ -1839,7 +1915,7 @@ function copyLink(id) {
 
 async function launchDraft() {
   if (!draftState?.config) { notify('Complete setup first', 'error'); return; }
-  saveConfig(); saveTeams(); savePlayers(); saveOrder();
+  saveConfig(); saveTeams(); savePlayers(); saveOrder(); saveStreamingConfig();
   draftState.status = 'idle';
   draftState.currentPickNum = 0;
   draftState.picks = [];
