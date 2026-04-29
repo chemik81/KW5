@@ -281,7 +281,7 @@ select.form-input{width:100%}
         </div>
       </div>
       <div style="margin-top:16px;display:flex;gap:10px">
-        <button class="btn btn-gold" onclick="saveConfig();goStep(1)">Save & Continue →</button>
+        <button class="btn btn-gold" onclick="if(saveConfig())goStep(1)">Save & Continue →</button>
       </div>
     </div>
 
@@ -1165,6 +1165,8 @@ function goStep(n) {
 
 function saveConfig() {
   const url = document.getElementById('cfg-worker').value.trim().replace(/\/+$/,'');
+  if (!url) { notify('Enter Worker URL first', 'error'); return false; }
+  if (!ADMIN_TOKEN) { notify('Test Connection and enter a valid password first', 'error'); return false; }
   if (url) { WORKER_URL = url; localStorage.setItem('draft_worker_url', url); }
   if (!draftState) draftState = {};
   draftState.config = {
@@ -1175,6 +1177,7 @@ function saveConfig() {
     format:    document.getElementById('cfg-format').value,
   };
   notify('Config saved', 'success');
+  return true;
 }
 
 // ── Teams ──
