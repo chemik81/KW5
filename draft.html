@@ -419,6 +419,11 @@ select.form-input{width:100%}
             <code id="link-overlay" style="color:var(--gold);flex:1"></code>
             <button class="btn btn-outline btn-sm" onclick="copyLink('link-overlay')">Copy</button>
           </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="color:var(--muted);width:80px">Overlay v2:</span>
+            <code id="link-overlay-v2" style="color:#a78bfa;flex:1"></code>
+            <button class="btn btn-outline btn-sm" onclick="copyLink('link-overlay-v2')">Copy</button>
+          </div>
         </div>
       </div>
       <div style="display:flex;gap:10px">
@@ -1893,6 +1898,8 @@ function updateLinks() {
   document.getElementById('link-gm').textContent      = `${base}?w=${w}#gm`;
   document.getElementById('link-board').textContent   = `${base}?w=${w}#board`;
   document.getElementById('link-overlay').textContent = `${base}?w=${w}#overlay`;
+  const v2base = base.replace(/\/[^/]+$/, '/draft-board-overlay-v2.html');
+  document.getElementById('link-overlay-v2').textContent = `${v2base}?w=${w}`;
 }
 
 // ── GM PRESENCE ──────────────────────────────────────────────
