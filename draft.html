@@ -1151,6 +1151,10 @@ async function hashPassword(pw) {
 }
 
 function goStep(n) {
+  if (n > 0 && !ADMIN_TOKEN) {
+    notify('Enter Worker URL and test connection with a valid password first', 'error');
+    return;
+  }
   document.querySelectorAll('.step-content').forEach((el,i) => el.classList.toggle('active', i===n));
   document.querySelectorAll('.step').forEach((el,i) => {
     el.classList.toggle('active', i===n);
