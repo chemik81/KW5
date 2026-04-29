@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>KW5 Draft Board v2</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --gold:#f0c040;
+  --dark:#0d0f14;
+  --dark2:#13161e;
+  --dark3:#1a1e2a;
+  --dark4:#222736;
+  --border:rgba(255,255,255,0.07);
+  --text:#e8eaf0;
+  --muted:#7a8099;
+  --green:#4ade80;
+  --red:#f87171;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  background:var(--dark);
+  color:var(--text);
+  font-family:'Barlow',sans-serif;
+  width:1920px;
+  height:1080px;
+  overflow:hidden;
+}
+
+/* ── HEADER (full width, 64px) ── */
+.header{
+  background:linear-gradient(180deg,#1a1e2a 0%,#13161e 100%);
+  border-bottom:3px solid var(--gold);
+  padding:0 32px;
+  height:64px;
+  display:flex;align-items:center;gap:16px;
+}
+.header-logo{font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:900;color:var(--gold);letter-spacing:.08em}
+.header-sub{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;border-left:2px solid var(--border);padding-left:16px;margin-left:4px}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:24px}
+.header-stat{text-align:center}
+.header-stat-val{font-family:'Barlow Condensed',sans-serif;font-size:22px;font-weight:900;color:var(--gold);line-height:1}
+.header-stat-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em}
+
+/* ── MAIN LAYOUT: left 960px board | right 960px sidebar ── */
+.main-layout{
+  display:grid;
+  grid-template-columns:960px 960px;
+  height:calc(1080px - 64px);
+}
+
+/* ── BOARD COLUMN ── */
+.board-col{
+  overflow:hidden;
+  border-right:2px solid var(--border);
+  display:flex;
+  flex-direction:column;
+}
+.board{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  padding:8px 10px;
+  height:100%;
+}
+
+/* ── TEAM CARD ── */
+.team-card{background:var(--dark2);border:1px solid var(--border);border-radius:5px;overflow:hidden;display:flex;flex-direction:column}
+.team-card.otc{border-color:var(--gold);box-shadow:0 0 14px rgba(240,192,64,.22)}
+.team-header{padding:6px 10px;display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.3);border-bottom:1px solid var(--border);flex-shrink:0}
+.team-logo{width:24px;height:24px;border-radius:50%;object-fit:cover;flex-shrink:0}
+.team-logo-ph{width:24px;height:24px;border-radius:50%;background:var(--dark4);display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:10px;color:var(--gold);flex-shrink:0}
+.team-name-txt{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.team-abbr{font-size:11px;color:var(--muted);font-weight:700;flex-shrink:0}
+.otc-dot{width:6px;height:6px;border-radius:50%;background:var(--gold);flex-shrink:0;animation:blink 1s infinite alternate}
+@keyframes blink{to{opacity:.15}}
+
+/* ── PICK ROWS ── */
+.pick-row{padding:4px 10px;display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(255,255,255,.03);flex:1}
+.pick-row.empty{opacity:.28}
+.pick-num{font-family:'Barlow Condensed',sans-serif;font-size:11px;color:var(--muted);min-width:24px;flex-shrink:0}
+.pick-pos{font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:10px;padding:2px 5px;border-radius:3px;min-width:32px;text-align:center;flex-shrink:0}
+.pick-name{font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:14px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pick-ovr{font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:16px;flex-shrink:0;min-width:28px;text-align:right}
+.ovr-s{color:#ffd700}.ovr-a{color:#4ade80}.ovr-b{color:#60a5fa}.ovr-c{color:#fb923c}.ovr-d{color:var(--muted)}
+
+/* ── RIGHT COLUMN ── */
+.right-col{display:flex;flex-direction:column}
+
+/* ── CAM PANEL: top-right quarter (960 x 540) ── */
+.cam-panel{
+  height:540px;
+  position:relative;
+  background:#000;
+  border-bottom:2px solid var(--border);
+  flex-shrink:0;
+  overflow:hidden;
+}
+#cam-iframe{position:absolute;inset:0;width:100%;height:100%;border:none}
+#cam-no-signal{
+  position:absolute;inset:0;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+  background:radial-gradient(ellipse at 50% 40%,#1a1e2a 0%,#0d0f14 70%);
+}
+
+/* ── OTC PANEL: bottom-right (960 x 476) ── */
+.otc-panel{
+  flex:1;
+  background:linear-gradient(160deg,#0f1220 0%,#13161e 100%);
+  border-top:none;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:24px 40px;gap:6px;text-align:center;
+  position:relative;
+  overflow:hidden;
+}
+.otc-panel::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,transparent,var(--gold),transparent);
+}
+
+/* ── ROUND SPLASH ── */
+.round-splash{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(13,15,20,.82);z-index:200;pointer-events:none;animation:sIn .3s ease, sOut .4s 2.5s ease forwards}
+@keyframes sIn{from{opacity:0}to{opacity:1}}
+@keyframes sOut{from{opacity:1}to{opacity:0}}
+.round-text{font-family:'Barlow Condensed',sans-serif;font-size:150px;font-weight:900;color:var(--gold);letter-spacing:.06em;text-shadow:0 0 80px rgba(240,192,64,.5);animation:scl .4s cubic-bezier(.22,.68,0,1.2)}
+@keyframes scl{from{transform:scale(.3);opacity:0}to{transform:scale(1);opacity:1}}
+
+/* ── PICK FLASH ── */
+.pa-flash{position:fixed;bottom:0;left:0;width:960px;background:rgba(240,192,64,.12);border-top:1px solid rgba(240,192,64,.3);padding:8px 24px;display:flex;align-items:center;gap:14px;animation:paIn .3s ease;z-index:170}
+@keyframes paIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.pa-flash-label{font-size:10px;color:var(--gold);text-transform:uppercase;letter-spacing:.15em;font-weight:800}
+.pa-flash-player{font-family:'Barlow Condensed',sans-serif;font-size:20px;font-weight:900}
+.pa-flash-team{font-size:12px;color:var(--muted)}
+
+/* ── HIGHLIGHT OVERLAY (fullscreen) ── */
+#hl-overlay{position:fixed;inset:0;z-index:160;display:none;background:#000;animation:fadeInOvl .35s ease}
+@keyframes fadeInOvl{from{opacity:0}to{opacity:1}}
+#hl-iframe{position:absolute;top:0;left:0;width:100%;height:calc(100% - 96px);border:none}
+#hl-bar{position:absolute;bottom:0;left:0;right:0;height:96px;background:linear-gradient(0deg,rgba(13,15,20,.98) 0%,rgba(13,15,20,.6) 100%);border-top:3px solid var(--gold);display:flex;align-items:center;padding:0 40px;gap:20px}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-logo" id="draft-name">KW5 DRAFT</div>
+  <div class="header-sub">Draft Board</div>
+  <div class="header-right">
+    <div class="header-stat"><div class="header-stat-val" id="hdr-picks">0</div><div class="header-stat-lbl">Picks Made</div></div>
+    <div class="header-stat"><div class="header-stat-val" id="hdr-round">—</div><div class="header-stat-lbl">Round</div></div>
+    <div class="header-stat"><div class="header-stat-val" id="hdr-remaining">—</div><div class="header-stat-lbl">Remaining</div></div>
+  </div>
+</div>
+
+<!-- MAIN LAYOUT -->
+<div class="main-layout">
+
+  <!-- LEFT: BOARD -->
+  <div class="board-col">
+    <div class="board" id="board"></div>
+  </div>
+
+  <!-- RIGHT: CAM + OTC INFO -->
+  <div class="right-col">
+
+    <!-- TOP-RIGHT QUARTER: Camera (960×540) -->
+    <div class="cam-panel">
+      <iframe id="cam-iframe" allow="camera;microphone;autoplay" allowfullscreen></iframe>
+      <div id="cam-no-signal">
+        <div id="cam-ns-logo"></div>
+        <div id="cam-ns-name" style="font-family:'Barlow Condensed',sans-serif;font-size:32px;font-weight:900;color:var(--text)"></div>
+        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em">Waiting for camera...</div>
+      </div>
+    </div>
+
+    <!-- BOTTOM-RIGHT: OTC Info Panel (960×476) -->
+    <div class="otc-panel" id="otc-panel">
+      <div id="otc-logo"></div>
+      <div id="otc-label" style="font-size:11px;color:var(--gold);text-transform:uppercase;letter-spacing:.18em;font-weight:700">ON THE CLOCK</div>
+      <div id="otc-team" style="font-family:'Barlow Condensed',sans-serif;font-size:68px;font-weight:900;line-height:1;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:880px">—</div>
+      <div id="otc-round" style="font-size:13px;color:var(--muted);margin-top:2px"></div>
+      <div style="margin-top:16px">
+        <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.14em">Time Left</div>
+        <div id="otc-timer" style="font-family:'Barlow Condensed',sans-serif;font-size:90px;font-weight:900;line-height:1;color:#fff">—</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ROUND SPLASH -->
+<div id="splash-wrap"></div>
+<!-- PICK FLASH -->
+<div id="pa-flash-wrap"></div>
+
+<!-- HIGHLIGHT OVERLAY (fullscreen) -->
+<div id="hl-overlay">
+  <iframe id="hl-iframe" allowfullscreen></iframe>
+  <div id="hl-bar">
+    <div id="hl-team-logo-el"></div>
+    <div style="flex:1;min-width:0">
+      <div id="hl-pick-label" style="font-size:11px;color:var(--gold);text-transform:uppercase;letter-spacing:.15em;font-weight:700"></div>
+      <div id="hl-player-name" style="font-family:'Barlow Condensed',sans-serif;font-size:52px;font-weight:900;line-height:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
+    </div>
+    <div id="hl-pos-badge"></div>
+    <div style="margin-left:auto;text-align:right;flex-shrink:0">
+      <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Ends in</div>
+      <div id="hl-countdown" style="font-family:'Barlow Condensed',sans-serif;font-size:32px;font-weight:900;color:var(--muted)"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const params = new URLSearchParams(location.search);
+const WORKER_URL = (params.get('w') || '').replace(/\/+$/, '');
+
+let ds = null, timerInterval = null, lastPickNum = -1, lastRound = 0, paFlashTimeout = null;
+let currentCamTeamId = null, hlTimeout = null, hlCountInterval = null, timerPaused = false, timerEndsAt = null;
+
+function buildSeq(ds) {
+  const seq = [];
+  for (let r = 0; r < ds.config.perTeam; r++) {
+    let ord = ds.config.format === 'snake'
+      ? (r%2===0 ? [...ds.order] : [...ds.order].reverse())
+      : [...ds.order];
+    ord.forEach(tid => seq.push({ teamId: tid, round: r+1 }));
+  }
+  return seq;
+}
+
+function getCurrentPick(ds) {
+  if (!ds || ds.status === 'idle') return null;
+  const seq = buildSeq(ds);
+  const idx = ds.currentPickNum || 0;
+  if (idx >= seq.length) return null;
+  const { teamId, round } = seq[idx];
+  return { teamId, round, pickNum: idx+1, totalPicks: seq.length, team: ds.teams.find(t=>t.id===teamId) };
+}
+
+function ovrClass(o){ return o>=85?'ovr-s':o>=75?'ovr-a':o>=65?'ovr-b':o>=55?'ovr-c':'ovr-d'; }
+
+function posStyle(pos) {
+  const s={PG:{bg:'rgba(96,165,250,.2)',tc:'#93c5fd'},SG:{bg:'rgba(96,165,250,.2)',tc:'#93c5fd'},SF:{bg:'rgba(196,181,253,.2)',tc:'#c4b5fd'},LCK:{bg:'rgba(196,181,253,.2)',tc:'#c4b5fd'},PF:{bg:'rgba(196,181,253,.2)',tc:'#c4b5fd'},C:{bg:'rgba(134,239,172,.2)',tc:'#86efac'}};
+  return s[pos]||{bg:'rgba(255,255,255,.1)',tc:'var(--muted)'};
+}
+
+function logoHtml(team, size) {
+  size = size||22;
+  if (team.logoB64) return '<img src="'+team.logoB64+'" style="width:'+size+'px;height:'+size+'px;border-radius:50%;object-fit:cover;flex-shrink:0">';
+  return '<div style="width:'+size+'px;height:'+size+'px;border-radius:50%;background:var(--dark4);display:flex;align-items:center;justify-content:center;font-family:Barlow Condensed,sans-serif;font-weight:900;font-size:'+(size*.45|0)+'px;color:var(--gold);flex-shrink:0">'+((team.name||'?')[0])+'</div>';
+}
+
+function startTimer(endsAt) {
+  clearInterval(timerInterval);
+  timerEndsAt = endsAt;
+  timerInterval = setInterval(function(){
+    var left = Math.max(0, Math.round((new Date(endsAt) - Date.now()) / 1000));
+    var str  = String(Math.floor(left/60)).padStart(2,'0')+':'+String(left%60).padStart(2,'0');
+    var el   = document.getElementById('otc-timer');
+    if (el) { el.textContent = str; el.style.color = left <= 15 ? 'var(--red)' : '#fff'; }
+  }, 500);
+}
+
+function checkNewPick(ds) {
+  var picks = ds.picks || [];
+  var latest = picks[picks.length-1];
+  if (!latest) return;
+  if (lastPickNum === -1) { lastPickNum = latest.pickNum; return; }
+  if (latest.pickNum === lastPickNum) return;
+  lastPickNum = latest.pickNum;
+  var team   = ds.teams.find(function(t){return t.id===latest.teamId;})||{};
+  var player = (ds.players||[]).find(function(p){return p.id===latest.playerId;})||{};
+  showPickFlash(latest, team, player);
+  showHighlight(latest, team, player);
+}
+
+function showPickFlash(pick, team, player) {
+  clearTimeout(paFlashTimeout);
+  var cfg = ds && ds.config || {};
+  var showOvr   = cfg.showOvr   !== false;
+  var showStars = cfg.showStars !== false;
+  var stars = (showStars && player.stars > 0) ? '<span style="color:#f59e0b;font-size:16px;letter-spacing:2px">'+'★'.repeat(player.stars)+'</span>' : '';
+  var ps = posStyle(player.pos||'');
+  var wrap = document.getElementById('pa-flash-wrap');
+  wrap.innerHTML = '<div class="pa-flash">'+logoHtml(team,28)
+    +'<div><div class="pa-flash-label">Pick #'+pick.pickNum+'</div>'
+    +'<div class="pa-flash-player">'+pick.playerId+' <span style="background:'+ps.bg+';color:'+ps.tc+';font-family:Barlow Condensed,sans-serif;font-weight:800;font-size:11px;padding:1px 5px;border-radius:3px">'+(player.pos||'?')+'</span></div>'
+    +(stars?'<div>'+stars+'</div>':'')+'</div>'
+    +'<div class="pa-flash-team">'+team.name+'</div>'
+    +(showOvr?'<div style="margin-left:auto;font-family:Barlow Condensed,sans-serif;font-size:28px;font-weight:900;color:var(--gold)">'+(player.ovr||'?')+'</div>':'')
+    +'</div>';
+  paFlashTimeout = setTimeout(function(){ wrap.innerHTML=''; }, 6000);
+}
+
+function checkRound(ds) {
+  var seq = ds.status==='live' ? buildSeq(ds) : [];
+  var idx = ds.currentPickNum||0;
+  if (!seq.length) return;
+  var cur  = idx < seq.length ? seq[idx] && seq[idx].round : null;
+  var prev = idx > 0 ? seq[idx-1] && seq[idx-1].round : 0;
+  if (cur && prev && cur !== prev && cur !== lastRound) {
+    lastRound = cur;
+    var wrap = document.getElementById('splash-wrap');
+    wrap.innerHTML = '<div class="round-splash"><div class="round-text">ROUND '+cur+'</div></div>';
+    setTimeout(function(){ wrap.innerHTML=''; }, 3200);
+  }
+}
+
+// ── UPDATE CAM PANEL ──
+function updateCamPanel(team, pick) {
+  var iframe = document.getElementById('cam-iframe');
+  var noSig  = document.getElementById('cam-no-signal');
+  var nsLogo = document.getElementById('cam-ns-logo');
+  var nsName = document.getElementById('cam-ns-name');
+
+  if (team && team.camUrl) {
+    if (currentCamTeamId !== team.id) {
+      iframe.src = team.camUrl;
+      currentCamTeamId = team.id;
+    }
+    noSig.style.display = 'none';
+  } else {
+    if (currentCamTeamId !== (team && team.id)) {
+      iframe.src = '';
+      currentCamTeamId = team ? team.id : null;
+    }
+    noSig.style.display = 'flex';
+    if (team) {
+      nsLogo.innerHTML = logoHtml(team, 72);
+      nsName.textContent = team.name;
+    } else {
+      nsLogo.innerHTML = '';
+      nsName.textContent = '';
+    }
+  }
+}
+
+// ── UPDATE OTC PANEL ──
+function updateOtcPanel(pick, status, picks) {
+  var logoEl  = document.getElementById('otc-logo');
+  var labelEl = document.getElementById('otc-label');
+  var teamEl  = document.getElementById('otc-team');
+  var roundEl = document.getElementById('otc-round');
+  var timerEl = document.getElementById('otc-timer');
+
+  if (pick) {
+    logoEl.innerHTML = logoHtml(pick.team || {}, 56);
+    labelEl.textContent = 'ON THE CLOCK';
+    teamEl.textContent  = pick.team ? pick.team.name : '—';
+    roundEl.textContent = 'Round '+pick.round+' · Pick #'+pick.pickNum+' of '+pick.totalPicks;
+    if (status === 'live' && ds.timerEnd && !timerPaused) startTimer(ds.timerEnd);
+    else if (!ds.timerEnd) { clearInterval(timerInterval); if(timerEl) timerEl.textContent='—'; }
+  } else if (status === 'done') {
+    logoEl.innerHTML = '';
+    labelEl.textContent = '';
+    teamEl.textContent  = 'DRAFT COMPLETE';
+    roundEl.textContent = picks.length + ' total picks';
+    if(timerEl) timerEl.textContent = '—';
+    clearInterval(timerInterval);
+  } else {
+    logoEl.innerHTML = '';
+    labelEl.textContent = '';
+    teamEl.textContent  = '—';
+    roundEl.textContent = 'Waiting for draft to start...';
+    if(timerEl) timerEl.textContent = '—';
+  }
+}
+
+// ── HIGHLIGHT OVERLAY ──
+function showHighlight(pick, team, player) {
+  var highlights = ds && ds.config && ds.config.highlights || {};
+  var fileId = highlights[player.id] || highlights[player.name];
+  if (!fileId) return;
+
+  clearTimeout(hlTimeout);
+  clearInterval(hlCountInterval);
+  clearInterval(timerInterval);
+  timerPaused = true;
+
+  document.getElementById('hl-iframe').src = 'https://drive.google.com/file/d/'+fileId+'/preview';
+  document.getElementById('hl-pick-label').textContent = 'Pick #'+pick.pickNum+' · '+team.name;
+  document.getElementById('hl-player-name').textContent = player.name || pick.playerId;
+  document.getElementById('hl-team-logo-el').innerHTML = logoHtml(team, 60);
+  var ps = posStyle(player.pos||'');
+  document.getElementById('hl-pos-badge').innerHTML = '<span style="font-family:Barlow Condensed,sans-serif;font-weight:800;font-size:22px;padding:5px 16px;border-radius:6px;background:'+ps.bg+';color:'+ps.tc+'">'+(player.pos||'?')+'</span>';
+  document.getElementById('hl-overlay').style.display = 'block';
+
+  var duration = (ds && ds.config && ds.config.highlightDuration || 90);
+  var remaining = duration;
+  var cntEl = document.getElementById('hl-countdown');
+  if (cntEl) cntEl.textContent = remaining+'s';
+  hlCountInterval = setInterval(function(){
+    remaining--;
+    if (cntEl) cntEl.textContent = remaining > 0 ? remaining+'s' : '';
+    if (remaining <= 0) clearInterval(hlCountInterval);
+  }, 1000);
+  hlTimeout = setTimeout(hideHighlight, duration * 1000);
+}
+
+function hideHighlight() {
+  clearTimeout(hlTimeout);
+  clearInterval(hlCountInterval);
+  timerPaused = false;
+  document.getElementById('hl-overlay').style.display = 'none';
+  document.getElementById('hl-iframe').src = '';
+  if (ds && ds.timerEnd && ds.status === 'live') startTimer(ds.timerEnd);
+  var pick = getCurrentPick(ds);
+  if (pick) updateCamPanel(pick.team, pick);
+}
+
+// ── RENDER ──
+function render() {
+  if (!ds) return;
+  checkNewPick(ds);
+  checkRound(ds);
+
+  var pick   = getCurrentPick(ds);
+  var status = ds.status || 'idle';
+  var picks  = ds.picks  || [];
+
+  // Header
+  document.getElementById('draft-name').textContent    = (ds.config && ds.config.name) || 'KW5 DRAFT';
+  document.getElementById('hdr-picks').textContent     = picks.length;
+  document.getElementById('hdr-round').textContent     = pick ? pick.round : '—';
+  document.getElementById('hdr-remaining').textContent = pick ? (pick.totalPicks - picks.length) : 0;
+
+  // Right column (cam + OTC info) — skip if highlight is playing
+  if (!timerPaused) {
+    updateCamPanel(pick ? pick.team : null, pick);
+    updateOtcPanel(pick, status, picks);
+  }
+
+  // Board
+  var SLOTS    = ['PG','SG','LCK','PF','C'];
+  var perTeam  = (ds.config && ds.config.perTeam) || 5;
+  var extra    = Math.max(0, perTeam - SLOTS.length);
+  var slots    = SLOTS.concat(Array.from({length:extra}, function(_,i){ return 'F'+(i+1); }));
+  var teams    = ds.teams || [];
+  var perRow   = Math.min(teams.length, 4);
+  var numRows  = Math.ceil(teams.length / perRow);
+  var board    = document.getElementById('board');
+
+  board.innerHTML = Array.from({length: numRows}, function(_, ri) {
+    var rowTeams = teams.slice(ri * perRow, (ri + 1) * perRow);
+    if (!rowTeams.length) return '';
+    return '<div style="display:grid;grid-template-columns:repeat('+rowTeams.length+',1fr);gap:4px;flex:1;min-height:0">'
+      + rowTeams.map(function(t) {
+          var teamPicks = picks.filter(function(p){ return p.teamId === t.id; });
+          var isOtc = pick && pick.teamId === t.id;
+          var logoEl = t.logoB64
+            ? '<img src="'+t.logoB64+'" class="team-logo">'
+            : '<div class="team-logo-ph">'+((t.name||'?')[0])+'</div>';
+
+          var filled = {}, flexQ = [];
+          teamPicks.forEach(function(p) {
+            var pl = (ds.players||[]).find(function(x){ return x.id===p.playerId; })||{};
+            var sp = pl.pos==='SF'?'LCK':pl.pos||'';
+            if (slots.indexOf(sp)>=0 && !filled[sp]) filled[sp] = {p:p,pl:pl};
+            else flexQ.push({p:p,pl:pl});
+          });
+
+          var pickRows = slots.map(function(slot) {
+            var entry = filled[slot] || (slot.startsWith('F') && flexQ.length ? flexQ.shift() : null);
+            var posKey = slot==='LCK'?'SF':slot;
+            var ps = posStyle(posKey);
+            if (!entry) return '<div class="pick-row empty"><span class="pick-pos" style="background:'+ps.bg+';color:'+ps.tc+'">'+slot+'</span><span class="pick-name" style="color:var(--muted)">—</span></div>';
+            var p = entry.p, pl = entry.pl;
+            var isFlex = ['PG','SG','LCK','PF','C'].indexOf(slot) < 0;
+            var aPos = isFlex ? (pl.pos==='SF'?'LCK':(pl.pos||slot)) : slot;
+            var aps = posStyle(aPos==='LCK'?'SF':aPos);
+            var showOvr   = ds.config && ds.config.showOvr   !== false;
+            var showStars = ds.config && ds.config.showStars !== false;
+            var starsHtml = (showStars && pl.stars > 0) ? '<span style="color:#f59e0b;font-size:8px;letter-spacing:1px">'+'★'.repeat(pl.stars)+'</span>' : '';
+            return '<div class="pick-row">'
+              +'<span class="pick-num">#'+p.pickNum+'</span>'
+              +'<span class="pick-pos" style="background:'+aps.bg+';color:'+aps.tc+'">'+aPos+'</span>'
+              +'<span class="pick-name">'+p.playerId+'</span>'
+              +(starsHtml||'')
+              +(showOvr ? '<span class="pick-ovr '+ovrClass(pl.ovr||50)+'">'+(pl.ovr||'')+'</span>' : '')
+              +'</div>';
+          }).join('');
+
+          return '<div class="team-card'+(isOtc?' otc':'')+'">'
+            +'<div class="team-header">'+(isOtc?'<div class="otc-dot"></div>':'')+logoEl
+            +'<div class="team-name-txt">'+t.name+'</div>'
+            +'<div class="team-abbr">'+teamPicks.length+'/'+perTeam+'</div></div>'
+            +'<div style="display:flex;flex-direction:column;flex:1;overflow:hidden">'+pickRows+'</div></div>';
+        }).join('')
+      + '</div>';
+  }).join('');
+}
+
+async function load() {
+  if (!WORKER_URL) return;
+  try {
+    var r = await fetch(WORKER_URL + '/draft-data');
+    if (!r.ok) return;
+    var d = await r.json();
+    ds = d.record || d;
+    render();
+  } catch(e) {}
+}
+
+load();
+setInterval(load, 3000);
+</script>
+</body>
+</html>
