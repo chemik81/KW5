@@ -391,7 +391,11 @@ select.form-input{width:100%}
         </div>
         <div class="form-label" style="margin-bottom:8px">Player Highlights — Google Drive</div>
         <div style="display:flex;gap:8px;margin-bottom:8px">
-          <input class="form-input" id="hl-player-input" placeholder="Player name (exact)" style="width:220px">
+          <div style="position:relative;width:260px">
+            <input class="form-input" id="hl-player-input" placeholder="Search player..." style="width:100%" autocomplete="off"
+              oninput="filterHlPlayers(this.value)" onfocus="showHlDropdown()" onblur="setTimeout(hideHlDropdown,200)">
+            <div id="hl-player-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--dark3);border:1px solid var(--border);border-radius:4px;max-height:200px;overflow-y:auto;z-index:50"></div>
+          </div>
           <input class="form-input" id="hl-url-input" placeholder="Drive URL or file ID" style="flex:1">
           <button class="btn btn-gold btn-sm" onclick="addHighlight()">Add</button>
         </div>
@@ -1777,6 +1781,50 @@ function initStreaming() {
   const el = document.getElementById('cfg-hl-duration');
   if (el) el.value = dur;
   renderHighlightsList();
+  buildHlPlayerList();
+}
+
+let _hlPlayerNames = [];
+
+function buildHlPlayerList() {
+  const players = draftState?.players || kw5Players || [];
+  _hlPlayerNames = players
+    .filter(p => !p.excluded)
+    .map(p => p.name || p.id)
+    .sort((a, b) => a.localeCompare(b));
+}
+
+function filterHlPlayers(q) {
+  const dd = document.getElementById('hl-player-dropdown');
+  if (!dd) return;
+  const lq = q.toLowerCase();
+  const matches = q.length < 1
+    ? _hlPlayerNames.slice(0, 50)
+    : _hlPlayerNames.filter(n => n.toLowerCase().includes(lq)).slice(0, 60);
+  if (!matches.length) { dd.style.display = 'none'; return; }
+  dd.innerHTML = matches.map(n =>
+    `<div style="padding:7px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid rgba(255,255,255,.04)"
+      onmousedown="selectHlPlayer(${JSON.stringify(n)})"
+      onmouseover="this.style.background='var(--dark4)'"
+      onmouseout="this.style.background=''">${n}</div>`
+  ).join('');
+  dd.style.display = 'block';
+}
+
+function selectHlPlayer(name) {
+  const inp = document.getElementById('hl-player-input');
+  if (inp) inp.value = name;
+  hideHlDropdown();
+}
+
+function showHlDropdown() {
+  const inp = document.getElementById('hl-player-input');
+  if (inp) filterHlPlayers(inp.value);
+}
+
+function hideHlDropdown() {
+  const dd = document.getElementById('hl-player-dropdown');
+  if (dd) dd.style.display = 'none';
 }
 
 function saveStreamingConfig() {
