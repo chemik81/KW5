@@ -2380,6 +2380,18 @@ function renderCompare() {
   const p1 = players.find(p=>p.name===n1);
   const p2 = players.find(p=>p.name===n2);
   if (!p1||!p2) return;
+
+  // ── RADAR CHART ──
+  const radarAxes = [
+    {label:'PPG', key:'ppg'},
+    {label:'RPG', key:'rpg'},
+    {label:'APG', key:'apg'},
+    {label:'SPG', key:'spg'},
+    {label:'BPG', key:'bpg'},
+    {label:'FG%', key:'fg_pct'},
+  ];
+  const radarSvg = buildRadar(p1, p2, radarAxes, n1, n2);
+
   const stats = [
     {label:'Games Played', key:'gp', dec:0},
     {label:'PER',          key:'per', dec:1},
@@ -2391,6 +2403,7 @@ function renderCompare() {
     {label:'Turnovers (TPG)',key:'tpg',dec:1,reverse:true},
   ];
   document.getElementById('compare-content').innerHTML = `
+    ${radarSvg}
     <table style="width:100%;border-collapse:collapse;font-size:13px;">
       <thead><tr>
         <th style="text-align:left;padding:8px;color:var(--text3);font-size:10px;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid var(--border2);">Stat</th>
@@ -2411,6 +2424,69 @@ function renderCompare() {
       }).join('')}
       </tbody>
     </table>`;
+}
+
+function buildRadar(p1, p2, axes, name1, name2) {
+  const N = axes.length;
+  const cx = 160, cy = 155, R = 110;
+  const C1 = '#f0c040', C2 = '#38bdf8';
+
+  // compute raw values — fg_pct is a string like "54.3", others are numbers
+  const vals = axes.map(a => {
+    const v1 = a.key === 'fg_pct' ? (parseFloat(p1.fg_pct)||0) : (p1[a.key]||0);
+    const v2 = a.key === 'fg_pct' ? (parseFloat(p2.fg_pct)||0) : (p2[a.key]||0);
+    return { v1, v2, max: Math.max(v1, v2, 0.01) };
+  });
+
+  // polygon points for each player
+  const pts = (vi) => axes.map((_, i) => {
+    const angle = (Math.PI * 2 * i / N) - Math.PI / 2;
+    const r = (vals[i][vi] / vals[i].max) * R;
+    return [cx + r * Math.cos(angle), cy + r * Math.sin(angle)];
+  });
+
+  const toSvgPts = pts => pts.map(([x,y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
+
+  // grid rings
+  const rings = [0.25, 0.5, 0.75, 1].map(t => {
+    const rpts = axes.map((_, i) => {
+      const angle = (Math.PI * 2 * i / N) - Math.PI / 2;
+      return `${(cx + t*R*Math.cos(angle)).toFixed(1)},${(cy + t*R*Math.sin(angle)).toFixed(1)}`;
+    }).join(' ');
+    return `<polygon points="${rpts}" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="1"/>`;
+  }).join('');
+
+  // axis lines + labels
+  const axisLines = axes.map((a, i) => {
+    const angle = (Math.PI * 2 * i / N) - Math.PI / 2;
+    const x2 = cx + R * Math.cos(angle), y2 = cy + R * Math.sin(angle);
+    const lx = cx + (R+22) * Math.cos(angle), ly = cy + (R+22) * Math.sin(angle);
+    const anchor = Math.abs(Math.cos(angle)) < 0.1 ? 'middle' : Math.cos(angle) > 0 ? 'start' : 'end';
+    return `<line x1="${cx}" y1="${cy}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+      <text x="${lx.toFixed(1)}" y="${(ly+4).toFixed(1)}" text-anchor="${anchor}" fill="rgba(255,255,255,0.55)" font-size="10" font-family="Barlow Condensed,sans-serif" font-weight="700">${a.label}</text>`;
+  }).join('');
+
+  const p1pts = pts('v1'), p2pts = pts('v2');
+
+  // dots on vertices
+  const dots = (ptsArr, color) => ptsArr.map(([x,y]) =>
+    `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" fill="${color}"/>`).join('');
+
+  return `<div style="background:rgba(0,0,0,.25);border-radius:8px;padding:12px 8px 4px;margin-bottom:14px">
+    <div style="font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:rgba(255,255,255,.4);margin-bottom:6px;padding-left:4px">Performance Radar</div>
+    <div style="display:flex;align-items:center;gap:16px;padding:0 4px 8px;font-size:11px">
+      <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:50%;background:${C1};display:inline-block"></span>${name1}</span>
+      <span style="display:flex;align-items:center;gap:5px"><span style="width:10px;height:10px;border-radius:50%;background:${C2};display:inline-block"></span>${name2}</span>
+    </div>
+    <svg width="320" height="310" viewBox="0 0 320 310" style="display:block;margin:0 auto;overflow:visible">
+      ${rings}
+      ${axisLines}
+      <polygon points="${toSvgPts(p1pts)}" fill="${C1}" fill-opacity="0.18" stroke="${C1}" stroke-width="2" stroke-linejoin="round"/>
+      <polygon points="${toSvgPts(p2pts)}" fill="${C2}" fill-opacity="0.18" stroke="${C2}" stroke-width="2" stroke-linejoin="round"/>
+      ${dots(p1pts, C1)}
+      ${dots(p2pts, C2)}
+    </svg>
+  </div>`;
 }
 
 
