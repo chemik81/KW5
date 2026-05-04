@@ -357,11 +357,11 @@
     <button onclick="showSection('boxscores',this)">Box Scores</button>
     <button id="admin-nav-btn" onclick="showSection('admin',this)" style="display:none">⚙ Admin</button>
     <button id="chemistry-nav-btn" onclick="showSection('chemistry',this)">🔗 Chemistry</button>
-    <button id="elite-stats-nav-btn" onclick="showSection('elite-stats',this)" style="display:none">📊 Elite Stats</button>
-    <button id="schedule-nav-btn" onclick="showSection('schedule',this)" style="display:none">📅 Schedule</button>
-    <button id="standings-nav-btn" onclick="showSection('standings',this)" style="display:none">🏆 Standings</button>
+    <button id="elite-stats-nav-btn" onclick="showSection('elite-stats',this)">📊 Elite Stats</button>
+    <button id="schedule-nav-btn" onclick="showSection('schedule',this)">📅 Schedule</button>
+    <button id="standings-nav-btn" onclick="showSection('standings',this)">🏆 Standings</button>
     <button id="rosters-nav-btn" onclick="showSection('rosters',this)" style="display:none">👥 Rosters</button>
-    <button id="draft-pool-nav-btn" onclick="showSection('draft-pool',this)" style="display:none">🎯 Draft Pool</button>
+    <button id="draft-pool-nav-btn" onclick="showSection('draft-pool',this)">🎯 Draft Pool</button>
     <button id="superadmin-nav-btn" onclick="showSection('superadmin',this)" style="display:none">👑 Super Admin</button>
   </nav>
   <div class="header-right">
@@ -1326,16 +1326,8 @@ function updateAdminUI() {
   document.getElementById('login-btn').style.display          = a  ? 'none' : '';
   document.getElementById('logout-btn').style.display         = a  ? ''     : 'none';
   document.getElementById('admin-nav-btn').style.display      = a  ? ''     : 'none';
-  const eliteStatsBtn = document.getElementById('elite-stats-nav-btn');
-  const scheduleBtn   = document.getElementById('schedule-nav-btn');
-  const standingsBtn  = document.getElementById('standings-nav-btn');
-  const rostersBtn    = document.getElementById('rosters-nav-btn');
-  if (eliteStatsBtn) eliteStatsBtn.style.display = a ? '' : 'none';
-  if (scheduleBtn)   scheduleBtn.style.display   = a ? '' : 'none';
-  if (standingsBtn)  standingsBtn.style.display  = a ? '' : 'none';
-  if (rostersBtn)    rostersBtn.style.display     = a ? '' : 'none';
-  const draftPoolBtn = document.getElementById('draft-pool-nav-btn');
-  if (draftPoolBtn)  draftPoolBtn.style.display  = a ? '' : 'none';
+  // Elite Stats, Schedule, Standings, Draft Pool are always visible (no login required)
+  // Rosters stays always hidden
   // Superadmin nav — hidden element, only shown when logged in as super
   const saBtn = document.getElementById('superadmin-nav-btn');
   if (saBtn) saBtn.style.display = sa ? '' : 'none';
@@ -5269,7 +5261,8 @@ function withOvr(players) {
     const raw = pct(perSorted,p.per)*0.45 + pct(csaSorted,p.csa)*0.35 + pct(ppgSorted,p.ppg)*0.15 + gpBonus*0.05;
     p.ovr = Math.max(40, Math.min(99, Math.round(raw * 0.59 + 40)));
   });
-  // SF/LCK (same position) and PF: recompute OVR within each group, best = 96
+  // SF/LCK (same position) and PF: recompute OVR within each group
+  // Range [70, 96]: worst = 70, best = 96, smaller gaps between players
   [['SF','LCK'], ['PF']].forEach(posGroup => {
     const grp = players.filter(p => posGroup.includes(p.pos));
     if (!grp.length) return;
@@ -5279,7 +5272,7 @@ function withOvr(players) {
     const raws = grp.map(p => pct(sPer,p.per)*0.45 + pct(sCs,p.csa)*0.35 + pct(sPpg,p.ppg)*0.15 + Math.min(p.gp*2,10)*0.05);
     const maxRaw = Math.max(...raws);
     grp.forEach((p, i) => {
-      p.ovr = maxRaw > 0 ? Math.max(40, Math.round(40 + (raws[i] / maxRaw) * 56)) : 40;
+      p.ovr = maxRaw > 0 ? Math.max(70, Math.round(70 + (raws[i] / maxRaw) * 26)) : 70;
     });
   });
   return players;
