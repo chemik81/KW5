@@ -2299,7 +2299,11 @@ async function recordPick(teamId, playerId, auto=false) {
     stopTimer();
     notify('Draft complete!', 'success');
   } else {
-    draftState.timerEnd = new Date(Date.now() + (draftState.config?.timerSecs||120)*1000).toISOString();
+    const pl = (draftState.players||[]).find(p => p.id === playerId);
+    const highlights = draftState.config?.highlights || {};
+    const hasHighlight = pl && !!(highlights[pl.id] || highlights[pl.name]);
+    const hlDelay = hasHighlight ? (draftState.config?.highlightDuration || 90) * 1000 : 0;
+    draftState.timerEnd = new Date(Date.now() + (draftState.config?.timerSecs||120)*1000 + hlDelay).toISOString();
   }
   await saveDraftState();
   renderAdmin();
