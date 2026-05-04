@@ -1322,6 +1322,18 @@ function computeAggregates(matches) {
     p.stars = getStars(p.name);
   });
 
+  // SF/LCK/PF play a different style — shift the whole group so the best hits 96
+  // (absolute gaps between players are preserved unchanged)
+  const SF_PF_POS = new Set(['SF', 'LCK', 'PF']);
+  const sfpfGroup = players.filter(p => SF_PF_POS.has(p.pos));
+  if (sfpfGroup.length) {
+    const hi = Math.max(...sfpfGroup.map(p => p.ovr));
+    if (hi !== 96) {
+      const bonus = 96 - hi;
+      sfpfGroup.forEach(p => { p.ovr = Math.max(40, Math.min(96, p.ovr + bonus)); });
+    }
+  }
+
   return players.sort((a,b) => b.ovr - a.ovr);
 }
 
