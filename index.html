@@ -1189,9 +1189,10 @@ async function loadFromDb() {
 let _syncPending = false;
 let _syncQueued  = false;
 let _syncDebounceTimer = null;
+let _lastSyncedBody = null; // track what was last successfully synced
 
 function scheduleSyncToDb() {
-  // Debounce: collapse rapid saves (e.g. adding many matches quickly) into one request
+  // Debounce: collapse rapid saves into one request (8s window reduces KV write count)
   clearTimeout(_syncDebounceTimer);
   _syncDebounceTimer = setTimeout(() => {
     if (_syncPending) {
@@ -1200,7 +1201,7 @@ function scheduleSyncToDb() {
     } else {
       _doSyncToDb();
     }
-  }, 800);
+  }, 8000);
 }
 
 async function _doSyncToDb() {
@@ -1212,6 +1213,8 @@ async function _doSyncToDb() {
     const _kw5url2 = WORKER_URL.replace(/\/+$/, '') + '/kw5-data';
     // Snapshot current state at send time — always sends the latest version
     const body = JSON.stringify({ record: { matches: state.matches, roster: state.roster, corrections: state.corrections, eliteMatches: state.eliteMatches, eliteResults: state.eliteResults, eliteSchedule: state.eliteSchedule, lastModified: state.lastModified } });
+    // Skip write if nothing changed since last successful sync (saves KV write quota)
+    if (body === _lastSyncedBody) { _syncPending = false; return; }
     const bodySizeKB = Math.round(body.length / 1024);
     const res = await fetch(_kw5url2, {
       method: 'PUT',
@@ -1224,6 +1227,7 @@ async function _doSyncToDb() {
       console.error('Sync failed:', res.status, detail, `Payload: ${bodySizeKB} KB`);
       throw new Error(`HTTP ${res.status}${detail ? ' — ' + detail.slice(0, 120) : ''} (payload: ${bodySizeKB} KB)`);
     }
+    _lastSyncedBody = body;
     notify('✅ Saved to cloud', 'success');
   } catch(e) {
     notify('❌ Sync failed: ' + e.message, 'error');
