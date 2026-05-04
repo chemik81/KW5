@@ -99,7 +99,7 @@ function getFlag(n){if(!n)return '';if(COUNTRY_FLAGS[n])return COUNTRY_FLAGS[n];
 const params = new URLSearchParams(location.search);
 const WORKER_URL = (params.get('w') || '').replace(/\/+$/, '');
 
-let lastPickNum = -1;
+let lastPickNum = null; // null = not yet initialized
 let hideTimeout = null;
 
 async function load() {
@@ -111,17 +111,18 @@ async function load() {
     const ds = d.record || d;
     const picks = ds.picks || [];
     const latest = picks[picks.length - 1];
-    if (!latest) return;
+    const currentNum = latest ? latest.pickNum : 0;
 
-    if (lastPickNum === -1) { lastPickNum = latest.pickNum; return; } // skip first load
-    if (latest.pickNum === lastPickNum) return;
-    lastPickNum = latest.pickNum;
+    if (lastPickNum === null) { lastPickNum = currentNum; return; } // initialize baseline
+    if (currentNum === lastPickNum) return;
+    lastPickNum = currentNum;
+    if (!latest) return;
 
     const team   = (ds.teams   || []).find(t => t.id === latest.teamId)   || {};
     const player = (ds.players || []).find(p => p.id === latest.playerId) || {};
 
     showCard(latest, team, player);
-  } catch(e) {}
+  } catch(e) { console.error('pick-announce load error:', e); }
 }
 
 function showCard(pick, team, player) {

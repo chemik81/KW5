@@ -196,7 +196,7 @@ body{
 
 <!-- HIGHLIGHT OVERLAY (fullscreen) -->
 <div id="hl-overlay">
-  <iframe id="hl-iframe" allowfullscreen></iframe>
+  <iframe id="hl-iframe" allow="autoplay" allowfullscreen></iframe>
   <div id="hl-bar">
     <div id="hl-team-logo-el"></div>
     <div style="flex:1;min-width:0">
@@ -378,7 +378,7 @@ function showHighlight(pick, team, player) {
   clearInterval(timerInterval);
   timerPaused = true;
 
-  document.getElementById('hl-iframe').src = 'https://drive.google.com/file/d/'+fileId+'/preview';
+  document.getElementById('hl-iframe').src = 'https://drive.google.com/file/d/'+fileId+'/preview?autoplay=1';
   document.getElementById('hl-pick-label').textContent = 'Pick #'+pick.pickNum+' · '+team.name;
   document.getElementById('hl-player-name').textContent = player.name || pick.playerId;
   document.getElementById('hl-team-logo-el').innerHTML = logoHtml(team, 60);
