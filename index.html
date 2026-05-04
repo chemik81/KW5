@@ -1212,12 +1212,18 @@ async function _doSyncToDb() {
     const _kw5url2 = WORKER_URL.replace(/\/+$/, '') + '/kw5-data';
     // Snapshot current state at send time — always sends the latest version
     const body = JSON.stringify({ record: { matches: state.matches, roster: state.roster, corrections: state.corrections, eliteMatches: state.eliteMatches, eliteResults: state.eliteResults, eliteSchedule: state.eliteSchedule, lastModified: state.lastModified } });
+    const bodySizeKB = Math.round(body.length / 1024);
     const res = await fetch(_kw5url2, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', 'X-Admin-Token': adminToken },
       body
     });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) {
+      let detail = '';
+      try { detail = await res.text(); } catch(_) {}
+      console.error('Sync failed:', res.status, detail, `Payload: ${bodySizeKB} KB`);
+      throw new Error(`HTTP ${res.status}${detail ? ' — ' + detail.slice(0, 120) : ''} (payload: ${bodySizeKB} KB)`);
+    }
     notify('✅ Saved to cloud', 'success');
   } catch(e) {
     notify('❌ Sync failed: ' + e.message, 'error');
