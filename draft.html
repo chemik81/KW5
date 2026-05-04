@@ -486,12 +486,28 @@ select.form-input{width:100%}
 
     <!-- Admin manual pick override -->
     <div class="card" id="admin-manual-pick" style="margin-bottom:12px;display:none">
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin-bottom:8px">⚙ Manual Pick Override</div>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <input id="admin-pick-search" class="search-input" style="flex:1;min-width:160px" placeholder="Search player..." oninput="renderAdminPickList()">
-        <span id="admin-pick-for" style="font-size:12px;color:var(--muted)"></span>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px;flex-wrap:wrap">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--gold)">⚙ Manual Pick Override</div>
+        <span id="admin-pick-for" style="font-size:12px;color:var(--muted);margin-left:auto"></span>
       </div>
-      <div id="admin-pick-list" style="margin-top:8px;max-height:280px;overflow-y:auto;display:flex;flex-direction:column;gap:4px"></div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+        <button class="filter-btn active" onclick="filterAdminPick('ALL',this)">ALL</button>
+        <button class="filter-btn" onclick="filterAdminPick('PG',this)">PG</button>
+        <button class="filter-btn" onclick="filterAdminPick('SG',this)">SG</button>
+        <button class="filter-btn" onclick="filterAdminPick('SF',this)">SF</button>
+        <button class="filter-btn" onclick="filterAdminPick('PF',this)">PF</button>
+        <button class="filter-btn" onclick="filterAdminPick('C',this)">C</button>
+        <input id="admin-pick-search" class="search-input" style="margin-left:auto;max-width:200px" placeholder="Search player..." oninput="renderAdminPickList()">
+      </div>
+      <div style="overflow-x:auto;max-height:340px;overflow-y:auto">
+        <table class="player-table" id="admin-pick-table">
+          <thead><tr>
+            <th style="text-align:left">Player</th>
+            <th>Pos</th><th>GP</th><th>PPG</th><th>RPG</th><th>APG</th><th>PER</th><th>OVR</th><th></th>
+          </tr></thead>
+          <tbody id="admin-pick-body"></tbody>
+        </table>
+      </div>
     </div>
 
     <div class="tabs" style="margin-bottom:0">
@@ -772,6 +788,7 @@ let draftState = null;
 let kw5Players = [];
 let poolFilter = 'ALL';
 let gmFilter = 'ALL';
+let adminPickFilter = 'ALL';
 let gmSortKey = 'ovr';
 let gmSortAsc = false;
 let myTeamId = null;
@@ -2185,26 +2202,42 @@ function renderAdminLog() {
 }
 
 function renderAdminPickList() {
-  const el = document.getElementById('admin-pick-list');
-  if (!el || !draftState) return;
+  const body = document.getElementById('admin-pick-body');
+  if (!body || !draftState) return;
   const search = (document.getElementById('admin-pick-search')?.value || '').trim().toLowerCase();
-  const available = getAvailablePlayers(draftState);
-  const filtered = search
-    ? available.filter(p => p.id.toLowerCase().includes(search) || (p.name||'').toLowerCase().includes(search))
-    : available;
-  if (!filtered.length) {
-    el.innerHTML = '<div style="font-size:12px;color:var(--muted);text-align:center;padding:8px">No players found</div>';
+  const available = getAvailablePlayers(draftState).filter(p => {
+    if (adminPickFilter !== 'ALL' && p.pos !== adminPickFilter) return false;
+    if (search && !p.id.toLowerCase().includes(search) && !(p.name||'').toLowerCase().includes(search)) return false;
+    return true;
+  }).sort((a, b) => (b.ovr||0) - (a.ovr||0));
+
+  const showOvr = draftState?.config?.showOvr !== false;
+  if (!available.length) {
+    body.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:12px">No players found</td></tr>`;
     return;
   }
-  el.innerHTML = filtered.slice(0, 60).map(p => {
+  body.innerHTML = available.map((p, i) => {
     const { bg, tc } = posStyle(p.pos||'');
-    return `<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;background:var(--dark2);border-radius:4px">
-      <span style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:11px;padding:1px 5px;border-radius:3px;background:${bg};color:${tc};min-width:30px;text-align:center">${p.pos||'?'}</span>
-      <span style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.id}</span>
-      ${p.ovr ? `<span style="font-size:12px;color:var(--gold);font-weight:700;min-width:28px;text-align:right">${p.ovr}</span>` : ''}
-      <button onclick="adminForcePick('${p.id.replace(/'/g,"\\'")}');" style="font-size:11px;padding:3px 10px;background:var(--gold);color:#000;border:none;border-radius:4px;cursor:pointer;font-weight:700;flex-shrink:0">PICK</button>
-    </div>`;
+    const id = p.id.replace(/'/g, "\\'");
+    return `<tr style="cursor:pointer" onclick="adminForcePick('${id}')">
+      <td style="font-weight:600">${getFlag(p.name)||''}${p.id}</td>
+      <td><span style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:11px;padding:1px 5px;border-radius:3px;background:${bg};color:${tc}">${p.pos||'?'}</span></td>
+      <td style="color:var(--muted)">${p.gp||0}</td>
+      <td>${(p.ppg||0).toFixed(1)}</td>
+      <td>${(p.rpg||0).toFixed(1)}</td>
+      <td>${(p.apg||0).toFixed(1)}</td>
+      <td>${(p.per||0).toFixed(1)}</td>
+      ${showOvr ? `<td><span class="ovr-badge ${ovrClass(p.ovr||50)}">${p.ovr||50}</span></td>` : '<td></td>'}
+      <td><button onclick="event.stopPropagation();adminForcePick('${id}');" style="font-size:11px;padding:3px 10px;background:var(--gold);color:#000;border:none;border-radius:4px;cursor:pointer;font-weight:700">PICK</button></td>
+    </tr>`;
   }).join('');
+}
+
+function filterAdminPick(pos, btn) {
+  adminPickFilter = pos;
+  document.querySelectorAll('#admin-manual-pick .filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderAdminPickList();
 }
 
 async function adminForcePick(playerId) {
@@ -2235,8 +2268,7 @@ async function adminSkipPick() {
   const pl = autoPickFor(draftState, pick.teamId);
   if (!pl) { notify('No players available', 'error'); return; }
   await recordPick(pick.teamId, pl.id, true);
-  // Notify GM via Discord DM that auto-pick was made
-  notifyGmAutoPick(pick.team, pl);
+  // notifyGmAutoPick(pick.team, pl); // disabled during testing
 }
 
 async function notifyGmAutoPick(team, player) {
