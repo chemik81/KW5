@@ -5269,14 +5269,14 @@ function withOvr(players) {
     const raw = pct(perSorted,p.per)*0.45 + pct(csaSorted,p.csa)*0.35 + pct(ppgSorted,p.ppg)*0.15 + gpBonus*0.05;
     p.ovr = Math.max(40, Math.min(99, Math.round(raw * 0.59 + 40)));
   });
-  // SF/LCK/PF rescale: best player in group → 96, others proportional from floor 40
+  // SF/LCK/PF: shift whole group so best hits 96, absolute gaps unchanged
   const SF_PF_POS = new Set(['SF', 'LCK', 'PF']);
   const grp = players.filter(p => SF_PF_POS.has(p.pos));
   if (grp.length) {
     const hi = Math.max(...grp.map(p => p.ovr));
-    if (hi > 40 && hi !== 96) {
-      const scale = (96 - 40) / (hi - 40);
-      grp.forEach(p => { p.ovr = Math.min(96, Math.round(40 + (p.ovr - 40) * scale)); });
+    if (hi !== 96) {
+      const bonus = 96 - hi;
+      grp.forEach(p => { p.ovr = Math.max(40, Math.min(96, p.ovr + bonus)); });
     }
   }
   return players;

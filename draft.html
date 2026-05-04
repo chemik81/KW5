@@ -1322,15 +1322,15 @@ function computeAggregates(matches) {
     p.stars = getStars(p.name);
   });
 
-  // SF/LCK/PF play a different style — rescale their OVR so the best reaches 96
-  // (preserves relative gaps within the group, scales proportionally from floor 40)
+  // SF/LCK/PF play a different style — shift the whole group so the best hits 96
+  // (absolute gaps between players are preserved unchanged)
   const SF_PF_POS = new Set(['SF', 'LCK', 'PF']);
   const sfpfGroup = players.filter(p => SF_PF_POS.has(p.pos));
   if (sfpfGroup.length) {
     const hi = Math.max(...sfpfGroup.map(p => p.ovr));
-    if (hi > 40 && hi !== 96) {
-      const scale = (96 - 40) / (hi - 40);
-      sfpfGroup.forEach(p => { p.ovr = Math.min(96, Math.round(40 + (p.ovr - 40) * scale)); });
+    if (hi !== 96) {
+      const bonus = 96 - hi;
+      sfpfGroup.forEach(p => { p.ovr = Math.max(40, Math.min(96, p.ovr + bonus)); });
     }
   }
 
