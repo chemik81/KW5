@@ -1322,17 +1322,19 @@ function computeAggregates(matches) {
     p.stars = getStars(p.name);
   });
 
-  // SF/LCK/PF play a different style — shift the whole group so the best hits 96
-  // (absolute gaps between players are preserved unchanged)
-  const SF_PF_POS = new Set(['SF', 'LCK', 'PF']);
-  const sfpfGroup = players.filter(p => SF_PF_POS.has(p.pos));
-  if (sfpfGroup.length) {
-    const hi = Math.max(...sfpfGroup.map(p => p.ovr));
-    if (hi !== 96) {
-      const bonus = 96 - hi;
-      sfpfGroup.forEach(p => { p.ovr = Math.max(40, Math.min(96, p.ovr + bonus)); });
-    }
-  }
+  // LCK and PF: recompute OVR using within-position percentiles of PER/CS/PPG
+  // → best player in each group hits 96, others scale proportionally
+  ['LCK', 'PF'].forEach(targetPos => {
+    const grp = players.filter(p => p.pos === targetPos);
+    if (!grp.length) return;
+    const sPer = [...grp.map(p => p.per)].sort((a,b) => a-b);
+    const sCs  = [...grp.map(p => p.cs)].sort((a,b) => a-b);
+    const sPpg = [...grp.map(p => p.ppg)].sort((a,b) => a-b);
+    grp.forEach(p => {
+      const raw = pct(sPer,p.per)*0.45 + pct(sCs,p.cs)*0.35 + pct(sPpg,p.ppg)*0.15 + Math.min(p.gp*2,10)*0.05;
+      p.ovr = Math.max(40, Math.min(96, Math.round(raw * 0.56 + 40)));
+    });
+  });
 
   return players.sort((a,b) => b.ovr - a.ovr);
 }

@@ -5269,16 +5269,19 @@ function withOvr(players) {
     const raw = pct(perSorted,p.per)*0.45 + pct(csaSorted,p.csa)*0.35 + pct(ppgSorted,p.ppg)*0.15 + gpBonus*0.05;
     p.ovr = Math.max(40, Math.min(99, Math.round(raw * 0.59 + 40)));
   });
-  // SF/LCK/PF: shift whole group so best hits 96, absolute gaps unchanged
-  const SF_PF_POS = new Set(['SF', 'LCK', 'PF']);
-  const grp = players.filter(p => SF_PF_POS.has(p.pos));
-  if (grp.length) {
-    const hi = Math.max(...grp.map(p => p.ovr));
-    if (hi !== 96) {
-      const bonus = 96 - hi;
-      grp.forEach(p => { p.ovr = Math.max(40, Math.min(96, p.ovr + bonus)); });
-    }
-  }
+  // LCK and PF: recompute OVR using within-position percentiles of PER/CS/PPG
+  // → best player in each group hits 96, others scale proportionally
+  ['LCK', 'PF'].forEach(targetPos => {
+    const grp = players.filter(p => p.pos === targetPos);
+    if (!grp.length) return;
+    const sPer = [...grp.map(p => p.per)].sort((a,b) => a-b);
+    const sCs  = [...grp.map(p => p.csa)].sort((a,b) => a-b);
+    const sPpg = [...grp.map(p => p.ppg)].sort((a,b) => a-b);
+    grp.forEach(p => {
+      const raw = pct(sPer,p.per)*0.45 + pct(sCs,p.csa)*0.35 + pct(sPpg,p.ppg)*0.15 + Math.min(p.gp*2,10)*0.05;
+      p.ovr = Math.max(40, Math.min(96, Math.round(raw * 0.56 + 40)));
+    });
+  });
   return players;
 }
 
