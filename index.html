@@ -5269,10 +5269,9 @@ function withOvr(players) {
     const raw = pct(perSorted,p.per)*0.45 + pct(csaSorted,p.csa)*0.35 + pct(ppgSorted,p.ppg)*0.15 + gpBonus*0.05;
     p.ovr = Math.max(40, Math.min(99, Math.round(raw * 0.59 + 40)));
   });
-  // LCK and PF: recompute OVR using within-position percentiles of PER/CS/PPG
-  // → best player in each group hits 96, others scale proportionally
-  ['LCK', 'PF'].forEach(targetPos => {
-    const grp = players.filter(p => p.pos === targetPos);
+  // SF/LCK (same position) and PF: recompute OVR within each group, best = 96
+  [['SF','LCK'], ['PF']].forEach(posGroup => {
+    const grp = players.filter(p => posGroup.includes(p.pos));
     if (!grp.length) return;
     const sPer = [...grp.map(p => p.per)].sort((a,b) => a-b);
     const sCs  = [...grp.map(p => p.csa)].sort((a,b) => a-b);

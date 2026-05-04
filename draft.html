@@ -1322,10 +1322,9 @@ function computeAggregates(matches) {
     p.stars = getStars(p.name);
   });
 
-  // LCK and PF: recompute OVR using within-position percentiles of PER/CS/PPG
-  // → best player in each group hits 96, others scale proportionally
-  ['LCK', 'PF'].forEach(targetPos => {
-    const grp = players.filter(p => p.pos === targetPos);
+  // SF/LCK (same position) and PF: recompute OVR within each group, best = 96
+  [['SF','LCK'], ['PF']].forEach(posGroup => {
+    const grp = players.filter(p => posGroup.includes(p.pos));
     if (!grp.length) return;
     const sPer = [...grp.map(p => p.per)].sort((a,b) => a-b);
     const sCs  = [...grp.map(p => p.cs)].sort((a,b) => a-b);
