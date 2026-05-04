@@ -2058,7 +2058,7 @@ async function initAdmin() {
   renderAdmin();
   pollInterval = setInterval(async () => {
     await loadDraftState();
-    renderAdmin();
+    try { renderAdmin(); } catch(e) { console.error('renderAdmin:', e); }
     checkAutoExpiry();
   }, 3000);
 }
@@ -2136,7 +2136,7 @@ function renderAdmin() {
 
   // Timer
   if (status === 'live' && draftState.timerEnd) {
-    startLocalTimer(draftState.timerEnd, ['admin-timer'], () => {});
+    startLocalTimer(draftState.timerEnd, ['admin-timer'], () => checkAutoExpiry());
   } else { stopTimer(); document.getElementById('admin-timer').textContent = '—'; }
 
   // Progress
