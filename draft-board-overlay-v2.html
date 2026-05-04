@@ -370,7 +370,7 @@ function updateOtcPanel(pick, status, picks) {
 // ── HIGHLIGHT OVERLAY ──
 function showHighlight(pick, team, player) {
   var highlights = ds && ds.config && ds.config.highlights || {};
-  var fileId = highlights[player.id] || highlights[player.name];
+  var fileId = highlights[pick.playerId] || highlights[player.id] || highlights[player.name];
   if (!fileId) return;
 
   clearTimeout(hlTimeout);

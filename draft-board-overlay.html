@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noai, noimageai, noindex, nofollow">
 <title>KW5 Draft Board</title>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -26,6 +27,9 @@ body{
   width:1920px;
   height:1080px;
   overflow:hidden;
+}
+@media(max-width:1920px){
+  body{width:100%;height:100vh;min-height:100vh;}
 }
 
 /* ── HEADER ── */
@@ -61,6 +65,9 @@ body{
   gap:5px;
   padding:8px 12px;
   height:calc(1080px - 64px - 72px);
+}
+@media(max-width:1920px){
+  .board{height:calc(100vh - 64px - 72px);}
 }
 
 /* ── TEAM CARD ── */
@@ -214,6 +221,36 @@ body{
   background:linear-gradient(0deg,rgba(13,15,20,.98) 0%,rgba(13,15,20,.6) 100%);
   border-top:3px solid var(--gold);
   display:flex;align-items:center;padding:0 40px;gap:20px;
+}
+
+/* ── MOBILE / PHONE ── */
+@media(max-width:900px){
+  .header{height:48px;padding:0 12px;gap:8px}
+  .header-logo{font-size:20px}
+  .header-sub{display:none}
+  .header-stat-val{font-size:16px}
+  .header-stat-lbl{font-size:9px}
+  .board{
+    height:calc(100vh - 48px - 56px);
+    padding:4px 6px;gap:3px;
+  }
+  .team-header{padding:4px 8px;gap:6px}
+  .team-logo{width:20px;height:20px}
+  .team-logo-ph{width:20px;height:20px;font-size:10px}
+  .team-name-text{font-size:13px}
+  .team-abbr{font-size:11px}
+  .pick-row{padding:4px 8px;gap:6px}
+  .pick-num{font-size:11px;min-width:22px}
+  .pick-pos{font-size:11px;padding:1px 4px;min-width:30px}
+  .pick-name{font-size:15px}
+  .pick-ovr{font-size:17px;min-width:26px}
+  .pick-bar{height:56px;padding:0 12px;gap:12px}
+  .pick-bar-logo{width:36px;height:36px;font-size:14px}
+  .pick-bar-team{font-size:16px}
+  .pick-bar-round{font-size:10px}
+  .pick-bar-player{font-size:24px}
+  .pick-bar-ovr{font-size:28px}
+  .pick-bar-timer{font-size:28px;min-width:60px}
 }
 </style>
 </head>
@@ -573,7 +610,7 @@ function hideCam() {
 // ── HIGHLIGHT OVERLAY ──
 function showHighlight(pick, team, player) {
   const highlights = ds?.config?.highlights || {};
-  const fileId = highlights[player.id] || highlights[player.name];
+  const fileId = highlights[pick.playerId] || highlights[player.id] || highlights[player.name];
   if (!fileId) return;
 
   hideCam();
