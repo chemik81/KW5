@@ -2058,7 +2058,7 @@ async function initAdmin() {
   renderAdmin();
   pollInterval = setInterval(async () => {
     await loadDraftState();
-    renderAdmin();
+    try { renderAdmin(); } catch(e) { console.error('renderAdmin:', e); }
     checkAutoExpiry();
   }, 3000);
 }
@@ -2136,7 +2136,7 @@ function renderAdmin() {
 
   // Timer
   if (status === 'live' && draftState.timerEnd) {
-    startLocalTimer(draftState.timerEnd, ['admin-timer'], () => {});
+    startLocalTimer(draftState.timerEnd, ['admin-timer'], () => checkAutoExpiry());
   } else { stopTimer(); document.getElementById('admin-timer').textContent = '—'; }
 
   // Progress
@@ -2153,7 +2153,7 @@ function renderAdmin() {
   if (status === 'live' && pick) {
     manualPanel.style.display = 'block';
     document.getElementById('admin-pick-for').textContent = 'Picking for: ' + (pick.team?.name || '—');
-    renderAdminPickList();
+    try { renderAdminPickList(); } catch(e) { console.error('renderAdminPickList:', e); }
   } else {
     manualPanel.style.display = 'none';
   }
@@ -2226,11 +2226,10 @@ function renderAdminPickList() {
     return;
   }
   body.innerHTML = available.map((p, i) => {
-    const { bg, tc } = posStyle(p.pos||'');
     const id = p.id.replace(/'/g, "\\'");
     return `<tr style="cursor:pointer" onclick="adminForcePick('${id}')">
       <td style="font-weight:600">${getFlag(p.name)||''}${p.id}</td>
-      <td><span style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:11px;padding:1px 5px;border-radius:3px;background:${bg};color:${tc}">${p.pos||'?'}</span></td>
+      <td>${posBadge(p.pos||'?')}</td>
       <td style="color:var(--muted)">${p.gp||0}</td>
       <td>${(p.ppg||0).toFixed(1)}</td>
       <td>${(p.rpg||0).toFixed(1)}</td>
