@@ -1329,9 +1329,10 @@ function computeAggregates(matches) {
     const sPer = [...grp.map(p => p.per)].sort((a,b) => a-b);
     const sCs  = [...grp.map(p => p.cs)].sort((a,b) => a-b);
     const sPpg = [...grp.map(p => p.ppg)].sort((a,b) => a-b);
-    grp.forEach(p => {
-      const raw = pct(sPer,p.per)*0.45 + pct(sCs,p.cs)*0.35 + pct(sPpg,p.ppg)*0.15 + Math.min(p.gp*2,10)*0.05;
-      p.ovr = Math.max(40, Math.min(96, Math.round(raw * 0.56 + 40)));
+    const raws = grp.map(p => pct(sPer,p.per)*0.45 + pct(sCs,p.cs)*0.35 + pct(sPpg,p.ppg)*0.15 + Math.min(p.gp*2,10)*0.05);
+    const maxRaw = Math.max(...raws);
+    grp.forEach((p, i) => {
+      p.ovr = maxRaw > 0 ? Math.max(40, Math.round(40 + (raws[i] / maxRaw) * 56)) : 40;
     });
   });
 
