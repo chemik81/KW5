@@ -2268,8 +2268,7 @@ async function adminSkipPick() {
   const pl = autoPickFor(draftState, pick.teamId);
   if (!pl) { notify('No players available', 'error'); return; }
   await recordPick(pick.teamId, pl.id, true);
-  // Notify GM via Discord DM that auto-pick was made
-  notifyGmAutoPick(pick.team, pl);
+  // notifyGmAutoPick(pick.team, pl); // disabled during testing
 }
 
 async function notifyGmAutoPick(team, player) {
