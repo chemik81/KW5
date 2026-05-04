@@ -1691,7 +1691,7 @@ function renderPool() {
     const sp = spMap[p.name] || {};
     const excluded = sp.excluded || false;
     const stars = sp.stars ?? p.stars ?? 0;
-    const ovr   = sp.ovr   ?? p.ovr;
+    const ovr   = sp.ovrOverride ?? p.ovr;
     return `<tr>
       <td><input type="checkbox" ${excluded?'':'checked'} onchange="togglePlayer('${p.name}',this.checked)"></td>
       <td style="color:var(--muted)">${i+1}</td>
@@ -1715,7 +1715,7 @@ function setPlayerOvr(id, ovr) {
   if (!setupPlayers) setupPlayers = [];
   let e = setupPlayers.find(p=>p.id===id);
   if (!e) { e = {id, excluded:false}; setupPlayers.push(e); }
-  e.ovr = Math.max(40, Math.min(99, ovr));
+  e.ovrOverride = Math.max(40, Math.min(99, ovr));
 }
 
 function setPlayerStars(id, stars) {
@@ -1771,7 +1771,7 @@ function savePlayers() {
     id: p.name, name: p.name, pos: p.pos,
     gp: p.gp, ppg: p.ppg, rpg: p.rpg, apg: p.apg,
     per: p.per, cs: p.cs,
-    ovr:   spMap[p.name]?.ovr   ?? p.ovr,
+    ovr:   spMap[p.name]?.ovrOverride ?? p.ovr,
     stars: spMap[p.name]?.stars ?? p.stars ?? 0,
     wins: p.wins||0, losses: p.losses||0, win_pct: p.win_pct||0,
     excluded: spMap[p.name]?.excluded || false
