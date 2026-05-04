@@ -5269,7 +5269,8 @@ function withOvr(players) {
     const raw = pct(perSorted,p.per)*0.45 + pct(csaSorted,p.csa)*0.35 + pct(ppgSorted,p.ppg)*0.15 + gpBonus*0.05;
     p.ovr = Math.max(40, Math.min(99, Math.round(raw * 0.59 + 40)));
   });
-  // SF/LCK (same position) and PF: recompute OVR within each group, best = 96
+  // SF/LCK (same position) and PF: recompute OVR within each group
+  // Range [70, 96]: worst = 70, best = 96, smaller gaps between players
   [['SF','LCK'], ['PF']].forEach(posGroup => {
     const grp = players.filter(p => posGroup.includes(p.pos));
     if (!grp.length) return;
@@ -5279,7 +5280,7 @@ function withOvr(players) {
     const raws = grp.map(p => pct(sPer,p.per)*0.45 + pct(sCs,p.csa)*0.35 + pct(sPpg,p.ppg)*0.15 + Math.min(p.gp*2,10)*0.05);
     const maxRaw = Math.max(...raws);
     grp.forEach((p, i) => {
-      p.ovr = maxRaw > 0 ? Math.max(40, Math.round(40 + (raws[i] / maxRaw) * 56)) : 40;
+      p.ovr = maxRaw > 0 ? Math.max(70, Math.round(70 + (raws[i] / maxRaw) * 26)) : 70;
     });
   });
   return players;
