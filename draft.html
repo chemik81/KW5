@@ -394,8 +394,8 @@ select.form-input{width:100%}
         <div style="display:flex;gap:8px;margin-bottom:8px">
           <div style="position:relative;width:260px">
             <input class="form-input" id="hl-player-input" placeholder="Search player..." style="width:100%" autocomplete="off"
-              oninput="filterHlPlayers(this.value)" onfocus="showHlDropdown()" onblur="setTimeout(hideHlDropdown,200)">
-            <div id="hl-player-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--dark3);border:1px solid var(--border);border-radius:4px;max-height:200px;overflow-y:auto;z-index:50"></div>
+              oninput="filterHlPlayers(this.value)" onfocus="showHlDropdown()">
+            <div id="hl-player-dropdown" onmousedown="event.preventDefault()" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--dark3);border:1px solid var(--border);border-radius:4px;max-height:200px;overflow-y:auto;z-index:50"></div>
           </div>
           <input class="form-input" id="hl-url-input" placeholder="Drive URL or file ID" style="flex:1">
           <button class="btn btn-gold btn-sm" onclick="addHighlight()">Add</button>
@@ -1867,7 +1867,7 @@ function filterHlPlayers(q) {
   if (!matches.length) { dd.style.display = 'none'; return; }
   dd.innerHTML = matches.map(n =>
     `<div style="padding:7px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid rgba(255,255,255,.04)"
-      onmousedown="event.preventDefault();selectHlPlayer(${JSON.stringify(n)})"
+      onclick="selectHlPlayer(${JSON.stringify(n)})"
       onmouseover="this.style.background='var(--dark4)'"
       onmouseout="this.style.background=''">${n}</div>`
   ).join('');
@@ -1878,6 +1878,7 @@ function selectHlPlayer(name) {
   const inp = document.getElementById('hl-player-input');
   if (inp) inp.value = name;
   hideHlDropdown();
+  document.getElementById('hl-url-input')?.focus();
 }
 
 function showHlDropdown() {
@@ -1889,6 +1890,12 @@ function hideHlDropdown() {
   const dd = document.getElementById('hl-player-dropdown');
   if (dd) dd.style.display = 'none';
 }
+
+function _hlOutsideClick(e) {
+  const wrap = document.getElementById('hl-player-input')?.closest('[style*="position:relative"]');
+  if (wrap && !wrap.contains(e.target)) hideHlDropdown();
+}
+document.addEventListener('click', _hlOutsideClick);
 
 function saveStreamingConfig() {
   if (!draftState) draftState = {};
@@ -1929,7 +1936,9 @@ function renderHighlightsList() {
   list.innerHTML = entries.map(([name, id]) =>
     `<div style="display:flex;align-items:center;gap:8px;padding:5px 10px;background:var(--dark3);border-radius:4px">
       <span style="flex:1;font-size:13px;font-weight:600">${name}</span>
-      <span style="color:var(--muted);font-size:11px;font-family:monospace">${id.substring(0,24)}…</span>
+      <span style="color:var(--muted);font-size:11px;font-family:monospace">${id.substring(0,20)}…</span>
+      <a href="https://drive.google.com/file/d/${id}/preview" target="_blank" title="Preview video"
+        style="font-size:13px;padding:2px 8px;background:var(--dark4);border:1px solid var(--border);border-radius:4px;color:var(--gold);text-decoration:none;line-height:1.6">▶</a>
       <button class="btn btn-red btn-sm" onclick="removeHighlight(${JSON.stringify(name)})">✕</button>
     </div>`
   ).join('');
