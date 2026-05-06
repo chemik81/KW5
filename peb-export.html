@@ -865,7 +865,7 @@ async function doLogin() {
   const pass = document.getElementById('login-pass').value.trim();
   if (!pass) return;
   const hash = await sha256(pass);
-  const stored = localStorage.getItem('peb_admin_hash') || 'da7c86be4b6869bb8c89dd7e4b9e0a0a44e6c879d0f0bf30d66fca7b1e2a4f3a';
+  const stored = localStorage.getItem('peb_admin_hash') || '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918';
   if (hash === stored) {
     isAdmin = true;
     ADMIN_TOKEN = pass;
