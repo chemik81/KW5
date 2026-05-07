@@ -290,7 +290,6 @@ select.form-input{width:100%}
     <div class="step-content" id="step-1">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
         <div style="font-size:13px;color:var(--muted)">Configure each team — name, logo, and GM.</div>
-        <button class="btn btn-outline btn-sm" onclick="autoFillTeams()">Auto-fill from config</button>
       </div>
       <div id="teams-grid" class="grid-3"></div>
       <div style="margin-top:16px;display:flex;gap:10px">
@@ -2172,7 +2171,8 @@ function savePlayers() {
     id: p.name, name: p.name, pos: spMap[p.name]?.pos ?? p.pos,
     gp: p.gp, ppg: p.ppg, rpg: p.rpg, apg: p.apg,
     per: p.per, cs: p.cs,
-    ovr:   spMap[p.name]?.ovrOverride ?? p.ovr,
+    ovr:         spMap[p.name]?.ovrOverride ?? p.ovr,
+    ovrOverride: spMap[p.name]?.ovrOverride,
     stars: spMap[p.name]?.stars ?? p.stars ?? 0,
     wins: p.wins||0, losses: p.losses||0, win_pct: p.win_pct||0,
     excluded: spMap[p.name]?.excluded || false
