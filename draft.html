@@ -1926,6 +1926,7 @@ function saveConfig() {
   if (url) { WORKER_URL = url; localStorage.setItem('draft_worker_url', url); }
   if (!draftState) draftState = {};
   draftState.config = {
+    ...(draftState.config || {}),
     name:      document.getElementById('cfg-name').value || 'KW5 Draft',
     teams:     +document.getElementById('cfg-teams').value,
     perTeam:   +document.getElementById('cfg-perteam').value,
