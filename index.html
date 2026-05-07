@@ -5364,7 +5364,7 @@ async function renderDraftPool() {
 
   players.forEach((p, i) => {
     const info = getPlayerInfo(p.name);
-    const pos = (info && info.p) || p.pos || '?';
+    const pos = p.pos || '?';
     const posCol = posColors[pos] || '#64748b';
     const stars = info ? info.s : null;
     const tier  = info ? info.t : null;
