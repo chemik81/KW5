@@ -5282,11 +5282,20 @@ function withOvr(players) {
   return players;
 }
 
-function renderDraftPool() {
+async function renderDraftPool() {
   const el = document.getElementById('draft-pool-content');
   if (!el) return;
 
+  await fetchDraftCache();
+
+  // build excluded set from draftState.players saved in setup
+  const excludedSet = new Set(
+    (_draftCache?.players || []).filter(p => p.excluded).map(p => p.id)
+  );
+
   let players = withOvr(getAggregates(state.matches));
+  // hide excluded players (set in draft setup step 2)
+  if (excludedSet.size) players = players.filter(p => !excludedSet.has(p.name));
   if (dpPos) players = players.filter(p => dpPos === 'LCK' ? (p.pos === 'SF' || p.pos === 'LCK') : p.pos === dpPos);
   const srch = (document.getElementById('dp-search')?.value ?? dpSearch).trim().toLowerCase();
   if (srch) players = players.filter(p => p.name.toLowerCase().includes(srch));
