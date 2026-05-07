@@ -5302,45 +5302,19 @@ async function renderDraftPool() {
 
   await fetchDraftCache();
 
-  // build overrides map from draftState.players saved in setup
-  const dpOverrides = {};
-  (_draftCache?.players || []).forEach(p => { dpOverrides[p.id] = p; });
-
-  let players = withOvr(getAggregates(state.matches));
-  // apply overrides: excluded, pos (setup > registry > match), ovr, stars
-  players = players.map(p => {
-    const ov = dpOverrides[p.name];
-    const info = getPlayerInfo(p.name);
-    // position priority: setup override → PLAYER_REGISTRY → match-derived
-    const pos = ov?.pos ?? info?.p ?? p.pos;
-    // ovr priority: setup saved ovr → computed
-    const ovr = ov?.ovr ?? p.ovr;
-    // stars priority: setup saved stars → registry
-    const starsOverride = ov != null ? ov.stars : (info?.s ?? null);
-    return { ...p, pos, ovr, _starsOverride: starsOverride };
-  });
-  // hide excluded players
-  players = players.filter(p => !dpOverrides[p.name]?.excluded);
-  if (dpPos) players = players.filter(p => dpPos === 'LCK' ? (p.pos === 'SF' || p.pos === 'LCK') : p.pos === dpPos);
-  const srch = (document.getElementById('dp-search')?.value ?? dpSearch).trim().toLowerCase();
-  if (srch) players = players.filter(p => p.name.toLowerCase().includes(srch));
-  const sortFns = { ovr:(a,b)=>b.ovr-a.ovr, ppg:(a,b)=>b.ppg-a.ppg, rpg:(a,b)=>b.rpg-a.rpg, apg:(a,b)=>b.apg-a.apg, per:(a,b)=>b.per-a.per };
-  players.sort(sortFns[dpSort] || sortFns.ovr);
-
   const posColors = { PG:'#3b82f6', SG:'#8b5cf6', LCK:'#10b981', PF:'#f97316', C:'#ef4444' };
-  function ovrColor(o) { return o>=90?'#f59e0b':o>=80?'#4ade80':o>=70?'#60a5fa':o>=60?'#94a3b8':'#6b7280'; }
 
-  let html = `
+  el.innerHTML = `
     <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px">
       <div>
         <h2 style="font-family:'Barlow Condensed',sans-serif;font-size:28px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--white);margin:0">🎯 DRAFT POOL</h2>
-        <div style="color:var(--text3);font-size:13px;margin-top:3px">KW5 Elite League Season 1 — ${players.length} eligible players</div>
+        <div id="dp-count" style="color:var(--text3);font-size:13px;margin-top:3px">KW5 Elite League Season 1</div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
         <input id="dp-search" type="text" placeholder="Search player…" value="${dpSearch.replace(/"/g,'&quot;')}"
-          oninput="dpSearch=this.value;renderDraftPool()"
+          oninput="dpSearch=this.value;renderDpPlayers()"
           style="background:var(--dark3);border:1px solid var(--border);border-radius:4px;padding:6px 11px;color:var(--white);font-size:13px;width:170px;outline:none">
-        <select onchange="dpSort=this.value;renderDraftPool()"
+        <select onchange="dpSort=this.value;renderDpPlayers()"
           style="background:var(--dark3);border:1px solid var(--border);border-radius:4px;padding:6px 10px;color:var(--white);font-size:13px;cursor:pointer">
           ${['ovr','ppg','rpg','apg','per'].map(k=>`<option value="${k}"${dpSort===k?' selected':''}>${{ovr:'OVR',ppg:'PPG',rpg:'RPG',apg:'APG',per:'PER'}[k]}</option>`).join('')}
         </select>
@@ -5361,12 +5335,44 @@ async function renderDraftPool() {
             color:${active?(posColors[pos]||'var(--gold)'):'var(--text2)'}">${pos||'ALL'}</button>`;
       }).join('')}
     </div>
-    ${dpView === 'list'
-      ? `<div style="display:flex;flex-direction:column;gap:2px">`
-      : `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:14px">`
-    }`;
+    <div id="dp-players"></div>`;
 
+  renderDpPlayers();
+}
+
+function renderDpPlayers() {
+  const el = document.getElementById('dp-players');
+  if (!el) return;
+
+  const dpOverrides = {};
+  (_draftCache?.players || []).forEach(p => { dpOverrides[p.id] = p; });
+
+  let players = withOvr(getAggregates(state.matches));
+  players = players.map(p => {
+    const ov = dpOverrides[p.name];
+    const info = getPlayerInfo(p.name);
+    const pos = ov?.pos ?? info?.p ?? p.pos;
+    const ovr = ov?.ovr ?? p.ovr;
+    const starsOverride = ov != null ? ov.stars : (info?.s ?? null);
+    return { ...p, pos, ovr, _starsOverride: starsOverride };
+  });
+  players = players.filter(p => !dpOverrides[p.name]?.excluded);
+  if (dpPos) players = players.filter(p => dpPos === 'LCK' ? (p.pos === 'SF' || p.pos === 'LCK') : p.pos === dpPos);
+  const srch = dpSearch.trim().toLowerCase();
+  if (srch) players = players.filter(p => p.name.toLowerCase().includes(srch));
+  const sortFns = { ovr:(a,b)=>b.ovr-a.ovr, ppg:(a,b)=>b.ppg-a.ppg, rpg:(a,b)=>b.rpg-a.rpg, apg:(a,b)=>b.apg-a.apg, per:(a,b)=>b.per-a.per };
+  players.sort(sortFns[dpSort] || sortFns.ovr);
+
+  const cntEl = document.getElementById('dp-count');
+  if (cntEl) cntEl.textContent = `KW5 Elite League Season 1 — ${players.length} eligible players`;
+
+  const posColors = { PG:'#3b82f6', SG:'#8b5cf6', LCK:'#10b981', PF:'#f97316', C:'#ef4444' };
+  function ovrColor(o) { return o>=90?'#f59e0b':o>=80?'#4ade80':o>=70?'#60a5fa':o>=60?'#94a3b8':'#6b7280'; }
   const tierColors = {'EFIBA WORLDS':'#f59e0b','D1 WINNER':'#4ade80','KW5 WINNER':'#fbbf24','D1 PLAYOFFS':'#60a5fa','D1':'#38bdf8','D2 WINNER':'#a78bfa','D2 PLAYOFFS':'#fb923c','D2':'#94a3b8','Ms ONLY':'#6b7280'};
+
+  let html = dpView === 'list'
+    ? `<div style="display:flex;flex-direction:column;gap:2px">`
+    : `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:14px">`;
 
   players.forEach((p, i) => {
     const info = getPlayerInfo(p.name);
@@ -5385,13 +5391,13 @@ async function renderDraftPool() {
       <div class="dp-list-row" style="display:flex;align-items:center;gap:10px;padding:7px 12px;background:var(--dark2);border:1px solid var(--border2);border-radius:6px;border-left:3px solid ${posCol};transition:border-color .15s"
            onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border2)'">
         <span style="font-size:11px;color:var(--text3);font-family:'Barlow Condensed',sans-serif;font-weight:700;min-width:24px;flex-shrink:0">#${i+1}</span>
-        <div style="font-size:22px;font-weight:900;font-family:'Barlow Condensed',sans-serif;color:${ovrColor(p.ovr)};min-width:34px;flex-shrink:0;line-height:1">${p.ovr}</div>
-        <div style="flex-shrink:0">${starsHtml || '<span style="color:#374151;font-size:10px">★★★★★</span>'}</div>
         <span style="font-size:10px;font-family:'Barlow Condensed',sans-serif;font-weight:800;color:${posCol};background:${posCol}22;padding:2px 7px;border-radius:3px;letter-spacing:.5px;flex-shrink:0">${pos}</span>
         ${tier ? `<span style="font-size:9px;font-family:'Barlow Condensed',sans-serif;font-weight:700;color:${tierCol};background:${tierCol}22;padding:2px 6px;border-radius:3px;letter-spacing:.3px;white-space:nowrap;flex-shrink:0">${tier}</span>` : ''}
         <div style="font-size:13px;font-weight:700;font-family:'Barlow Condensed',sans-serif;letter-spacing:.3px;text-transform:uppercase;color:var(--white);display:flex;align-items:center;gap:4px;flex:1;min-width:100px">
           ${flag}${p.name}
         </div>
+        <div style="font-size:22px;font-weight:900;font-family:'Barlow Condensed',sans-serif;color:${ovrColor(p.ovr)};min-width:34px;flex-shrink:0;line-height:1;text-align:right">${p.ovr}</div>
+        <div style="flex-shrink:0">${starsHtml || '<span style="color:#374151;font-size:10px">★★★★★</span>'}</div>
         <div class="dp-stats" style="display:flex;gap:10px;font-family:'Barlow Condensed',sans-serif;flex-shrink:0;align-items:center">
           <div style="text-align:center;min-width:54px">
             <div style="font-size:12px;font-weight:700"><span style="color:#4ade80">${p.wins}W</span><span style="color:var(--text3)"> – </span><span style="color:#f87171">${p.losses}L</span></div>
