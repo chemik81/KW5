@@ -295,7 +295,7 @@ select.form-input{width:100%}
       <div id="teams-grid" class="grid-3"></div>
       <div style="margin-top:16px;display:flex;gap:10px">
         <button class="btn btn-outline" onclick="goStep(0)">← Back</button>
-        <button class="btn btn-gold" onclick="saveTeams();goStep(2)">Save & Continue →</button>
+        <button class="btn btn-gold" onclick="saveTeams().then(()=>goStep(2))">Save & Continue →</button>
       </div>
     </div>
 
@@ -2004,10 +2004,11 @@ function uploadLogo(idx, input) {
   reader.readAsDataURL(file);
 }
 
-function saveTeams() {
+async function saveTeams() {
   if (!draftState) draftState = {};
   draftState.teams = JSON.parse(JSON.stringify(setupTeams));
   if (!draftState.order || !draftState.order.length) draftState.order = setupTeams.map(t=>t.id);
+  await saveDraftState();
   notify('Teams saved', 'success');
 }
 
