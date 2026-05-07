@@ -328,8 +328,12 @@ select.form-input{width:100%}
           <button class="filter-btn" onclick="filterPool('PF',this)">PF</button>
           <button class="filter-btn" onclick="filterPool('C',this)">C</button>
           <input class="search-input" placeholder="Search..." oninput="renderPool()" id="pool-search">
+          <div style="margin-left:auto;display:flex;gap:4px">
+            <button id="pool-view-table" class="btn btn-outline btn-sm pool-view-btn active" onclick="setPoolView('table')" title="Tabela">&#9776; Tabela</button>
+            <button id="pool-view-list"  class="btn btn-outline btn-sm pool-view-btn"        onclick="setPoolView('list')"  title="Lista">&#9472; Lista</button>
+          </div>
         </div>
-        <div style="overflow-x:auto">
+        <div style="overflow-x:auto" id="pool-table-wrap">
           <table class="player-table" id="pool-table">
             <thead><tr>
               <th style="width:32px"><input type="checkbox" id="pool-check-all" onchange="toggleAllVisible(this.checked)"></th>
@@ -340,6 +344,7 @@ select.form-input{width:100%}
             <tbody id="pool-body"></tbody>
           </table>
         </div>
+        <div id="pool-list-wrap" style="display:none;flex-direction:column;gap:2px"></div>
       </div>
       <div style="display:flex;gap:10px">
         <button class="btn btn-outline" onclick="goStep(1)">← Back</button>
@@ -786,6 +791,7 @@ let ADMIN_TOKEN = sessionStorage.getItem('draft_admin_token') || '';
 let draftState = null;
 let kw5Players = [];
 let poolFilter = 'ALL';
+let poolViewMode = 'table';
 let gmFilter = 'ALL';
 let adminPickFilter = 'ALL';
 let gmSortKey = 'ovr';
@@ -1684,6 +1690,15 @@ function saveTeams() {
 }
 
 // ── Players ──
+function setPoolView(mode) {
+  poolViewMode = mode;
+  document.getElementById('pool-table-wrap').style.display = mode === 'table' ? '' : 'none';
+  document.getElementById('pool-list-wrap').style.display  = mode === 'list'  ? 'flex' : 'none';
+  document.querySelectorAll('.pool-view-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('pool-view-' + mode).classList.add('active');
+  renderPool();
+}
+
 function renderPool() {
   if (!kw5Players.length) { loadKw5Players().then(()=>renderPool()); return; }
   // Restore show-stars/show-ovr from config
@@ -1702,6 +1717,33 @@ function renderPool() {
   // merge with setupPlayers for exclusion/stars/ovr state
   const spMap = {};
   (setupPlayers||[]).forEach(p => spMap[p.id] = p);
+
+  if (poolViewMode === 'list') {
+    const wrap = document.getElementById('pool-list-wrap');
+    wrap.innerHTML = filtered.map((p,i) => {
+      const sp = spMap[p.name] || {};
+      const excluded = sp.excluded || false;
+      const stars = sp.stars ?? p.stars ?? 0;
+      const ovr   = sp.ovrOverride ?? p.ovr;
+      return `<div style="display:flex;align-items:center;gap:10px;padding:5px 8px;border-radius:4px;border-bottom:1px solid rgba(255,255,255,.04);${excluded?'opacity:.4':''}">
+        <input type="checkbox" ${excluded?'':'checked'} onchange="togglePlayer('${p.name}',this.checked)">
+        <span style="color:var(--muted);font-size:11px;min-width:22px;text-align:right">${i+1}</span>
+        <span style="font-weight:600;flex:1;min-width:120px">${getFlag(p.name)}${p.name}</span>
+        ${posBadge(p.pos)}
+        <span style="font-size:11px;color:var(--muted);min-width:50px">GP: ${p.gp}</span>
+        <span style="font-size:12px;color:var(--muted);min-width:120px">${p.ppg.toFixed(1)}pts / ${p.rpg.toFixed(1)}reb / ${p.apg.toFixed(1)}ast</span>
+        <span style="font-size:11px;color:var(--muted);min-width:60px">PER ${p.per.toFixed(1)}</span>
+        <label style="font-size:11px;color:var(--muted)">OVR</label>
+        <input type="number" min="40" max="99" value="${ovr}" style="width:48px;background:var(--dark3);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:2px 4px;text-align:center;font-size:12px"
+               onchange="setPlayerOvr('${p.name}',+this.value)">
+        <label style="font-size:11px;color:var(--gold)">★</label>
+        <input type="number" min="0" max="5" value="${stars}" style="width:40px;background:var(--dark3);color:var(--gold);border:1px solid var(--border);border-radius:4px;padding:2px 4px;text-align:center;font-size:12px"
+               onchange="setPlayerStars('${p.name}',+this.value)">
+      </div>`;
+    }).join('');
+    return;
+  }
+
   const body = document.getElementById('pool-body');
   body.innerHTML = filtered.map((p,i) => {
     const sp = spMap[p.name] || {};
