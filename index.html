@@ -5296,6 +5296,11 @@ async function renderDraftPool() {
   let players = withOvr(getAggregates(state.matches));
   // hide excluded players (set in draft setup step 2)
   if (excludedSet.size) players = players.filter(p => !excludedSet.has(p.name));
+  // resolve effective position: PLAYER_REGISTRY takes priority over match-derived pos
+  players = players.map(p => {
+    const info = getPlayerInfo(p.name);
+    return info?.p ? { ...p, pos: info.p } : p;
+  });
   if (dpPos) players = players.filter(p => dpPos === 'LCK' ? (p.pos === 'SF' || p.pos === 'LCK') : p.pos === dpPos);
   const srch = (document.getElementById('dp-search')?.value ?? dpSearch).trim().toLowerCase();
   if (srch) players = players.filter(p => p.name.toLowerCase().includes(srch));
