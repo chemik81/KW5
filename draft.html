@@ -1708,15 +1708,22 @@ function renderPool() {
   if (showStarsEl && cfg.showStars === false) showStarsEl.checked = false;
   if (showOvrEl   && cfg.showOvr   === false) showOvrEl.checked   = false;
 
+  // build spMap first so filter can use setup overrides
+  const spMap = {};
+  (setupPlayers||[]).forEach(p => spMap[p.id] = p);
+
   const search = (document.getElementById('pool-search')?.value||'').toLowerCase();
   const filtered = kw5Players.filter(p => {
-    if (poolFilter !== 'ALL' && p.pos !== poolFilter) return false;
+    if (poolFilter !== 'ALL') {
+      const ep = spMap[p.name]?.pos ?? p.pos;
+      // treat SF and LCK as the same group
+      const normEp = ep === 'SF' ? 'LCK' : ep;
+      const normFilter = poolFilter === 'SF' ? 'LCK' : poolFilter;
+      if (normEp !== normFilter) return false;
+    }
     if (search && !p.name.toLowerCase().includes(search)) return false;
     return true;
   });
-  // merge with setupPlayers for exclusion/stars/ovr state
-  const spMap = {};
-  (setupPlayers||[]).forEach(p => spMap[p.id] = p);
 
   if (poolViewMode === 'list') {
     const wrap = document.getElementById('pool-list-wrap');
@@ -1725,7 +1732,8 @@ function renderPool() {
       const excluded = sp.excluded || false;
       const stars = sp.stars ?? p.stars ?? 0;
       const ovr   = sp.ovrOverride ?? p.ovr;
-      const pos   = sp.pos ?? p.pos ?? 'SG';
+      const rawPos = sp.pos ?? p.pos ?? 'SG';
+      const pos   = rawPos === 'SF' ? 'LCK' : rawPos;
       const posOpts = ['PG','SG','LCK','PF','C'].map(o=>`<option value="${o}"${pos===o?' selected':''}>${o}</option>`).join('');
       return `<div style="display:flex;align-items:center;gap:10px;padding:5px 8px;border-radius:4px;border-bottom:1px solid rgba(255,255,255,.04);${excluded?'opacity:.4':''}">
         <input type="checkbox" ${excluded?'':'checked'} onchange="togglePlayer('${p.name}',this.checked)">
@@ -1752,7 +1760,8 @@ function renderPool() {
     const excluded = sp.excluded || false;
     const stars = sp.stars ?? p.stars ?? 0;
     const ovr   = sp.ovrOverride ?? p.ovr;
-    const pos   = sp.pos ?? p.pos ?? 'SG';
+    const rawPos = sp.pos ?? p.pos ?? 'SG';
+    const pos   = rawPos === 'SF' ? 'LCK' : rawPos;
     const posOpts = ['PG','SG','LCK','PF','C'].map(o=>`<option value="${o}"${pos===o?' selected':''}>${o}</option>`).join('');
     return `<tr>
       <td><input type="checkbox" ${excluded?'':'checked'} onchange="togglePlayer('${p.name}',this.checked)"></td>
