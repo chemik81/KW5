@@ -5302,19 +5302,25 @@ async function renderDraftPool() {
 
   await fetchDraftCache();
 
-  // build excluded set from draftState.players saved in setup
-  const excludedSet = new Set(
-    (_draftCache?.players || []).filter(p => p.excluded).map(p => p.id)
-  );
+  // build overrides map from draftState.players saved in setup
+  const dpOverrides = {};
+  (_draftCache?.players || []).forEach(p => { dpOverrides[p.id] = p; });
 
   let players = withOvr(getAggregates(state.matches));
-  // hide excluded players (set in draft setup step 2)
-  if (excludedSet.size) players = players.filter(p => !excludedSet.has(p.name));
-  // resolve effective position: PLAYER_REGISTRY takes priority over match-derived pos
+  // apply overrides: excluded, pos (setup > registry > match), ovr, stars
   players = players.map(p => {
+    const ov = dpOverrides[p.name];
     const info = getPlayerInfo(p.name);
-    return info?.p ? { ...p, pos: info.p } : p;
+    // position priority: setup override → PLAYER_REGISTRY → match-derived
+    const pos = ov?.pos ?? info?.p ?? p.pos;
+    // ovr priority: setup saved ovr → computed
+    const ovr = ov?.ovr ?? p.ovr;
+    // stars priority: setup saved stars → registry
+    const starsOverride = ov != null ? ov.stars : (info?.s ?? null);
+    return { ...p, pos, ovr, _starsOverride: starsOverride };
   });
+  // hide excluded players
+  players = players.filter(p => !dpOverrides[p.name]?.excluded);
   if (dpPos) players = players.filter(p => dpPos === 'LCK' ? (p.pos === 'SF' || p.pos === 'LCK') : p.pos === dpPos);
   const srch = (document.getElementById('dp-search')?.value ?? dpSearch).trim().toLowerCase();
   if (srch) players = players.filter(p => p.name.toLowerCase().includes(srch));
@@ -5366,7 +5372,7 @@ async function renderDraftPool() {
     const info = getPlayerInfo(p.name);
     const pos = p.pos || '?';
     const posCol = posColors[pos] || '#64748b';
-    const stars = info ? info.s : null;
+    const stars = p._starsOverride ?? (info ? info.s : null);
     const tier  = info ? info.t : null;
     const tierCol = (tier && tierColors[tier]) || '#6b7280';
     const flag = getFlag(p.name);
@@ -5386,33 +5392,16 @@ async function renderDraftPool() {
         <div style="font-size:13px;font-weight:700;font-family:'Barlow Condensed',sans-serif;letter-spacing:.3px;text-transform:uppercase;color:var(--white);display:flex;align-items:center;gap:4px;flex:1;min-width:100px">
           ${flag}${p.name}
         </div>
-        <div class="dp-stats" style="display:flex;gap:12px;font-family:'Barlow Condensed',sans-serif;flex-shrink:0;align-items:center">
-          ${[['PPG',p.ppg.toFixed(1)],['RPG',p.rpg.toFixed(1)],['APG',p.apg.toFixed(1)],['SPG',(p.spg||0).toFixed(1)],['BPG',(p.bpg||0).toFixed(1)],['GP',p.gp]].map(([l,v])=>`
-            <div style="text-align:center;min-width:26px">
-              <div style="font-size:12px;font-weight:700;color:var(--white)">${v}</div>
-              <div style="font-size:9px;color:var(--text3);font-weight:700;letter-spacing:.3px">${l}</div>
-            </div>`).join('')}
-          <div style="width:1px;background:var(--border);margin:0 2px;align-self:stretch"></div>
-          <div style="text-align:center;min-width:50px">
-            <div style="font-size:11px;font-weight:700"><span style="color:#4ade80">${p.wins}W</span><span style="color:var(--text3)"> — </span><span style="color:#f87171">${p.losses}L</span></div>
+        <div class="dp-stats" style="display:flex;gap:10px;font-family:'Barlow Condensed',sans-serif;flex-shrink:0;align-items:center">
+          <div style="text-align:center;min-width:54px">
+            <div style="font-size:12px;font-weight:700"><span style="color:#4ade80">${p.wins}W</span><span style="color:var(--text3)"> – </span><span style="color:#f87171">${p.losses}L</span></div>
             <div style="font-size:9px;color:var(--text3);font-weight:700">${p.win_pct}%</div>
           </div>
-          <div style="text-align:center;min-width:42px">
-            <div style="font-size:11px;font-weight:700;color:#a78bfa">PER ${(p.per||0).toFixed(1)}</div>
-            <div style="font-size:11px;font-weight:700;color:#38bdf8">CS ${(p.csa||0).toFixed(1)}</div>
+          <div style="width:1px;background:var(--border);align-self:stretch"></div>
+          <div style="text-align:right;min-width:52px">
+            <div style="font-size:12px;font-weight:700;color:#a78bfa">PER ${(p.per||0).toFixed(1)}</div>
+            <div style="font-size:12px;font-weight:700;color:#38bdf8">CS ${(p.csa||0).toFixed(1)}</div>
           </div>
-        </div>
-        <div class="dp-stats-mobile" style="display:none;width:100%;font-size:11px;color:var(--text2);font-family:'Barlow Condensed',sans-serif;flex-wrap:wrap;gap:6px;margin-top:2px">
-          <span style="color:var(--white);font-weight:700">${p.ppg.toFixed(1)}<span style="color:var(--text3);font-weight:400">pts</span></span>
-          <span style="color:var(--white);font-weight:700">${p.rpg.toFixed(1)}<span style="color:var(--text3);font-weight:400">reb</span></span>
-          <span style="color:var(--white);font-weight:700">${p.apg.toFixed(1)}<span style="color:var(--text3);font-weight:400">ast</span></span>
-          <span style="color:var(--white);font-weight:700">${(p.spg||0).toFixed(1)}<span style="color:var(--text3);font-weight:400">stl</span></span>
-          <span style="color:var(--text3)">·</span>
-          <span style="color:#4ade80;font-weight:700">${p.wins}W</span><span style="color:var(--text3)">—</span><span style="color:#f87171;font-weight:700">${p.losses}L</span>
-          <span style="color:var(--text3)">${p.win_pct}%</span>
-          <span style="color:var(--text3)">·</span>
-          <span style="color:#a78bfa;font-weight:700">PER ${(p.per||0).toFixed(1)}</span>
-          <span style="color:#38bdf8;font-weight:700">CS ${(p.csa||0).toFixed(1)}</span>
         </div>
       </div>`;
     } else {
