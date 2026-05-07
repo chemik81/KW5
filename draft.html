@@ -295,7 +295,7 @@ select.form-input{width:100%}
       <div id="teams-grid" class="grid-3"></div>
       <div style="margin-top:16px;display:flex;gap:10px">
         <button class="btn btn-outline" onclick="goStep(0)">← Back</button>
-        <button class="btn btn-gold" onclick="saveTeams();goStep(2)">Save & Continue →</button>
+        <button class="btn btn-gold" onclick="saveTeams().then(()=>goStep(2))">Save & Continue →</button>
       </div>
     </div>
 
@@ -2004,10 +2004,11 @@ function uploadLogo(idx, input) {
   reader.readAsDataURL(file);
 }
 
-function saveTeams() {
+async function saveTeams() {
   if (!draftState) draftState = {};
   draftState.teams = JSON.parse(JSON.stringify(setupTeams));
   if (!draftState.order || !draftState.order.length) draftState.order = setupTeams.map(t=>t.id);
+  await saveDraftState();
   notify('Teams saved', 'success');
 }
 
@@ -2911,8 +2912,6 @@ function renderGmPlayers() {
     const starsHtml = (p.stars > 0)
       ? '<span style="color:#f59e0b;font-size:11px">' + '★'.repeat(p.stars) + '</span>'
       : '<span style="color:#374151;font-size:11px">★★★★★</span>';
-    const posNorm = p.pos === 'SF' ? 'LCK' : (p.pos || 'SG');
-    const posOpts = ['PG','SG','LCK','PF','C'].map(o=>`<option value="${o}"${posNorm===o?' selected':''}>${o}</option>`).join('');
     return `<tr class="${isPicked?'picked':''} ${isSelected?'my-pick':''} ${isComparing?'my-pick':''}"
       onclick="${isPicked?'':'selectPlayer(\''+p.id+'\')'}"
       style="${isPicked?'':'cursor:pointer'}">
@@ -2920,7 +2919,7 @@ function renderGmPlayers() {
       <td onclick="toggleCompareSet('${p.id}',event)" style="cursor:pointer;padding:4px 6px;font-size:13px;color:${isComparing?'var(--gold)':'var(--border)'}">${isComparing?'☑':'☐'}</td>
       <td style="color:var(--muted)">${i+1}</td>
       <td style="font-weight:600">${getFlag(p.name)}${p.name}</td>
-      <td><select style="background:var(--dark3);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:12px;cursor:pointer" onchange="setPlayerPos('${p.name}',this.value)">${posOpts}</select></td>
+      <td>${posBadge(p.pos||'?')}</td>
       <td style="color:var(--muted)">${p.gp}</td>
       <td>${(p.ppg||0).toFixed(1)}</td>
       <td>${(p.rpg||0).toFixed(1)}</td>
