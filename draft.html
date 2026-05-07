@@ -1840,6 +1840,7 @@ let currentStep = 0;
 let setupTeams = [];
 let setupPlayers = [];
 let poolDragSrc = null;
+let poolVisibleOrder = [];
 let setupOrder = [];
 let setupHighlights = {};
 
@@ -2064,6 +2065,7 @@ function renderPool() {
     if (search && !p.name.toLowerCase().includes(search)) return false;
     return true;
   });
+  poolVisibleOrder = filtered.map(p => p.name);
 
   if (poolViewMode === 'list') {
     const wrap = document.getElementById('pool-list-wrap');
@@ -2078,7 +2080,7 @@ function renderPool() {
       return `<div draggable="true"
         ondragstart="poolDragStart(event,'${p.name}')"
         ondragover="poolDragOver(event)"
-        ondrop="poolDrop(event,'${p.name}',${JSON.stringify(filtered.map(x=>x.name))})"
+        ondrop="poolDrop(event,'${p.name}')"
         ondragend="poolDragEnd(event)"
         style="display:flex;align-items:center;gap:10px;padding:5px 8px;border-radius:4px;border-bottom:1px solid rgba(255,255,255,.04);${excluded?'opacity:.4':''}">
         <span style="cursor:grab;color:var(--muted);font-size:14px;padding:0 2px" title="Drag to reorder">☰</span>
@@ -2161,24 +2163,23 @@ function poolDragStart(e, name) {
 }
 function poolDragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }
 function poolDragEnd(e) { e.currentTarget.style.opacity = ''; poolDragSrc = null; }
-function poolDrop(e, targetName, visibleOrder) {
+function poolDrop(e, targetName) {
   e.preventDefault();
   if (!poolDragSrc || poolDragSrc === targetName) return;
-  const fromIdx = visibleOrder.indexOf(poolDragSrc);
-  const toIdx   = visibleOrder.indexOf(targetName);
+  const order = [...poolVisibleOrder];
+  const fromIdx = order.indexOf(poolDragSrc);
+  const toIdx   = order.indexOf(targetName);
   if (fromIdx < 0 || toIdx < 0) return;
-  visibleOrder.splice(fromIdx, 1);
-  visibleOrder.splice(toIdx, 0, poolDragSrc);
-  // Re-assign ranks for all visible players; keep other players' ranks above max
-  const maxRank = visibleOrder.length;
-  visibleOrder.forEach((name, i) => {
+  order.splice(fromIdx, 1);
+  order.splice(toIdx, 0, poolDragSrc);
+  const maxRank = order.length;
+  order.forEach((name, i) => {
     let sp = setupPlayers.find(x=>x.id===name);
     if (!sp) { sp={id:name,excluded:false}; setupPlayers.push(sp); }
     sp.rank = i + 1;
   });
-  // Shift non-visible players' ranks beyond visible count, preserving their relative order
   const notVisible = (setupPlayers||[])
-    .filter(sp => !visibleOrder.includes(sp.id) && sp.rank != null)
+    .filter(sp => !order.includes(sp.id) && sp.rank != null)
     .sort((a,b) => a.rank - b.rank);
   notVisible.forEach((sp, i) => { sp.rank = maxRank + i + 1; });
   poolDragSrc = null;
