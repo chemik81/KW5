@@ -2910,6 +2910,8 @@ function renderGmPlayers() {
     const starsHtml = (p.stars > 0)
       ? '<span style="color:#f59e0b;font-size:11px">' + '★'.repeat(p.stars) + '</span>'
       : '<span style="color:#374151;font-size:11px">★★★★★</span>';
+    const posNorm = p.pos === 'SF' ? 'LCK' : (p.pos || 'SG');
+    const posOpts = ['PG','SG','LCK','PF','C'].map(o=>`<option value="${o}"${posNorm===o?' selected':''}>${o}</option>`).join('');
     return `<tr class="${isPicked?'picked':''} ${isSelected?'my-pick':''} ${isComparing?'my-pick':''}"
       onclick="${isPicked?'':'selectPlayer(\''+p.id+'\')'}"
       style="${isPicked?'':'cursor:pointer'}">
