@@ -335,6 +335,7 @@ select.form-input{width:100%}
         <div style="overflow-x:auto" id="pool-table-wrap">
           <table class="player-table" id="pool-table">
             <thead><tr>
+              <th style="width:20px"></th>
               <th style="width:32px"><input type="checkbox" id="pool-check-all" onchange="toggleAllVisible(this.checked)"></th>
               <th>#</th><th>Player</th><th title="Edit position">Pos ✏</th><th>GP</th>
               <th>PPG</th><th>RPG</th><th>APG</th><th>PER</th><th>CS</th>
@@ -347,7 +348,7 @@ select.form-input{width:100%}
       </div>
       <div style="display:flex;gap:10px">
         <button class="btn btn-outline" onclick="goStep(1)">← Back</button>
-        <button class="btn btn-gold" onclick="savePlayers();goStep(3)">Save & Continue →</button>
+        <button class="btn btn-gold" onclick="savePlayers().then(()=>goStep(3))">Save & Continue →</button>
       </div>
     </div>
 
@@ -618,7 +619,8 @@ select.form-input{width:100%}
           <div style="overflow-x:auto">
             <table class="player-table" id="gm-player-table">
               <thead><tr>
-                <th>♥</th><th>□</th><th>#</th>
+                <th>♥</th><th>□</th>
+                <th onclick="gmSort('rank')" style="cursor:pointer" title="Sort by admin order"># <span id="gsort-rank">▲</span></th>
                 <th onclick="gmSort('name')" style="cursor:pointer">Player <span id="gsort-name"></span></th>
                 <th onclick="gmSort('pos')" style="cursor:pointer">Pos <span id="gsort-pos"></span></th>
                 <th onclick="gmSort('gp')" style="cursor:pointer">GP <span id="gsort-gp"></span></th>
@@ -793,8 +795,8 @@ let poolFilter = 'ALL';
 let poolViewMode = 'table';
 let gmFilter = 'ALL';
 let adminPickFilter = 'ALL';
-let gmSortKey = 'ovr';
-let gmSortAsc = false;
+let gmSortKey = 'rank';
+let gmSortAsc = true;
 let myTeamId = null;
 let discordUser = null;
 let selectedPlayerId = null;
@@ -1837,6 +1839,7 @@ function stopTimer() { clearInterval(timerInterval); }
 let currentStep = 0;
 let setupTeams = [];
 let setupPlayers = [];
+let poolDragSrc = null;
 let setupOrder = [];
 let setupHighlights = {};
 
@@ -2034,11 +2037,26 @@ function renderPool() {
   const spMap = {};
   (setupPlayers||[]).forEach(p => spMap[p.id] = p);
 
+  // Lazy-init ranks from OVR order if not yet assigned
+  const hasRanks = (setupPlayers||[]).some(p => p.rank != null);
+  if (!hasRanks) {
+    [...kw5Players].sort((a,b) => (b.ovr||0)-(a.ovr||0)).forEach((p,i) => {
+      let sp = setupPlayers.find(x=>x.id===p.name);
+      if (!sp) { sp={id:p.name,excluded:false}; setupPlayers.push(sp); }
+      sp.rank = i+1;
+    });
+  }
+
   const search = (document.getElementById('pool-search')?.value||'').toLowerCase();
-  const filtered = kw5Players.filter(p => {
+  const allSorted = [...kw5Players].sort((a,b) => {
+    const ra = spMap[a.name]?.rank ?? 99999;
+    const rb = spMap[b.name]?.rank ?? 99999;
+    if (ra !== rb) return ra - rb;
+    return (b.ovr||0) - (a.ovr||0);
+  });
+  const filtered = allSorted.filter(p => {
     if (poolFilter !== 'ALL') {
       const ep = spMap[p.name]?.pos ?? getRegistryPos(p.name) ?? p.pos;
-      // treat SF and LCK as the same group
       const normEp = ep === 'SF' ? 'LCK' : ep;
       const normFilter = poolFilter === 'SF' ? 'LCK' : poolFilter;
       if (normEp !== normFilter) return false;
@@ -2057,9 +2075,15 @@ function renderPool() {
       const rawPos = sp.pos ?? getRegistryPos(p.name) ?? p.pos ?? 'SG';
       const pos   = rawPos === 'SF' ? 'LCK' : rawPos;
       const posOpts = ['PG','SG','LCK','PF','C'].map(o=>`<option value="${o}"${pos===o?' selected':''}>${o}</option>`).join('');
-      return `<div style="display:flex;align-items:center;gap:10px;padding:5px 8px;border-radius:4px;border-bottom:1px solid rgba(255,255,255,.04);${excluded?'opacity:.4':''}">
+      return `<div draggable="true"
+        ondragstart="poolDragStart(event,'${p.name}')"
+        ondragover="poolDragOver(event)"
+        ondrop="poolDrop(event,'${p.name}',${JSON.stringify(filtered.map(x=>x.name))})"
+        ondragend="poolDragEnd(event)"
+        style="display:flex;align-items:center;gap:10px;padding:5px 8px;border-radius:4px;border-bottom:1px solid rgba(255,255,255,.04);${excluded?'opacity:.4':''}">
+        <span style="cursor:grab;color:var(--muted);font-size:14px;padding:0 2px" title="Drag to reorder">☰</span>
         <input type="checkbox" ${excluded?'':'checked'} onchange="togglePlayer('${p.name}',this.checked)">
-        <span style="color:var(--muted);font-size:11px;min-width:22px;text-align:right">${i+1}</span>
+        <span style="color:var(--muted);font-size:11px;min-width:22px;text-align:right">${sp.rank??''}</span>
         <span style="font-weight:600;flex:1;min-width:120px">${getFlag(p.name)}${p.name}</span>
         <select style="background:var(--dark3);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:12px;cursor:pointer" onchange="setPlayerPos('${p.name}',this.value)">${posOpts}</select>
         <span style="font-size:11px;color:var(--muted);min-width:50px">GP: ${p.gp}</span>
@@ -2085,9 +2109,14 @@ function renderPool() {
     const rawPos = sp.pos ?? getRegistryPos(p.name) ?? p.pos ?? 'SG';
     const pos   = rawPos === 'SF' ? 'LCK' : rawPos;
     const posOpts = ['PG','SG','LCK','PF','C'].map(o=>`<option value="${o}"${pos===o?' selected':''}>${o}</option>`).join('');
-    return `<tr>
+    return `<tr draggable="true"
+      ondragstart="poolDragStart(event,'${p.name}')"
+      ondragover="poolDragOver(event)"
+      ondrop="poolDrop(event,'${p.name}',${JSON.stringify(filtered.map(x=>x.name))})"
+      ondragend="poolDragEnd(event)">
+      <td style="cursor:grab;color:var(--muted);font-size:14px;padding:4px 6px" title="Drag to reorder">☰</td>
       <td><input type="checkbox" ${excluded?'':'checked'} onchange="togglePlayer('${p.name}',this.checked)"></td>
-      <td style="color:var(--muted)">${i+1}</td>
+      <td style="color:var(--muted)">${sp.rank??''}</td>
       <td style="font-weight:600">${getFlag(p.name)}${p.name}</td>
       <td><select style="background:var(--dark3);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:2px 4px;font-size:12px;cursor:pointer" onchange="setPlayerPos('${p.name}',this.value)">${posOpts}</select></td>
       <td style="color:var(--muted)">${p.gp}</td>
@@ -2123,6 +2152,37 @@ function setPlayerPos(id, pos) {
   let e = setupPlayers.find(p=>p.id===id);
   if (!e) { e = {id, excluded:false}; setupPlayers.push(e); }
   e.pos = pos;
+}
+
+function poolDragStart(e, name) {
+  poolDragSrc = name;
+  e.dataTransfer.effectAllowed = 'move';
+  e.currentTarget.style.opacity = '0.4';
+}
+function poolDragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; }
+function poolDragEnd(e) { e.currentTarget.style.opacity = ''; poolDragSrc = null; }
+function poolDrop(e, targetName, visibleOrder) {
+  e.preventDefault();
+  if (!poolDragSrc || poolDragSrc === targetName) return;
+  const fromIdx = visibleOrder.indexOf(poolDragSrc);
+  const toIdx   = visibleOrder.indexOf(targetName);
+  if (fromIdx < 0 || toIdx < 0) return;
+  visibleOrder.splice(fromIdx, 1);
+  visibleOrder.splice(toIdx, 0, poolDragSrc);
+  // Re-assign ranks for all visible players; keep other players' ranks above max
+  const maxRank = visibleOrder.length;
+  visibleOrder.forEach((name, i) => {
+    let sp = setupPlayers.find(x=>x.id===name);
+    if (!sp) { sp={id:name,excluded:false}; setupPlayers.push(sp); }
+    sp.rank = i + 1;
+  });
+  // Shift non-visible players' ranks beyond visible count, preserving their relative order
+  const notVisible = (setupPlayers||[])
+    .filter(sp => !visibleOrder.includes(sp.id) && sp.rank != null)
+    .sort((a,b) => a.rank - b.rank);
+  notVisible.forEach((sp, i) => { sp.rank = maxRank + i + 1; });
+  poolDragSrc = null;
+  renderPool();
 }
 
 function filterPool(pos, btn) {
@@ -2163,7 +2223,7 @@ function toggleAllVisible(checked) {
   renderPool();
 }
 
-function savePlayers() {
+async function savePlayers() {
   if (!draftState) draftState = {};
   const spMap = {};
   (setupPlayers||[]).forEach(p => spMap[p.id] = p);
@@ -2173,13 +2233,15 @@ function savePlayers() {
     per: p.per, cs: p.cs,
     ovr:         spMap[p.name]?.ovrOverride ?? p.ovr,
     ovrOverride: spMap[p.name]?.ovrOverride,
+    rank:        spMap[p.name]?.rank,
     stars: spMap[p.name]?.stars ?? p.stars ?? 0,
     wins: p.wins||0, losses: p.losses||0, win_pct: p.win_pct||0,
     excluded: spMap[p.name]?.excluded || false
-  }));
+  })).sort((a,b) => (a.rank??99999) - (b.rank??99999));
   if (!draftState.config) draftState.config = {};
   draftState.config.showStars = document.getElementById('show-stars')?.checked !== false;
   draftState.config.showOvr   = document.getElementById('show-ovr')?.checked   !== false;
+  await saveDraftState();
   notify('Players saved', 'success');
 }
 
@@ -2871,9 +2933,8 @@ function renderGm() {
 
 function gmSort(key) {
   if (gmSortKey === key) { gmSortAsc = !gmSortAsc; }
-  else { gmSortKey = key; gmSortAsc = key === 'name' || key === 'pos'; }
-  // Update sort indicators
-  ['name','pos','gp','ppg','rpg','apg','per','ovr'].forEach(k => {
+  else { gmSortKey = key; gmSortAsc = key === 'name' || key === 'pos' || key === 'rank'; }
+  ['name','pos','gp','ppg','rpg','apg','per','ovr','rank'].forEach(k => {
     const el = document.getElementById('gsort-' + k);
     if (el) el.textContent = k === gmSortKey ? (gmSortAsc ? '▲' : '▼') : '';
   });
@@ -2891,6 +2952,10 @@ function renderGmPlayers() {
     if (search && !p.name.toLowerCase().includes(search)) return false;
     return true;
   }).sort((a, b) => {
+    if (gmSortKey === 'rank') {
+      const ra = a.rank ?? 99999, rb = b.rank ?? 99999;
+      return gmSortAsc ? ra - rb : rb - ra;
+    }
     let va = a[gmSortKey], vb = b[gmSortKey];
     if (typeof va === 'string') return gmSortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
     return gmSortAsc ? (va||0) - (vb||0) : (vb||0) - (va||0);
