@@ -2109,7 +2109,7 @@ function renderPool() {
     const ovr   = sp.ovrOverride ?? p.ovr;
     const rawPos = sp.pos ?? getRegistryPos(p.name) ?? p.pos ?? 'SG';
     const pos   = rawPos === 'SF' ? 'LCK' : rawPos;
-    const posOpts = ['PG','SG','LCK','PF','C'].map(o=>`<option value="${o}"${pos===o?' selected':''}>${o}</option>`).join('');
+    const posOpts = ['PG','SG','LCK','PF','C'].map(o=>`<option value="${o}"${pos===o?' selected':''}>${o==='LCK'?'SF':o}</option>`).join('');
     return `<tr draggable="true"
       ondragstart="poolDragStart(event,'${p.name}')"
       ondragover="poolDragOver(event)"
@@ -2668,12 +2668,16 @@ async function adminForcePick(playerId) {
 async function adminStartPause() {
   if (!draftState) return;
   if (draftState.status === 'live') {
+    const remaining = draftState.timerEnd ? Math.max(0, new Date(draftState.timerEnd) - Date.now()) : null;
     draftState.status = 'paused';
     draftState.timerEnd = null;
+    draftState.timerPausedRemaining = remaining;
     stopTimer();
   } else if (draftState.status === 'idle' || draftState.status === 'paused') {
     draftState.status = 'live';
-    draftState.timerEnd = new Date(Date.now() + (draftState.config?.timerSecs||120)*1000).toISOString();
+    const ms = draftState.timerPausedRemaining ?? ((draftState.config?.timerSecs||120)*1000);
+    draftState.timerEnd = new Date(Date.now() + ms).toISOString();
+    draftState.timerPausedRemaining = null;
   }
   await saveDraftState();
   renderAdmin();
@@ -2751,6 +2755,7 @@ async function recordPick(teamId, playerId, auto=false) {
     const hasHighlight = pl && !!(highlights[pl.id] || highlights[pl.name]);
     const hlDelay = hasHighlight ? (draftState.config?.highlightDuration || 90) * 1000 : 0;
     draftState.timerEnd = new Date(Date.now() + (draftState.config?.timerSecs||120)*1000 + hlDelay).toISOString();
+    draftState.timerPausedRemaining = null;
   }
   await saveDraftState();
   renderAdmin();
