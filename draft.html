@@ -1578,9 +1578,17 @@ const PLAYER_POSITIONS = {
 };
 function getRegistryPos(name){
   if(!name)return null;
-  if(PLAYER_POSITIONS[name])return PLAYER_POSITIONS[name];
+  const raw = PLAYER_POSITIONS[name];
+  if(raw) return raw === 'LCK' ? 'SF' : raw;
   var lc=name.toLowerCase();
-  for(var k in PLAYER_POSITIONS){if(k.toLowerCase()===lc)return PLAYER_POSITIONS[k];}
+  for(var k in PLAYER_POSITIONS){
+    if(k.toLowerCase()===lc){
+      const r = PLAYER_POSITIONS[k];
+      return r === 'LCK' ? 'SF' : r;
+    }
+  }
+  return null;
+}
   return null;
 }
 
@@ -1718,8 +1726,9 @@ function ovrClass(ovr) {
 }
 
 function posBadge(pos) {
-  const cls = {'PG':'badge-pg','SG':'badge-sg','SF':'badge-sf','PF':'badge-pf','C':'badge-c'}[pos]||'badge-lck';
-  return `<span class="badge ${cls}">${pos||'?'}</span>`;
+  const norm = pos === 'LCK' ? 'SF' : pos;
+  const cls = {'PG':'badge-pg','SG':'badge-sg','SF':'badge-sf','PF':'badge-pf','C':'badge-c'}[norm]||'badge-lck';
+  return `<span class="badge ${cls}">${norm||'?'}</span>`;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -2058,9 +2067,8 @@ function renderPool() {
   const filtered = allSorted.filter(p => {
     if (poolFilter !== 'ALL') {
       const ep = spMap[p.name]?.pos ?? getRegistryPos(p.name) ?? p.pos;
-      const normEp = ep === 'SF' ? 'LCK' : ep;
-      const normFilter = poolFilter === 'SF' ? 'LCK' : poolFilter;
-      if (normEp !== normFilter) return false;
+      const normEp = ep === 'LCK' ? 'SF' : ep;
+      if (normEp !== poolFilter) return false;
     }
     if (search && !p.name.toLowerCase().includes(search)) return false;
     return true;
@@ -2075,8 +2083,9 @@ function renderPool() {
       const stars = sp.stars ?? p.stars ?? 0;
       const ovr   = sp.ovrOverride ?? p.ovr;
       const rawPos = sp.pos ?? getRegistryPos(p.name) ?? p.pos ?? 'SG';
-      const pos   = rawPos === 'SF' ? 'LCK' : rawPos;
-      const posOpts = ['PG','SG','LCK','PF','C'].map(o=>`<option value="${o}"${pos===o?' selected':''}>${o==='LCK'?'SF':o}</option>`).join('');      return `<div draggable="true"
+      const pos   = rawPos === 'LCK' ? 'SF' : rawPos;
+      const posOpts = ['PG','SG','SF','PF','C'].map(o=>`<option value="${o}"${pos===o?' selected':''}>${o}</option>`).join('');
+      return `<div draggable="true"
         ondragstart="poolDragStart(event,'${p.name}')"
         ondragover="poolDragOver(event)"
         ondrop="poolDrop(event,'${p.name}')"
@@ -2108,8 +2117,8 @@ function renderPool() {
     const stars = sp.stars ?? p.stars ?? 0;
     const ovr   = sp.ovrOverride ?? p.ovr;
     const rawPos = sp.pos ?? getRegistryPos(p.name) ?? p.pos ?? 'SG';
-    const pos   = rawPos === 'SF' ? 'LCK' : rawPos;
-    const posOpts = ['PG','SG','LCK','PF','C'].map(o=>`<option value="${o}"${pos===o?' selected':''}>${o==='LCK'?'SF':o}</option>`).join('');
+    const pos   = rawPos === 'LCK' ? 'SF' : rawPos;
+    const posOpts = ['PG','SG','SF','PF','C'].map(o=>`<option value="${o}"${pos===o?' selected':''}>${o}</option>`).join('');
     return `<tr draggable="true"
       ondragstart="poolDragStart(event,'${p.name}')"
       ondragover="poolDragOver(event)"
@@ -2625,7 +2634,7 @@ function renderAdminPickList() {
   if (!body || !draftState) return;
   const search = (document.getElementById('admin-pick-search')?.value || '').trim().toLowerCase();
   const available = getAvailablePlayers(draftState).filter(p => {
-    if (adminPickFilter !== 'ALL' && p.pos !== adminPickFilter) return false;
+    if (adminPickFilter !== 'ALL' && (p.pos === 'LCK' ? 'SF' : p.pos) !== adminPickFilter) return false;
     if (search && !p.id.toLowerCase().includes(search) && !(p.name||'').toLowerCase().includes(search)) return false;
     return true;
   }).sort((a, b) => (b.ovr||0) - (a.ovr||0));
@@ -2837,13 +2846,13 @@ function renderBestSuggestion() {
   const sugEl = document.getElementById('gm-best-suggestion');
   if (!sugEl) return;
 
-  const SLOTS = ['PG','SG','LCK','PF','C'];
+  const SLOTS = ['PG','SG','SF','PF','C'];
   const myPicks = getTeamPicks(draftState, myTeamId);
   const filledPos = new Set(myPicks.map(p => {
     const pl = (draftState.players||[]).find(x=>x.id===p.playerId)||{};
-    return pl.pos==='SF'?'LCK':pl.pos||'';
+    return pl.pos === 'LCK' ? 'SF' : (pl.pos||'');
   }));
-  const neededPos = SLOTS.filter(s => !filledPos.has(s)).map(s => s==='LCK'?'SF':s);
+  const neededPos = SLOTS.filter(s => !filledPos.has(s));
 
   const pickedIds = getPickedPlayerIds(draftState);
   const available = (draftState.players||[])
@@ -2953,7 +2962,7 @@ function renderGmPlayers() {
   const players = (draftState.players||[]).filter(p => {
     if (p.excluded) return false;
     if (gmFilter === 'WATCH') { if (!watchlist.has(p.id)) return false; }
-    else if (gmFilter !== 'ALL' && p.pos !== gmFilter) return false;
+    else if (gmFilter !== 'ALL' && (p.pos === 'LCK' ? 'SF' : p.pos) !== gmFilter) return false;
     if (search && !p.name.toLowerCase().includes(search)) return false;
     return true;
   }).sort((a, b) => {
@@ -3073,17 +3082,17 @@ function renderGmRecentPicks() {
 function renderNeedsIndicator(myPicks, allPlayers) {
   const el = document.getElementById('gm-needs');
   if (!el) return;
-  const SLOTS = ['PG','SG','LCK','PF','C'];
+  const SLOTS = ['PG','SG','SF','PF','C'];
   const filled = new Set();
   myPicks.forEach(p => {
     const pl = allPlayers.find(x=>x.id===p.playerId)||{};
-    const sp = pl.pos==='SF'?'LCK':pl.pos||'';
+    const sp = pl.pos === 'LCK' ? 'SF' : (pl.pos||'');
     if (SLOTS.includes(sp) && !filled.has(sp)) filled.add(sp);
   });
   el.innerHTML = SLOTS.map(slot => {
     const have = filled.has(slot);
-    const colors = {'PG':'#93c5fd','SG':'#93c5fd','LCK':'#c4b5fd','PF':'#c4b5fd','C':'#86efac'};
-    const bg = {'PG':'rgba(96,165,250,.15)','SG':'rgba(96,165,250,.15)','LCK':'rgba(196,181,253,.15)','PF':'rgba(196,181,253,.15)','C':'rgba(134,239,172,.15)'};
+    const colors = {'PG':'#93c5fd','SG':'#93c5fd','SF':'#c4b5fd','PF':'#c4b5fd','C':'#86efac'};
+    const bg = {'PG':'rgba(96,165,250,.15)','SG':'rgba(96,165,250,.15)','SF':'rgba(196,181,253,.15)','PF':'rgba(196,181,253,.15)','C':'rgba(134,239,172,.15)'};
     return '<div style="display:flex;align-items:center;gap:4px;padding:3px 8px;border-radius:4px;border:1px solid '+(have?'rgba(74,222,128,.3)':'rgba(248,113,113,.3)')+';background:'+(have?'rgba(74,222,128,.08)':'rgba(248,113,113,.08)')+'">'
       +'<span style="font-family:Barlow Condensed,sans-serif;font-weight:800;font-size:11px;color:'+colors[slot]+'">'+slot+'</span>'
       +'<span style="font-size:12px">'+(have?'✓':'✗')+'</span>'
@@ -3218,11 +3227,11 @@ function renderGmAllTeams() {
       const logoHtml = t.logoB64
         ? `<img src="${t.logoB64}" style="width:28px;height:28px;border-radius:50%;object-fit:cover">`
         : `<div style="width:28px;height:28px;border-radius:50%;background:var(--dark4);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:var(--gold)">${(t.name||'?')[0]}</div>`;
-      const SLOTS = ['PG','SG','LCK','PF','C'];
+      const SLOTS = ['PG','SG','SF','PF','C'];
       const filled = {};
       picks.forEach(p => {
         const pl = (draftState.players||[]).find(x=>x.id===p.playerId)||{};
-        const slotPos = pl.pos === 'SF' ? 'LCK' : (pl.pos||'');
+        const slotPos = pl.pos === 'LCK' ? 'SF' : (pl.pos||'');
         if (SLOTS.includes(slotPos) && !filled[slotPos]) filled[slotPos] = { p, pl };
       });
       return `<div style="background:var(--dark3);border:1px solid ${isMe?'rgba(240,192,64,.3)':'var(--border)'};border-radius:var(--radius);overflow:hidden">
@@ -3236,8 +3245,8 @@ function renderGmAllTeams() {
         </div>
         ${SLOTS.map(slot => {
           const entry = filled[slot];
-          const pc = {'PG':'rgba(96,165,250,.15)','SG':'rgba(96,165,250,.15)','LCK':'rgba(196,181,253,.15)','PF':'rgba(196,181,253,.15)','C':'rgba(134,239,172,.15)'}[slot]||'rgba(255,255,255,.08)';
-          const tc = {'PG':'#93c5fd','SG':'#93c5fd','LCK':'#c4b5fd','PF':'#c4b5fd','C':'#86efac'}[slot]||'var(--muted)';
+          const pc = {'PG':'rgba(96,165,250,.15)','SG':'rgba(96,165,250,.15)','SF':'rgba(196,181,253,.15)','PF':'rgba(196,181,253,.15)','C':'rgba(134,239,172,.15)'}[slot]||'rgba(255,255,255,.08)';
+          const tc = {'PG':'#93c5fd','SG':'#93c5fd','SF':'#c4b5fd','PF':'#c4b5fd','C':'#86efac'}[slot]||'var(--muted)';
           if (!entry) return `<div style="padding:4px 10px;display:flex;align-items:center;gap:6px;opacity:.35;border-bottom:1px solid rgba(255,255,255,.04)">
             <span style="font-size:10px;font-weight:800;padding:1px 5px;border-radius:3px;background:${pc};color:${tc};min-width:30px;text-align:center">${slot}</span>
             <span style="color:var(--muted);font-size:11px">—</span>
@@ -3504,7 +3513,7 @@ function renderBoard() {
       </div>
       ${(() => {
         // Build position-based roster slots
-        const SLOTS = ['PG','SG','LCK','PF','C'];
+        const SLOTS = ['PG','SG','SF','PF','C'];
         const extraSlots = Math.max(0, perTeam - SLOTS.length);
         const slots = [...SLOTS, ...Array.from({length:extraSlots},(_,i)=>'FLEX'+(i+1))];
         // Map picks to positions
@@ -3513,8 +3522,7 @@ function renderBoard() {
         teamPicks.forEach(p => {
           const pl = (draftState.players||[]).find(x=>x.id===p.playerId)||{};
           const pos = pl.pos || '';
-          // LCK = SF
-          const slotPos = pos === 'SF' ? 'LCK' : pos;
+          const slotPos = pos === 'LCK' ? 'SF' : pos;
           if (slots.includes(slotPos) && !filled[slotPos]) {
             filled[slotPos] = { p, pl };
           } else {
@@ -3525,8 +3533,8 @@ function renderBoard() {
           const entry = filled[slot] || (slot.startsWith('FLEX') && flexPicks.length ? flexPicks.shift() : null);
           const isFlex = slot.startsWith('FLEX');
           const posColors = (pos) => ({
-            bg: {'PG':'rgba(96,165,250,.15)','SG':'rgba(96,165,250,.15)','LCK':'rgba(196,181,253,.15)','PF':'rgba(196,181,253,.15)','C':'rgba(134,239,172,.15)'}[pos]||'rgba(255,255,255,.08)',
-            tc: {'PG':'#93c5fd','SG':'#93c5fd','LCK':'#c4b5fd','PF':'#c4b5fd','C':'#86efac'}[pos]||'var(--muted)'
+            bg: {'PG':'rgba(96,165,250,.15)','SG':'rgba(96,165,250,.15)','SF':'rgba(196,181,253,.15)','LCK':'rgba(196,181,253,.15)','PF':'rgba(196,181,253,.15)','C':'rgba(134,239,172,.15)'}[pos]||'rgba(255,255,255,.08)',
+            tc: {'PG':'#93c5fd','SG':'#93c5fd','SF':'#c4b5fd','LCK':'#c4b5fd','PF':'#c4b5fd','C':'#86efac'}[pos]||'var(--muted)'
           });
           if (!entry) {
             const {bg, tc} = posColors(slot);
@@ -3536,7 +3544,7 @@ function renderBoard() {
             </div>`;
           }
           const { p, pl } = entry;
-          const displayPos = isFlex ? (pl.pos==='SF'?'LCK':(pl.pos||slot)) : slot;
+          const displayPos = isFlex ? (pl.pos === 'LCK' ? 'SF' : (pl.pos||slot)) : slot;
           const {bg, tc} = posColors(displayPos);
           return `<div class="pick-slot">
             <span style="font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:11px;padding:2px 6px;border-radius:3px;background:${bg};color:${tc};min-width:34px;text-align:center">${displayPos}</span>
