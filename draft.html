@@ -2076,8 +2076,7 @@ function renderPool() {
       const ovr   = sp.ovrOverride ?? p.ovr;
       const rawPos = sp.pos ?? getRegistryPos(p.name) ?? p.pos ?? 'SG';
       const pos   = rawPos === 'SF' ? 'LCK' : rawPos;
-      const posOpts = ['PG','SG','LCK','PF','C'].map(o=>`<option value="${o}"${pos===o?' selected':''}>${o}</option>`).join('');
-      return `<div draggable="true"
+      const posOpts = ['PG','SG','LCK','PF','C'].map(o=>`<option value="${o}"${pos===o?' selected':''}>${o==='LCK'?'SF':o}</option>`).join('');      return `<div draggable="true"
         ondragstart="poolDragStart(event,'${p.name}')"
         ondragover="poolDragOver(event)"
         ondrop="poolDrop(event,'${p.name}')"
