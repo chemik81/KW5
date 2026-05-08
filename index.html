@@ -5332,7 +5332,7 @@ async function renderDraftPool() {
           style="padding:5px 16px;border-radius:4px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;letter-spacing:.5px;cursor:pointer;transition:all .15s;
             border:1px solid ${active?(posColors[pos]||'var(--gold)'):'var(--border)'};
             background:${active?((posColors[pos]||'var(--gold)')+'33'):'var(--dark3)'};
-            color:${active?(posColors[pos]||'var(--gold)'):'var(--text2)'}">${pos||'ALL'}</button>`;
+            color:${active?(posColors[pos]||'var(--gold)'):'var(--text2)'}">${pos==='LCK'?'SF':(pos||'ALL')}</button>`;
       }).join('')}
     </div>
     <div id="dp-players"></div>`;
