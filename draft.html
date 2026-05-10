@@ -706,12 +706,8 @@ select.form-input{width:100%}
     </div>
   </div>
   <div class="container">
-    <div style="display:flex;gap:0;margin-bottom:16px;border-bottom:2px solid var(--border)">
-      <button id="board-tab-draft" onclick="setBoardTab('draft')" style="padding:8px 20px;background:none;border:none;border-bottom:2px solid var(--gold);margin-bottom:-2px;color:var(--gold);font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:14px;cursor:pointer;letter-spacing:.05em">DRAFT BOARD</button>
-      <button id="board-tab-roster" onclick="setBoardTab('roster')" style="padding:8px 20px;background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;color:var(--muted);font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:14px;cursor:pointer;letter-spacing:.05em">ROSTERS</button>
-    </div>
     <!-- OTC -->
-    <div class="otc-bar" id="board-otc-bar" style="margin-bottom:16px">
+    <div class="otc-bar" style="margin-bottom:16px">
       <div style="display:flex;align-items:center;gap:12px">
         <div id="board-otc-logo" style="width:52px;height:52px;border-radius:50%;overflow:hidden;background:var(--dark4);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-weight:800;font-size:20px;color:var(--gold);flex-shrink:0"></div>
         <div>
@@ -727,8 +723,7 @@ select.form-input{width:100%}
       </div>
     </div>
     <div id="board-grid" class="draft-board"></div>
-    <div id="board-roster" style="display:none;margin-top:4px"></div>
-    <div id="board-grades" style="display:none;margin-top:20px"></div>
+  <div id="board-grades" style="display:none;margin-top:20px"></div>
   </div>
 </div>
 
@@ -3556,93 +3551,6 @@ function renderBoard() {
           </div>`;
         }).join('');
       })()}
-    </div>`;
-  }).join('');
-  if (boardTab === 'roster') renderBoardRosters();
-}
-
-let boardTab = 'draft';
-function setBoardTab(tab) {
-  boardTab = tab;
-  const isDraft = tab === 'draft';
-  document.getElementById('board-grid').style.display    = isDraft ? '' : 'none';
-  document.getElementById('board-roster').style.display  = isDraft ? 'none' : '';
-  document.getElementById('board-grades').style.display  = isDraft && draftState?.status === 'done' ? 'block' : 'none';
-  document.getElementById('board-otc-bar').style.display = isDraft ? '' : 'none';
-  document.getElementById('board-tab-draft').style.cssText  = `padding:8px 20px;background:none;border:none;border-bottom:2px solid ${isDraft?'var(--gold)':'transparent'};margin-bottom:-2px;color:${isDraft?'var(--gold)':'var(--muted)'};font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:14px;cursor:pointer;letter-spacing:.05em`;
-  document.getElementById('board-tab-roster').style.cssText = `padding:8px 20px;background:none;border:none;border-bottom:2px solid ${!isDraft?'var(--gold)':'transparent'};margin-bottom:-2px;color:${!isDraft?'var(--gold)':'var(--muted)'};font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:14px;cursor:pointer;letter-spacing:.05em`;
-  if (!isDraft) renderBoardRosters();
-}
-
-function renderBoardRosters() {
-  const el = document.getElementById('board-roster');
-  if (!el || !draftState?.teams) return;
-  const perTeam = draftState.config?.perTeam || 7;
-  const SLOTS = ['PG','SG','SF','PF','C'];
-  const benchSlots = Math.max(0, perTeam - SLOTS.length);
-
-  el.style.display = 'grid';
-  el.style.gridTemplateColumns = 'repeat(auto-fill,minmax(280px,1fr))';
-  el.style.gap = '12px';
-
-  const pc = {'PG':'rgba(96,165,250,.15)','SG':'rgba(96,165,250,.15)','SF':'rgba(196,181,253,.15)','PF':'rgba(196,181,253,.15)','C':'rgba(134,239,172,.15)'};
-  const tc = {'PG':'#93c5fd','SG':'#93c5fd','SF':'#c4b5fd','PF':'#c4b5fd','C':'#86efac'};
-
-  el.innerHTML = draftState.teams.map(t => {
-    const picks = getTeamPicks(draftState, t.id);
-    const logoHtml = t.logoB64
-      ? `<img src="${t.logoB64}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0">`
-      : `<div style="width:36px;height:36px;border-radius:50%;background:var(--dark4);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:15px;color:var(--gold);flex-shrink:0">${(t.name||'?')[0]}</div>`;
-
-    const filled = {};
-    const bench = [];
-    picks.forEach(p => {
-      const pl = (draftState.players||[]).find(x=>x.id===p.playerId)||{};
-      const slotPos = pl.pos === 'LCK' ? 'SF' : (pl.pos||'');
-      if (SLOTS.includes(slotPos) && !filled[slotPos]) filled[slotPos] = {p, pl};
-      else bench.push({p, pl});
-    });
-
-    const slotRows = SLOTS.map(slot => {
-      const entry = filled[slot];
-      const bg = pc[slot]||'rgba(255,255,255,.06)';
-      const col = tc[slot]||'var(--muted)';
-      if (!entry) return `<div style="display:flex;align-items:center;gap:8px;padding:5px 12px;border-bottom:1px solid rgba(255,255,255,.04);opacity:.35">
-        <span style="font-size:10px;font-weight:800;padding:2px 6px;border-radius:3px;background:${bg};color:${col};min-width:32px;text-align:center">${slot}</span>
-        <span style="font-size:12px;color:var(--muted)">—</span>
-      </div>`;
-      const {p, pl} = entry;
-      return `<div style="display:flex;align-items:center;gap:8px;padding:5px 12px;border-bottom:1px solid rgba(255,255,255,.04)">
-        <span style="font-size:10px;font-weight:800;padding:2px 6px;border-radius:3px;background:${bg};color:${col};min-width:32px;text-align:center">${slot}</span>
-        <span style="font-size:13px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.playerId}</span>
-        <span class="ovr-badge ${ovrClass(pl.ovr||50)}" style="font-size:11px">${pl.ovr||''}</span>
-        <span style="font-size:10px;color:var(--muted);min-width:28px;text-align:right">#${p.pickNum}</span>
-      </div>`;
-    }).join('');
-
-    const benchRows = bench.length ? `<div style="padding:3px 12px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-top:2px">Bench</div>`
-      + bench.map(({p, pl}) => {
-        const slotPos = pl.pos === 'LCK' ? 'SF' : (pl.pos||'?');
-        const bg2 = pc[slotPos]||'rgba(255,255,255,.06)';
-        const col2 = tc[slotPos]||'var(--muted)';
-        return `<div style="display:flex;align-items:center;gap:8px;padding:4px 12px;border-bottom:1px solid rgba(255,255,255,.04)">
-          <span style="font-size:10px;font-weight:800;padding:2px 5px;border-radius:3px;background:${bg2};color:${col2};min-width:32px;text-align:center">${slotPos}</span>
-          <span style="font-size:12px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.playerId}</span>
-          <span class="ovr-badge ${ovrClass(pl.ovr||50)}" style="font-size:11px">${pl.ovr||''}</span>
-          <span style="font-size:10px;color:var(--muted);min-width:28px;text-align:right">#${p.pickNum}</span>
-        </div>`;
-      }).join('') : '';
-
-    return `<div style="background:var(--dark3);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
-      <div style="padding:10px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">
-        ${logoHtml}
-        <div style="flex:1;min-width:0">
-          <div style="font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.name}</div>
-          <div style="font-size:11px;color:var(--muted)">GM: ${t.gmName||'—'}</div>
-        </div>
-        <span style="font-size:12px;color:var(--muted);flex-shrink:0">${picks.length}/${perTeam} picks</span>
-      </div>
-      ${slotRows}${benchRows}
     </div>`;
   }).join('');
 }
