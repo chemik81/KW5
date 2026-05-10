@@ -374,7 +374,7 @@
     <button id="elite-stats-nav-btn" onclick="showSection('elite-stats',this)">📊 Elite Stats</button>
     <button id="schedule-nav-btn" onclick="showSection('schedule',this)">📅 Schedule</button>
     <button id="standings-nav-btn" onclick="showSection('standings',this)">🏆 Standings</button>
-    <button id="rosters-nav-btn" onclick="showSection('rosters',this)">👥 Rosters</button>
+    <button id="rosters-nav-btn" onclick="showSection('rosters',this)" style="display:none">👥 Rosters</button>
     <button id="draft-pool-nav-btn" onclick="showSection('draft-pool',this)">🎯 Draft Pool</button>
     <button id="superadmin-nav-btn" onclick="showSection('superadmin',this)" style="display:none">👑 Super Admin</button>
   </nav>
@@ -1341,7 +1341,7 @@ function updateAdminUI() {
   document.getElementById('logout-btn').style.display         = a  ? ''     : 'none';
   document.getElementById('admin-nav-btn').style.display      = a  ? ''     : 'none';
   // Elite Stats, Schedule, Standings, Draft Pool are always visible (no login required)
-  // Rosters is always visible (no login required)
+  // Rosters stays always hidden
   // Superadmin nav — hidden element, only shown when logged in as super
   const saBtn = document.getElementById('superadmin-nav-btn');
   if (saBtn) saBtn.style.display = sa ? '' : 'none';
