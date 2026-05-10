@@ -374,7 +374,7 @@
     <button id="elite-stats-nav-btn" onclick="showSection('elite-stats',this)">📊 Elite Stats</button>
     <button id="schedule-nav-btn" onclick="showSection('schedule',this)">📅 Schedule</button>
     <button id="standings-nav-btn" onclick="showSection('standings',this)">🏆 Standings</button>
-    <button id="rosters-nav-btn" onclick="showSection('rosters',this)" style="display:none">👥 Rosters</button>
+    <button id="rosters-nav-btn" onclick="showSection('rosters',this)">👥 Rosters</button>
     <button id="draft-pool-nav-btn" onclick="showSection('draft-pool',this)">🎯 Draft Pool</button>
     <button id="superadmin-nav-btn" onclick="showSection('superadmin',this)" style="display:none">👑 Super Admin</button>
   </nav>
@@ -1341,7 +1341,7 @@ function updateAdminUI() {
   document.getElementById('logout-btn').style.display         = a  ? ''     : 'none';
   document.getElementById('admin-nav-btn').style.display      = a  ? ''     : 'none';
   // Elite Stats, Schedule, Standings, Draft Pool are always visible (no login required)
-  // Rosters stays always hidden
+  // Rosters is always visible (no login required)
   // Superadmin nav — hidden element, only shown when logged in as super
   const saBtn = document.getElementById('superadmin-nav-btn');
   if (saBtn) saBtn.style.display = sa ? '' : 'none';
@@ -5190,7 +5190,7 @@ async function renderRosters() {
       tPicks.sort(function(a,b){ return a.pickNum - b.pickNum; });
 
       var posColors = {PG:'#f0c060',SG:'#60a5fa',SF:'#a78bfa',LCK:'#a78bfa',PF:'#4ade80',C:'#fb923c'};
-      var STARTING_SLOTS = ['PG','SG','LCK','PF','C'];
+      var STARTING_SLOTS = ['PG','SG','SF','PF','C'];
       var filledSlots = {};
       var flexPicks = [];
 
@@ -5198,7 +5198,7 @@ async function renderRosters() {
       tPicks.forEach(function(pick) {
         var p = playerMap[pick.playerId] || {id: pick.playerId, pos:'?', ovr:0};
         var pos = p.pos || '?';
-        var slotKey = (pos === 'SF') ? 'LCK' : pos;
+        var slotKey = (pos === 'LCK') ? 'SF' : pos;
         if (STARTING_SLOTS.indexOf(slotKey) !== -1 && !filledSlots[slotKey]) {
           filledSlots[slotKey] = { pick: pick, p: p };
         } else {
