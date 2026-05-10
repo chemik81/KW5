@@ -4721,12 +4721,16 @@ async function renderSchedule() {
     if (!rounds[g.round]) rounds[g.round] = [];
     rounds[g.round].push(Object.assign({}, g, {gid: i}));
   });
+  // Sort games within each round by date then time
+  function schedSortKey(g) { return new Date((g.date || '') + ' 2025 ' + (g.time || '00:00')).getTime() || 0; }
+  Object.values(rounds).forEach(function(arr) { arr.sort(function(a,b){ return schedSortKey(a)-schedSortKey(b); }); });
 
   for (var rn = 1; rn <= 11; rn++) {
     var games = rounds[rn];
     if (!games) continue;
     var dates = [];
     games.forEach(function(g) { if (dates.indexOf(g.date) < 0) dates.push(g.date); });
+    dates.sort(function(a,b){ return new Date(a+' 2025').getTime()-new Date(b+' 2025').getTime(); });
     var dateLabel = dates.length === 1 ? dates[0] : dates[0] + ' — ' + dates[dates.length - 1];
     var playedCount = games.filter(function(g) { var e = getEffectiveMatchScores(g.gid); return e.g1 !== null || e.g2 !== null; }).length;
 
@@ -5189,15 +5193,23 @@ async function renderRosters() {
       tPicks.sort(function(a,b){ return a.pickNum - b.pickNum; });
 
       var posColors = {PG:'#f0c060',SG:'#60a5fa',SF:'#a78bfa',LCK:'#a78bfa',PF:'#4ade80',C:'#fb923c'};
-      var STARTING_SLOTS = ['PG','SG','LCK','PF','C'];
+      var STARTING_SLOTS = ['PG','SG','SF','PF','C'];
       var filledSlots = {};
       var flexPicks = [];
 
       // Assign picks to position slots; overflow → flex
+      var posOverrides = {
+        'leMouraaa': 'PF',
+        'y Olajuwon': 'C',
+        'BrkTheBeast': 'PG',
+        'raxocapalot': 'SG',
+        'JafadenDaben': 'PF',
+        'xpipotato-': 'SF'
+      };
       tPicks.forEach(function(pick) {
         var p = playerMap[pick.playerId] || {id: pick.playerId, pos:'?', ovr:0};
-        var pos = p.pos || '?';
-        var slotKey = (pos === 'SF') ? 'LCK' : pos;
+        var pos = posOverrides[p.id] || p.pos || '?';
+        var slotKey = (pos === 'LCK') ? 'SF' : pos;
         if (STARTING_SLOTS.indexOf(slotKey) !== -1 && !filledSlots[slotKey]) {
           filledSlots[slotKey] = { pick: pick, p: p };
         } else {
@@ -5249,7 +5261,7 @@ async function renderRosters() {
 // ============================================================
 // DRAFT POOL
 // ============================================================
-let dpSort = 'ovr', dpPos = '', dpSearch = '', dpView = 'cards';
+let dpSort = 'ovr', dpPos = '', dpSearch = '', dpView = 'cards', dpStatus = '';
 
 function withOvr(players) {
   if (!players.length) return players;
@@ -5323,7 +5335,7 @@ async function renderDraftPool() {
         </div>
       </div>
     </div>
-    <div style="display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap">
+    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
       ${['','PG','SG','LCK','PF','C'].map(pos=>{
         const active = pos === dpPos;
         const col = posColors[pos] || 'var(--gold)';
@@ -5332,6 +5344,17 @@ async function renderDraftPool() {
             border:1px solid ${active?(posColors[pos]||'var(--gold)'):'var(--border)'};
             background:${active?((posColors[pos]||'var(--gold)')+'33'):'var(--dark3)'};
             color:${active?(posColors[pos]||'var(--gold)'):'var(--text2)'}">${pos==='LCK'?'SF':(pos||'ALL')}</button>`;
+      }).join('')}
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap">
+      ${[['','ALL'],['undrafted','UNDRAFTED'],['drafted','DRAFTED']].map(([val,label])=>{
+        const active = val === dpStatus;
+        const col = val==='drafted'?'#f87171':val==='undrafted'?'#4ade80':'var(--gold)';
+        return `<button onclick="dpStatus='${val}';renderDraftPool()"
+          style="padding:5px 16px;border-radius:4px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;letter-spacing:.5px;cursor:pointer;transition:all .15s;
+            border:1px solid ${active?col:'var(--border)'};
+            background:${active?(col+'33'):'var(--dark3)'};
+            color:${active?col:'var(--text2)'}">${label}</button>`;
       }).join('')}
     </div>
     <div id="dp-players"></div>`;
@@ -5359,6 +5382,11 @@ function renderDpPlayers() {
   if (dpPos) players = players.filter(p => dpPos === 'LCK' ? (p.pos === 'SF' || p.pos === 'LCK') : p.pos === dpPos);
   const srch = dpSearch.trim().toLowerCase();
   if (srch) players = players.filter(p => p.name.toLowerCase().includes(srch));
+  if (dpStatus) {
+    const draftedIds = new Set((_draftCache?.picks || []).map(pk => pk.playerId));
+    if (dpStatus === 'drafted')   players = players.filter(p => draftedIds.has(p.name));
+    if (dpStatus === 'undrafted') players = players.filter(p => !draftedIds.has(p.name));
+  }
   const sortFns = { ovr:(a,b)=>b.ovr-a.ovr, ppg:(a,b)=>b.ppg-a.ppg, rpg:(a,b)=>b.rpg-a.rpg, apg:(a,b)=>b.apg-a.apg, per:(a,b)=>b.per-a.per };
   players.sort(sortFns[dpSort] || sortFns.ovr);
 
@@ -5368,6 +5396,7 @@ function renderDpPlayers() {
   const posColors = { PG:'#3b82f6', SG:'#8b5cf6', LCK:'#10b981', PF:'#f97316', C:'#ef4444' };
   function ovrColor(o) { return o>=90?'#f59e0b':o>=80?'#4ade80':o>=70?'#60a5fa':o>=60?'#94a3b8':'#6b7280'; }
   const tierColors = {'EFIBA WORLDS':'#f59e0b','D1 WINNER':'#4ade80','KW5 WINNER':'#fbbf24','D1 PLAYOFFS':'#60a5fa','D1':'#38bdf8','D2 WINNER':'#a78bfa','D2 PLAYOFFS':'#fb923c','D2':'#94a3b8','Ms ONLY':'#6b7280'};
+  const draftedSet = new Set((_draftCache?.picks || []).map(pk => pk.playerId));
 
   let html = dpView === 'list'
     ? `<div style="display:flex;flex-direction:column;gap:2px">`
@@ -5381,17 +5410,19 @@ function renderDpPlayers() {
     const tier  = info ? info.t : null;
     const tierCol = (tier && tierColors[tier]) || '#6b7280';
     const flag = getFlag(p.name);
+    const isDrafted = draftedSet.has(p.name);
     const starsHtml = (stars != null && stars > 0)
       ? '<span style="color:#f59e0b;font-size:11px;letter-spacing:1px">' + '★'.repeat(stars) + '<span style="color:#374151">' + '★'.repeat(5-stars) + '</span></span>'
       : (stars === 0 ? '<span style="color:#374151;font-size:11px">★★★★★</span>' : '');
 
     if (dpView === 'list') {
       html += `
-      <div class="dp-list-row" style="display:flex;align-items:center;gap:10px;padding:7px 12px;background:var(--dark2);border:1px solid var(--border2);border-radius:6px;border-left:3px solid ${posCol};transition:border-color .15s"
+      <div class="dp-list-row" style="display:flex;align-items:center;gap:10px;padding:7px 12px;background:var(--dark2);border:1px solid var(--border2);border-radius:6px;border-left:3px solid ${posCol};transition:border-color .15s;${isDrafted?'opacity:.55':''}"
            onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border2)'">
         <span style="font-size:11px;color:var(--text3);font-family:'Barlow Condensed',sans-serif;font-weight:700;min-width:24px;flex-shrink:0">#${i+1}</span>
         <span style="font-size:10px;font-family:'Barlow Condensed',sans-serif;font-weight:800;color:${posCol};background:${posCol}22;padding:2px 7px;border-radius:3px;letter-spacing:.5px;flex-shrink:0">${pos}</span>
         ${tier ? `<span style="font-size:9px;font-family:'Barlow Condensed',sans-serif;font-weight:700;color:${tierCol};background:${tierCol}22;padding:2px 6px;border-radius:3px;letter-spacing:.3px;white-space:nowrap;flex-shrink:0">${tier}</span>` : ''}
+        ${isDrafted ? `<span style="font-size:9px;font-family:'Barlow Condensed',sans-serif;font-weight:800;color:#f87171;background:#f8717122;padding:2px 6px;border-radius:3px;letter-spacing:.5px;flex-shrink:0">DRAFTED</span>` : ''}
         <div style="font-size:13px;font-weight:700;font-family:'Barlow Condensed',sans-serif;letter-spacing:.3px;text-transform:uppercase;color:var(--white);display:flex;align-items:center;gap:4px;flex:1;min-width:100px">
           ${flag}${p.name}
         </div>
@@ -5411,13 +5442,14 @@ function renderDpPlayers() {
       </div>`;
     } else {
       html += `
-      <div style="background:var(--dark2);border:1px solid var(--border2);border-radius:8px;overflow:hidden;transition:border-color .15s;cursor:default"
+      <div style="background:var(--dark2);border:1px solid var(--border2);border-radius:8px;overflow:hidden;transition:border-color .15s;cursor:default;${isDrafted?'opacity:.55':''}"
            onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border2)'">
-        <div style="height:3px;background:${posCol}"></div>
+        <div style="height:3px;background:${isDrafted?'#f87171':posCol}"></div>
         <div style="padding:13px 14px">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
             <div>
               <span style="font-size:10px;color:var(--text3);font-family:'Barlow Condensed',sans-serif;font-weight:700">#${i+1}</span>
+              ${isDrafted ? `<div style="margin-top:3px"><span style="font-size:9px;font-family:'Barlow Condensed',sans-serif;font-weight:800;color:#f87171;background:#f8717122;padding:2px 6px;border-radius:3px;letter-spacing:.5px">DRAFTED</span></div>` : ''}
               ${starsHtml ? `<div style="margin-top:3px">${starsHtml}</div>` : ''}
             </div>
             <div style="text-align:right">
