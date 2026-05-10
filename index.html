@@ -4722,12 +4722,16 @@ async function renderSchedule() {
     if (!rounds[g.round]) rounds[g.round] = [];
     rounds[g.round].push(Object.assign({}, g, {gid: i}));
   });
+  // Sort games within each round by date then time
+  function schedSortKey(g) { return new Date((g.date || '') + ' 2025 ' + (g.time || '00:00')).getTime() || 0; }
+  Object.values(rounds).forEach(function(arr) { arr.sort(function(a,b){ return schedSortKey(a)-schedSortKey(b); }); });
 
   for (var rn = 1; rn <= 11; rn++) {
     var games = rounds[rn];
     if (!games) continue;
     var dates = [];
     games.forEach(function(g) { if (dates.indexOf(g.date) < 0) dates.push(g.date); });
+    dates.sort(function(a,b){ return new Date(a+' 2025').getTime()-new Date(b+' 2025').getTime(); });
     var dateLabel = dates.length === 1 ? dates[0] : dates[0] + ' — ' + dates[dates.length - 1];
     var playedCount = games.filter(function(g) { var e = getEffectiveMatchScores(g.gid); return e.g1 !== null || e.g2 !== null; }).length;
 
