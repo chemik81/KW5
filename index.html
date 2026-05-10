@@ -5195,9 +5195,17 @@ async function renderRosters() {
       var flexPicks = [];
 
       // Assign picks to position slots; overflow → flex
+      var posOverrides = {
+        'leMouraaa': 'PF',
+        'y Olajuwon': 'C',
+        'BrkTheBeast': 'PG',
+        'raxocapalot': 'SG',
+        'JafadenDaben': 'PF',
+        'xpipotato-': 'SF'
+      };
       tPicks.forEach(function(pick) {
         var p = playerMap[pick.playerId] || {id: pick.playerId, pos:'?', ovr:0};
-        var pos = p.pos || '?';
+        var pos = posOverrides[p.id] || p.pos || '?';
         var slotKey = (pos === 'LCK') ? 'SF' : pos;
         if (STARTING_SLOTS.indexOf(slotKey) !== -1 && !filledSlots[slotKey]) {
           filledSlots[slotKey] = { pick: pick, p: p };
