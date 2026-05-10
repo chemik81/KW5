@@ -4723,7 +4723,16 @@ async function renderSchedule() {
     rounds[g.round].push(Object.assign({}, g, {gid: i}));
   });
   // Sort games within each round by date then time
-  function schedSortKey(g) { return new Date((g.date || '') + ' 2025 ' + (g.time || '00:00')).getTime() || 0; }
+  const MONTH_NUM = {Jan:1,Feb:2,Mar:3,Apr:4,May:5,Jun:6,Jul:7,Aug:8,Sep:9,Oct:10,Nov:11,Dec:12};
+  function schedSortKey(g) {
+    var dm = (g.date || '').match(/^(\w+)\s+(\d+)/);
+    var tm = (g.time || '00:00').match(/^(\d+):(\d+)/);
+    var mon = dm ? (MONTH_NUM[dm[1]] || 0) : 0;
+    var day = dm ? parseInt(dm[2]) : 0;
+    var hr  = tm ? parseInt(tm[1]) : 0;
+    var min = tm ? parseInt(tm[2]) : 0;
+    return mon * 100000 + day * 1000 + hr * 10 + Math.floor(min / 6);
+  }
   Object.values(rounds).forEach(function(arr) { arr.sort(function(a,b){ return schedSortKey(a)-schedSortKey(b); }); });
 
   for (var rn = 1; rn <= 11; rn++) {
