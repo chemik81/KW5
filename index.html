@@ -2703,10 +2703,12 @@ function openInfoModal() {
 // ============================================================
 // PLAYER MODAL
 // ============================================================
-function openPlayerModal(playerName) {
+function openPlayerModal(playerName, matchesArr) {
   // Collect all appearances
+  const _matches = matchesArr || state.matches;
+  window._playerModalMatches = _matches;
   const games = [];
-  state.matches.forEach(m => {
+  _matches.forEach(m => {
     const checkTeam = (players, teamName, oppName) => {
       (players||[]).forEach(p => {
         if (p.name !== playerName) return;
@@ -2919,15 +2921,42 @@ function openPlayerModal(playerName) {
 }
 
 function openElitePlayerModal(playerName) {
-  openPlayerModal(playerName);
-  // Inject test banner at top of modal content
-  const content = document.getElementById('player-modal-content');
-  if (content) {
-    const banner = document.createElement('div');
-    banner.style.cssText = 'background:rgba(251,146,60,.12);border:1px solid #fb923c;border-radius:6px;padding:8px 14px;margin-bottom:14px;display:flex;align-items:center;gap:8px;font-size:12px;color:#fb923c;font-weight:600';
-    banner.innerHTML = '⚠️ <span>TEST MODE — showing Arena statistics. Remember to switch to Elite S1 stats after matches are uploaded.</span>';
-    content.insertBefore(banner, content.firstChild);
+  const eliteMatches = state.eliteMatches || [];
+  // Check if player has any elite matches
+  let hasEliteGames = false;
+  for (var _em of eliteMatches) {
+    var _all = (_em.team1_players||[]).concat(_em.team2_players||[]);
+    if (_all.some(function(p){ return p.name === playerName; })) { hasEliteGames = true; break; }
   }
+
+  if (!hasEliteGames) {
+    // Show modal with no-stats message (no arena stats fallback)
+    document.getElementById('player-modal-name').textContent = playerName;
+    document.getElementById('player-modal-meta').innerHTML = '';
+    const logoEl = document.getElementById('player-modal-team-logo');
+    if (logoEl) {
+      logoEl.innerHTML = '';
+      fetchDraftCache().then(function() {
+        if (!_draftCache) return;
+        var pick = (_draftCache.picks || []).find(function(pk){ return pk.playerId === playerName; });
+        if (!pick) return;
+        var team = (_draftCache.teams || []).find(function(t){ return t.id === pick.teamId; });
+        if (!team) return;
+        logoEl.innerHTML = getDraftLogoHTML(team.name, 44);
+        logoEl.title = team.name;
+      });
+    }
+    document.getElementById('player-modal-content').innerHTML =
+      '<div style="text-align:center;padding:48px 20px;color:var(--text3);">' +
+        '<div style="font-size:52px;margin-bottom:16px;">🏀</div>' +
+        '<div style="font-size:16px;font-weight:700;color:var(--text2);margin-bottom:8px;letter-spacing:1px;">NO ELITE LEAGUE STATS YET</div>' +
+        '<div style="font-size:13px;line-height:1.6;">Stats will appear here once<br>Elite League matches are recorded.</div>' +
+      '</div>';
+    document.getElementById('player-overlay').classList.add('active');
+    return;
+  }
+
+  openPlayerModal(playerName, eliteMatches);
 }
 
 
@@ -3071,7 +3100,7 @@ function generateShareCard() {
   const revMap   = [[97,'A+'],[90,'A'],[85,'A-'],[80,'B+'],[73,'B'],[67,'B-'],[64,'C+'],[60,'C'],[54,'C-'],[51,'D+'],[46,'D'],[36,'D-'],[0,'F']];
 
   const games = [];
-  state.matches.forEach(m => {
+  (window._playerModalMatches || state.matches).forEach(m => {
     const chk = (players, team, opp) => {
       (players||[]).forEach(p => {
         if (p.name !== playerName) return;
