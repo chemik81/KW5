@@ -839,6 +839,47 @@
   </div>
 </div>
 
+<!-- ROSTER ADMIN: ADD PLAYER MODAL -->
+<div class="modal-overlay" id="roster-add-overlay">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-header">
+      <h3 id="roster-add-title">➕ Add Player to Roster</h3>
+      <button class="btn btn-outline" onclick="closeModal('roster-add-overlay')">✕</button>
+    </div>
+    <div style="margin-bottom:12px;">
+      <input type="text" id="roster-add-search" placeholder="Search undrafted players…"
+        oninput="renderRosterAddList()"
+        style="width:100%;box-sizing:border-box;background:var(--dark3);border:1px solid var(--border);border-radius:4px;padding:7px 11px;color:var(--white);font-size:13px;outline:none">
+    </div>
+    <div id="roster-add-list" style="max-height:340px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;"></div>
+    <div style="margin-top:12px;display:flex;justify-content:flex-end">
+      <button class="btn btn-outline" onclick="closeModal('roster-add-overlay')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ROSTER ADMIN: SWAP PLAYER MODAL -->
+<div class="modal-overlay" id="roster-swap-overlay">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-header">
+      <h3 id="roster-swap-title">⇄ Swap Player</h3>
+      <button class="btn btn-outline" onclick="closeModal('roster-swap-overlay')">✕</button>
+    </div>
+    <div style="margin-bottom:8px;font-size:13px;color:var(--text2)">
+      Replacing: <strong id="roster-swap-old" style="color:var(--gold)"></strong>
+    </div>
+    <div style="margin-bottom:12px;">
+      <input type="text" id="roster-swap-search" placeholder="Search undrafted players…"
+        oninput="renderRosterSwapList()"
+        style="width:100%;box-sizing:border-box;background:var(--dark3);border:1px solid var(--border);border-radius:4px;padding:7px 11px;color:var(--white);font-size:13px;outline:none">
+    </div>
+    <div id="roster-swap-list" style="max-height:320px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;"></div>
+    <div style="margin-top:12px;display:flex;justify-content:flex-end">
+      <button class="btn btn-outline" onclick="closeModal('roster-swap-overlay')">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- INFO MODAL (hidden) -->
 <!-- <div class="modal-overlay" id="info-overlay">
   <div class="modal" style="max-width:520px;">
@@ -5112,6 +5153,221 @@ async function renderStandings() {
   document.getElementById('standings-content').innerHTML = html;
 }
 
+// ============================================================
+// ROSTER ADMIN MANAGEMENT
+// ============================================================
+
+// State for add/swap modals
+var _rosterAdminState = { teamId: null, teamName: null, oldPlayerId: null };
+
+function getRosterUndraftedPlayers(draftData) {
+  var pickedIds = new Set((draftData.picks || []).map(function(pk){ return pk.playerId; }));
+  var addedIds  = new Set(draftData.addedPlayerIds || []);
+  var excludedIds = new Set();
+  (draftData.players || []).forEach(function(p){ if (p.excluded) excludedIds.add(p.id); });
+  var all = withOvr(getAggregates(state.matches));
+  return all.filter(function(p){
+    return !pickedIds.has(p.name) && !addedIds.has(p.name) && !excludedIds.has(p.name);
+  }).sort(function(a,b){ return b.ovr - a.ovr; });
+}
+
+async function saveRosterMove(draftData, move) {
+  move.id   = Date.now() + '_' + Math.random().toString(36).slice(2,7);
+  move.date = new Date().toISOString();
+  if (!draftData.addedPlayerIds) draftData.addedPlayerIds = [];
+  if (!draftData.rosterMoves)    draftData.rosterMoves    = [];
+
+  if (move.type === 'add') {
+    if (!draftData.addedPlayerIds.includes(move.player)) draftData.addedPlayerIds.push(move.player);
+  } else if (move.type === 'swap') {
+    // new player into addedPlayerIds; swappedOut stays in addedPlayerIds (per spec)
+    if (!draftData.addedPlayerIds.includes(move.player)) draftData.addedPlayerIds.push(move.player);
+  }
+  // 'remove' does NOT remove from addedPlayerIds per spec
+
+  draftData.rosterMoves.push(move);
+
+  var res = await fetch(WORKER_URL.replace(/\/+$/, '') + '/draft-data', {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Admin-Token': localStorage.getItem('kw5_admin_hash') || ADMIN_HASH
+    },
+    body: JSON.stringify({ record: draftData })
+  });
+  if (!res.ok) throw new Error('Save failed: ' + res.status);
+  _draftCache = null;
+}
+
+function openAddPlayerModal(teamId) {
+  if (!isAdmin) return;
+  var draftData = _draftCache;
+  if (!draftData) { notify('Draft data not loaded — refresh Rosters tab first', 'error'); return; }
+  var team = (draftData.teams || []).find(function(t){ return t.id === teamId; });
+  _rosterAdminState.teamId   = teamId;
+  _rosterAdminState.teamName = team ? team.name : teamId;
+  _rosterAdminState.oldPlayerId = null;
+
+  var titleEl = document.getElementById('roster-add-title');
+  if (titleEl) titleEl.textContent = '➕ Add Player to ' + _rosterAdminState.teamName;
+  var searchEl = document.getElementById('roster-add-search');
+  if (searchEl) searchEl.value = '';
+  renderRosterAddList();
+  document.getElementById('roster-add-overlay').classList.add('active');
+}
+
+function renderRosterAddList() {
+  var el = document.getElementById('roster-add-list');
+  if (!el) return;
+  var draftData = _draftCache;
+  if (!draftData) { el.innerHTML = '<div style="color:var(--text3);font-size:13px">No draft data</div>'; return; }
+  var players = getRosterUndraftedPlayers(draftData);
+  var srch = (document.getElementById('roster-add-search') || {}).value || '';
+  srch = srch.trim().toLowerCase();
+  if (srch) players = players.filter(function(p){ return p.name.toLowerCase().includes(srch); });
+  if (!players.length) { el.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:8px">No undrafted players found.</div>'; return; }
+  var posColors = {PG:'#3b82f6',SG:'#8b5cf6',LCK:'#10b981',SF:'#10b981',PF:'#f97316',C:'#ef4444'};
+  var html = '';
+  players.forEach(function(p) {
+    var posCol = posColors[p.pos] || '#64748b';
+    var flag = getFlag(p.name);
+    var safeName = p.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    html += '<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;cursor:pointer" ' +
+      'onmouseover="this.style.borderColor=\'var(--gold)\'" onmouseout="this.style.borderColor=\'var(--border2)\'">';
+    html += '<span style="font-size:10px;font-family:\'Barlow Condensed\',sans-serif;font-weight:800;color:' + posCol + ';background:' + posCol + '22;padding:2px 7px;border-radius:3px;flex-shrink:0">' + p.pos + '</span>';
+    html += '<span style="font-size:22px;font-weight:900;font-family:\'Barlow Condensed\',sans-serif;color:#f59e0b;min-width:30px;text-align:right;flex-shrink:0">' + p.ovr + '</span>';
+    html += '<span style="font-size:13px;color:var(--white);flex:1">' + flag + p.name + '</span>';
+    html += '<button onclick="confirmAddRosterPlayer(\'' + safeName + '\')" style="background:var(--gold);color:#000;border:none;border-radius:3px;padding:3px 10px;font-size:11px;font-family:\'Barlow Condensed\',sans-serif;font-weight:800;cursor:pointer;flex-shrink:0">Add</button>';
+    html += '</div>';
+  });
+  el.innerHTML = html;
+}
+
+async function confirmAddRosterPlayer(playerId) {
+  if (!isAdmin) return;
+  var draftData = _draftCache;
+  if (!draftData) { notify('Draft data not loaded', 'error'); return; }
+  var teamId   = _rosterAdminState.teamId;
+  var teamName = _rosterAdminState.teamName;
+  if (!teamId) { notify('No team selected', 'error'); return; }
+  closeModal('roster-add-overlay');
+  try {
+    await saveRosterMove(draftData, {
+      type: 'add',
+      teamId: teamId,
+      teamName: teamName,
+      player: playerId
+    });
+    notify('✅ ' + playerId + ' added to ' + teamName, 'success');
+  } catch(e) {
+    notify('❌ Failed to save: ' + e.message, 'error');
+    return;
+  }
+  _draftCache = null;
+  renderRosters();
+  var dpEl = document.getElementById('dp-players');
+  if (dpEl) { fetchDraftCache().then(function(){ renderDpPlayers(); }); }
+}
+
+function openSwapPlayerModal(teamId, oldPlayerId) {
+  if (!isAdmin) return;
+  var draftData = _draftCache;
+  if (!draftData) { notify('Draft data not loaded — refresh Rosters tab first', 'error'); return; }
+  var team = (draftData.teams || []).find(function(t){ return t.id === teamId; });
+  _rosterAdminState.teamId      = teamId;
+  _rosterAdminState.teamName    = team ? team.name : teamId;
+  _rosterAdminState.oldPlayerId = oldPlayerId;
+
+  var titleEl = document.getElementById('roster-swap-title');
+  if (titleEl) titleEl.textContent = '⇄ Swap Player on ' + _rosterAdminState.teamName;
+  var oldEl = document.getElementById('roster-swap-old');
+  if (oldEl) oldEl.textContent = oldPlayerId;
+  var searchEl = document.getElementById('roster-swap-search');
+  if (searchEl) searchEl.value = '';
+  renderRosterSwapList();
+  document.getElementById('roster-swap-overlay').classList.add('active');
+}
+
+function renderRosterSwapList() {
+  var el = document.getElementById('roster-swap-list');
+  if (!el) return;
+  var draftData = _draftCache;
+  if (!draftData) { el.innerHTML = '<div style="color:var(--text3);font-size:13px">No draft data</div>'; return; }
+  var players = getRosterUndraftedPlayers(draftData);
+  var srch = (document.getElementById('roster-swap-search') || {}).value || '';
+  srch = srch.trim().toLowerCase();
+  if (srch) players = players.filter(function(p){ return p.name.toLowerCase().includes(srch); });
+  if (!players.length) { el.innerHTML = '<div style="color:var(--text3);font-size:13px;padding:8px">No undrafted players found.</div>'; return; }
+  var posColors = {PG:'#3b82f6',SG:'#8b5cf6',LCK:'#10b981',SF:'#10b981',PF:'#f97316',C:'#ef4444'};
+  var html = '';
+  players.forEach(function(p) {
+    var posCol = posColors[p.pos] || '#64748b';
+    var flag = getFlag(p.name);
+    var safeName = p.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    html += '<div style="display:flex;align-items:center;gap:10px;padding:7px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;cursor:pointer" ' +
+      'onmouseover="this.style.borderColor=\'var(--gold)\'" onmouseout="this.style.borderColor=\'var(--border2)\'">';
+    html += '<span style="font-size:10px;font-family:\'Barlow Condensed\',sans-serif;font-weight:800;color:' + posCol + ';background:' + posCol + '22;padding:2px 7px;border-radius:3px;flex-shrink:0">' + p.pos + '</span>';
+    html += '<span style="font-size:22px;font-weight:900;font-family:\'Barlow Condensed\',sans-serif;color:#f59e0b;min-width:30px;text-align:right;flex-shrink:0">' + p.ovr + '</span>';
+    html += '<span style="font-size:13px;color:var(--white);flex:1">' + flag + p.name + '</span>';
+    html += '<button onclick="confirmSwapRosterPlayer(\'' + safeName + '\')" style="background:#f59e0b;color:#000;border:none;border-radius:3px;padding:3px 10px;font-size:11px;font-family:\'Barlow Condensed\',sans-serif;font-weight:800;cursor:pointer;flex-shrink:0">Swap</button>';
+    html += '</div>';
+  });
+  el.innerHTML = html;
+}
+
+async function confirmSwapRosterPlayer(newPlayerId) {
+  if (!isAdmin) return;
+  var draftData = _draftCache;
+  if (!draftData) { notify('Draft data not loaded', 'error'); return; }
+  var teamId      = _rosterAdminState.teamId;
+  var teamName    = _rosterAdminState.teamName;
+  var oldPlayerId = _rosterAdminState.oldPlayerId;
+  if (!teamId || !oldPlayerId) { notify('Invalid swap state', 'error'); return; }
+  closeModal('roster-swap-overlay');
+  try {
+    await saveRosterMove(draftData, {
+      type: 'swap',
+      teamId: teamId,
+      teamName: teamName,
+      player: newPlayerId,
+      swappedOut: oldPlayerId
+    });
+    notify('✅ Swapped ' + oldPlayerId + ' → ' + newPlayerId + ' on ' + teamName, 'success');
+  } catch(e) {
+    notify('❌ Failed to save: ' + e.message, 'error');
+    return;
+  }
+  _draftCache = null;
+  renderRosters();
+  var dpEl = document.getElementById('dp-players');
+  if (dpEl) { fetchDraftCache().then(function(){ renderDpPlayers(); }); }
+}
+
+async function adminRemoveRosterPlayer(teamId, playerId) {
+  if (!isAdmin) return;
+  if (!confirm('Remove ' + playerId + ' from this team? (They will stay in addedPlayerIds and will not return to undrafted.)')) return;
+  var draftData = _draftCache;
+  if (!draftData) { notify('Draft data not loaded', 'error'); return; }
+  var team = (draftData.teams || []).find(function(t){ return t.id === teamId; });
+  var teamName = team ? team.name : teamId;
+  try {
+    await saveRosterMove(draftData, {
+      type: 'remove',
+      teamId: teamId,
+      teamName: teamName,
+      player: playerId
+    });
+    notify('✅ ' + playerId + ' removed from ' + teamName, 'success');
+  } catch(e) {
+    notify('❌ Failed to save: ' + e.message, 'error');
+    return;
+  }
+  _draftCache = null;
+  renderRosters();
+  var dpEl = document.getElementById('dp-players');
+  if (dpEl) { fetchDraftCache().then(function(){ renderDpPlayers(); }); }
+}
+
 async function renderRosters() {
   var el = document.getElementById('rosters-content');
   el.innerHTML = '<div style="color:var(--text3);padding:20px">Loading draft data...</div>';
@@ -5122,6 +5378,8 @@ async function renderRosters() {
     if (res.ok) {
       var json = await res.json();
       draftData = json.record || json;
+      // Keep _draftCache in sync so Add/Swap modals can use it
+      _draftCache = draftData;
     }
   } catch(e) {}
 
@@ -5173,14 +5431,56 @@ async function renderRosters() {
     teamPicks[pick.teamId].push(pick);
   });
 
-  var totalPicks = picks.length;
+  // Build addedPlayerIds set for quick lookup
+  var addedPlayerIds = draftData.addedPlayerIds || [];
+  var addedSet = new Set(addedPlayerIds);
+
+  // Build added picks: virtual pick objects for admin-added players
+  // Group added players by team using rosterMoves
+  var addedByTeam = {}; // teamId -> [playerId, ...]
+  teams.forEach(function(t) { addedByTeam[t.id] = []; });
+  (draftData.rosterMoves || []).forEach(function(move) {
+    if (move.type === 'add' || move.type === 'swap') {
+      var pid = move.type === 'swap' ? move.player : move.player;
+      if (!addedByTeam[move.teamId]) addedByTeam[move.teamId] = [];
+      // Only include if still in addedSet (swap removes the swappedOut player from team, but both remain in addedSet per spec)
+      // We track who is currently on each team via moves: add appends, swap replaces, remove removes
+    }
+  });
+  // Rebuild current team membership for added players from rosterMoves
+  var addedOnTeam = {}; // teamId -> [playerId]
+  teams.forEach(function(t) { addedOnTeam[t.id] = []; });
+  (draftData.rosterMoves || []).forEach(function(move) {
+    if (move.type === 'add') {
+      if (!addedOnTeam[move.teamId]) addedOnTeam[move.teamId] = [];
+      addedOnTeam[move.teamId].push(move.player);
+    } else if (move.type === 'remove') {
+      if (addedOnTeam[move.teamId]) {
+        var idx = addedOnTeam[move.teamId].indexOf(move.player);
+        if (idx !== -1) addedOnTeam[move.teamId].splice(idx, 1);
+      }
+    } else if (move.type === 'swap') {
+      if (addedOnTeam[move.teamId]) {
+        var idx2 = addedOnTeam[move.teamId].indexOf(move.swappedOut);
+        if (idx2 !== -1) addedOnTeam[move.teamId].splice(idx2, 1);
+      }
+      if (!addedOnTeam[move.teamId]) addedOnTeam[move.teamId] = [];
+      addedOnTeam[move.teamId].push(move.player);
+    }
+  });
+
+  var totalPicks = picks.length + addedPlayerIds.length;
   var totalExpected = (draftData.config?.perTeam || 5) * teams.length;
-  html += '<div style="font-size:12px;color:var(--text3);margin-bottom:16px">' + totalPicks + ' / ' + totalExpected + ' picks made</div>';
+  html += '<div style="font-size:12px;color:var(--text3);margin-bottom:16px">' + picks.length + ' draft picks';
+  if (addedPlayerIds.length > 0) html += ' + ' + addedPlayerIds.length + ' admin additions';
+  html += '</div>';
 
   html += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px">';
   teams.forEach(function(team) {
     var tPicks = teamPicks[team.id] || [];
     tPicks.sort(function(a,b){ return a.pickNum - b.pickNum; });
+    var tAdded = addedOnTeam[team.id] || [];
+    var totalCount = tPicks.length + tAdded.length;
 
     html += '<div style="background:var(--bg3);border:1px solid var(--border2);border-top:2px solid var(--gold3);border-radius:4px;padding:14px">';
 
@@ -5193,10 +5493,15 @@ async function renderRosters() {
     html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:17px;font-weight:900;color:var(--gold);line-height:1">' + team.name + '</div>';
     if (team.gmName) html += '<div style="font-size:11px;color:var(--text3)">GM: ' + team.gmName + '</div>';
     html += '</div>';
-    html += '<div style="margin-left:auto;font-size:12px;color:var(--text3)">' + tPicks.length + ' picks</div>';
+    html += '<div style="margin-left:auto;display:flex;align-items:center;gap:8px">';
+    html += '<span style="font-size:12px;color:var(--text3)">' + totalCount + ' players</span>';
+    if (isAdmin) {
+      html += '<button onclick="openAddPlayerModal(\'' + team.id.replace(/'/g,"\\'") + '\')" style="background:var(--gold);color:#000;border:none;border-radius:3px;padding:2px 8px;font-size:11px;font-family:\'Barlow Condensed\',sans-serif;font-weight:800;cursor:pointer;letter-spacing:.04em">+ Add</button>';
+    }
+    html += '</div>';
     html += '</div>';
 
-    if (tPicks.length === 0) {
+    if (tPicks.length === 0 && tAdded.length === 0) {
       html += '<div style="font-size:12px;color:var(--text3);font-style:italic">No picks yet</div>';
     } else {
       tPicks.sort(function(a,b){ return a.pickNum - b.pickNum; });
@@ -5220,21 +5525,33 @@ async function renderRosters() {
         var pos = posOverrides[p.id] || p.pos || '?';
         var slotKey = (pos === 'LCK') ? 'SF' : pos;
         if (STARTING_SLOTS.indexOf(slotKey) !== -1 && !filledSlots[slotKey]) {
-          filledSlots[slotKey] = { pick: pick, p: p };
+          filledSlots[slotKey] = { pick: pick, p: p, isAdded: false };
         } else {
-          flexPicks.push({ pick: pick, p: p });
+          flexPicks.push({ pick: pick, p: p, isAdded: false });
         }
       });
 
-      function renderPickRow(pick, p, slotLabel) {
+      function renderPickRow(pick, p, slotLabel, isAdded) {
         var posCol = posColors[slotLabel] || posColors[p.pos] || 'var(--text2)';
         var pName = p.id || pick.playerId;
         var flag = getFlag(pName);
-        var row = '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer" onclick="openElitePlayerModal(\'' + pName.replace(/'/g,"\\'") + '\')" title="Open player card">';
+        var safeId = pName.replace(/'/g,"\\'");
+        var safeTeamId = team.id.replace(/'/g,"\\'");
+        var row = '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04)">';
         row += '<span style="font-size:10px;font-family:\'Barlow Condensed\',sans-serif;font-weight:700;color:' + posCol + ';min-width:28px">' + slotLabel + '</span>';
-        row += '<span style="font-size:13px;color:var(--white);flex:1">' + flag + pName + '</span>';
-        if (p.ovr) row += '<span style="font-size:11px;color:var(--text3)">' + p.ovr + ' OVR</span>';
-        row += '<span style="font-size:10px;color:var(--text3);min-width:22px;text-align:right">#' + (pick.pickNum != null ? pick.pickNum : '?') + '</span>';
+        row += '<span style="font-size:13px;color:var(--white);flex:1;cursor:pointer" onclick="openElitePlayerModal(\'' + safeId + '\')" title="Open player card">' + flag + pName + '</span>';
+        if (isAdded) {
+          row += '<span style="font-size:9px;color:var(--gold);font-family:\'Barlow Condensed\',sans-serif;font-weight:700;letter-spacing:.04em">+ADD</span>';
+        } else if (p.ovr) {
+          row += '<span style="font-size:11px;color:var(--text3)">' + p.ovr + ' OVR</span>';
+        }
+        if (!isAdded) {
+          row += '<span style="font-size:10px;color:var(--text3);min-width:22px;text-align:right">#' + (pick.pickNum != null ? pick.pickNum : '?') + '</span>';
+        }
+        if (isAdmin && isAdded) {
+          row += '<button onclick="adminRemoveRosterPlayer(\'' + safeTeamId + '\',\'' + safeId + '\')" title="Remove player" style="background:transparent;border:1px solid #f87171;border-radius:3px;padding:1px 5px;font-size:10px;color:#f87171;cursor:pointer;margin-left:2px">✕</button>';
+          row += '<button onclick="openSwapPlayerModal(\'' + safeTeamId + '\',\'' + safeId + '\')" title="Swap player" style="background:transparent;border:1px solid var(--gold);border-radius:3px;padding:1px 5px;font-size:10px;color:var(--gold);cursor:pointer;margin-left:2px">⇄</button>';
+        }
         row += '</div>';
         return row;
       }
@@ -5242,7 +5559,7 @@ async function renderRosters() {
       // Render starting 5 in fixed slot order
       STARTING_SLOTS.forEach(function(slot) {
         if (filledSlots[slot]) {
-          html += renderPickRow(filledSlots[slot].pick, filledSlots[slot].p, slot);
+          html += renderPickRow(filledSlots[slot].pick, filledSlots[slot].p, slot, false);
         } else {
           html += '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);opacity:.35">';
           html += '<span style="font-size:10px;font-family:\'Barlow Condensed\',sans-serif;font-weight:700;color:' + (posColors[slot]||'var(--text2)') + ';min-width:28px">' + slot + '</span>';
@@ -5256,12 +5573,61 @@ async function renderRosters() {
         html += '<span style="font-size:10px;font-family:\'Barlow Condensed\',sans-serif;font-weight:700;color:var(--text3);letter-spacing:.08em">BENCH</span>';
         html += '<div style="flex:1;height:1px;background:rgba(255,255,255,.1)"></div></div>';
         flexPicks.forEach(function(entry) {
-          html += renderPickRow(entry.pick, entry.p, entry.p.pos || 'FLEX');
+          html += renderPickRow(entry.pick, entry.p, entry.p.pos || 'FLEX', false);
+        });
+      }
+
+      // Admin-added players section
+      if (tAdded.length > 0) {
+        html += '<div style="display:flex;align-items:center;gap:6px;margin:8px 0 4px">';
+        html += '<span style="font-size:10px;font-family:\'Barlow Condensed\',sans-serif;font-weight:700;color:var(--gold);letter-spacing:.08em">ADDED</span>';
+        html += '<div style="flex:1;height:1px;background:rgba(212,168,67,.25)"></div></div>';
+        tAdded.forEach(function(playerId) {
+          var p = playerMap[playerId] || {id: playerId, pos:'?', ovr:0};
+          // Get pos from aggregates if not in playerMap
+          if (p.pos === '?') {
+            var agg = withOvr(getAggregates(state.matches)).find(function(x){ return x.name === playerId; });
+            if (agg) { p = Object.assign({}, p, {pos: agg.pos, ovr: agg.ovr}); }
+          }
+          var virtualPick = {playerId: playerId, pickNum: null};
+          html += renderPickRow(virtualPick, p, p.pos || 'ADD', true);
         });
       }
     }
     html += '</div>';
   });
+  html += '</div>';
+
+  // Transfer history (visible to all)
+  var rosterMoves = draftData.rosterMoves || [];
+  html += '<div style="margin-top:28px">';
+  html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;color:var(--gold);letter-spacing:.06em;margin-bottom:12px">📋 TRANSFER HISTORY</div>';
+  if (rosterMoves.length === 0) {
+    html += '<div style="font-size:13px;color:var(--text3);font-style:italic">No roster moves yet.</div>';
+  } else {
+    var movesDesc = rosterMoves.slice().reverse();
+    html += '<div style="display:flex;flex-direction:column;gap:6px">';
+    movesDesc.forEach(function(move) {
+      var typeCol = move.type === 'add' ? '#4ade80' : move.type === 'remove' ? '#f87171' : '#f59e0b';
+      var typeLbl = (move.type || 'MOVE').toUpperCase();
+      var dateStr = '';
+      if (move.date) {
+        try { dateStr = new Date(move.date).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}); } catch(e) { dateStr = move.date; }
+      }
+      var desc = '';
+      if (move.type === 'add') desc = move.player + ' → ' + move.teamName;
+      else if (move.type === 'remove') desc = move.player + ' removed from ' + move.teamName;
+      else if (move.type === 'swap') desc = move.swappedOut + ' ⇄ ' + move.player + ' (' + move.teamName + ')';
+      else desc = move.player + ' · ' + move.teamName;
+      html += '<div style="display:flex;align-items:center;gap:10px;padding:7px 12px;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;border-left:3px solid ' + typeCol + '">';
+      html += '<span style="font-size:9px;font-family:\'Barlow Condensed\',sans-serif;font-weight:800;color:' + typeCol + ';background:' + typeCol + '22;padding:2px 7px;border-radius:3px;letter-spacing:.06em;flex-shrink:0">' + typeLbl + '</span>';
+      html += '<span style="font-size:12px;color:var(--white);flex:1">' + desc + '</span>';
+      if (move.note) html += '<span style="font-size:11px;color:var(--text3);font-style:italic">' + move.note + '</span>';
+      if (dateStr) html += '<span style="font-size:11px;color:var(--text3);flex-shrink:0">' + dateStr + '</span>';
+      html += '</div>';
+    });
+    html += '</div>';
+  }
   html += '</div>';
 
   el.innerHTML = html;
@@ -5392,7 +5758,10 @@ function renderDpPlayers() {
   const srch = dpSearch.trim().toLowerCase();
   if (srch) players = players.filter(p => p.name.toLowerCase().includes(srch));
   if (dpStatus) {
-    const draftedIds = new Set((_draftCache?.picks || []).map(pk => pk.playerId));
+    const draftedIds = new Set([
+      ...(_draftCache?.picks || []).map(pk => pk.playerId),
+      ...(_draftCache?.addedPlayerIds || [])
+    ]);
     if (dpStatus === 'drafted')   players = players.filter(p => draftedIds.has(p.name));
     if (dpStatus === 'undrafted') players = players.filter(p => !draftedIds.has(p.name));
   }
@@ -5405,7 +5774,10 @@ function renderDpPlayers() {
   const posColors = { PG:'#3b82f6', SG:'#8b5cf6', LCK:'#10b981', PF:'#f97316', C:'#ef4444' };
   function ovrColor(o) { return o>=90?'#f59e0b':o>=80?'#4ade80':o>=70?'#60a5fa':o>=60?'#94a3b8':'#6b7280'; }
   const tierColors = {'EFIBA WORLDS':'#f59e0b','D1 WINNER':'#4ade80','KW5 WINNER':'#fbbf24','D1 PLAYOFFS':'#60a5fa','D1':'#38bdf8','D2 WINNER':'#a78bfa','D2 PLAYOFFS':'#fb923c','D2':'#94a3b8','Ms ONLY':'#6b7280'};
-  const draftedSet = new Set((_draftCache?.picks || []).map(pk => pk.playerId));
+  const draftedSet = new Set([
+    ...(_draftCache?.picks || []).map(pk => pk.playerId),
+    ...(_draftCache?.addedPlayerIds || [])
+  ]);
 
   let html = dpView === 'list'
     ? `<div style="display:flex;flex-direction:column;gap:2px">`
