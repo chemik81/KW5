@@ -5443,41 +5443,29 @@ async function renderRosters() {
     teamPicks[pick.teamId].push(pick);
   });
 
-  // Build addedPlayerIds set for quick lookup
   var addedPlayerIds = draftData.addedPlayerIds || [];
-  var addedSet = new Set(addedPlayerIds);
 
-  // Build added picks: virtual pick objects for admin-added players
-  // Group added players by team using rosterMoves
-  var addedByTeam = {}; // teamId -> [playerId, ...]
-  teams.forEach(function(t) { addedByTeam[t.id] = []; });
+  // Replay rosterMoves to get current state per team:
+  // addedOnTeam:   currently active admin-added players per team
+  // removedFromTeam: players removed/swapped-out per team (hide from display)
+  var addedOnTeam    = {}; // teamId -> [playerId]
+  var removedFromTeam = {}; // teamId -> Set of playerIds
+  teams.forEach(function(t) { addedOnTeam[t.id] = []; removedFromTeam[t.id] = new Set(); });
   (draftData.rosterMoves || []).forEach(function(move) {
-    if (move.type === 'add' || move.type === 'swap') {
-      var pid = move.type === 'swap' ? move.player : move.player;
-      if (!addedByTeam[move.teamId]) addedByTeam[move.teamId] = [];
-      // Only include if still in addedSet (swap removes the swappedOut player from team, but both remain in addedSet per spec)
-      // We track who is currently on each team via moves: add appends, swap replaces, remove removes
-    }
-  });
-  // Rebuild current team membership for added players from rosterMoves
-  var addedOnTeam = {}; // teamId -> [playerId]
-  teams.forEach(function(t) { addedOnTeam[t.id] = []; });
-  (draftData.rosterMoves || []).forEach(function(move) {
+    var tid = move.teamId;
+    if (!addedOnTeam[tid])    addedOnTeam[tid]    = [];
+    if (!removedFromTeam[tid]) removedFromTeam[tid] = new Set();
     if (move.type === 'add') {
-      if (!addedOnTeam[move.teamId]) addedOnTeam[move.teamId] = [];
-      addedOnTeam[move.teamId].push(move.player);
+      addedOnTeam[tid].push(move.player);
     } else if (move.type === 'remove') {
-      if (addedOnTeam[move.teamId]) {
-        var idx = addedOnTeam[move.teamId].indexOf(move.player);
-        if (idx !== -1) addedOnTeam[move.teamId].splice(idx, 1);
-      }
+      removedFromTeam[tid].add(move.player);
+      var idx = addedOnTeam[tid].indexOf(move.player);
+      if (idx !== -1) addedOnTeam[tid].splice(idx, 1);
     } else if (move.type === 'swap') {
-      if (addedOnTeam[move.teamId]) {
-        var idx2 = addedOnTeam[move.teamId].indexOf(move.swappedOut);
-        if (idx2 !== -1) addedOnTeam[move.teamId].splice(idx2, 1);
-      }
-      if (!addedOnTeam[move.teamId]) addedOnTeam[move.teamId] = [];
-      addedOnTeam[move.teamId].push(move.player);
+      removedFromTeam[tid].add(move.swappedOut);
+      var idx2 = addedOnTeam[tid].indexOf(move.swappedOut);
+      if (idx2 !== -1) addedOnTeam[tid].splice(idx2, 1);
+      addedOnTeam[tid].push(move.player);
     }
   });
 
@@ -5513,37 +5501,51 @@ async function renderRosters() {
     html += '</div>';
     html += '</div>';
 
-    if (tPicks.length === 0 && tAdded.length === 0) {
+    // Filter out removed/swapped-out players from draft picks
+    var removedSet = removedFromTeam[team.id] || new Set();
+    var activePicks = tPicks.filter(function(pk){ return !removedSet.has(pk.playerId); });
+
+    // Build admin-added entries as virtual picks
+    var aggMap = {};
+    withOvr(getAggregates(state.matches)).forEach(function(x){ aggMap[x.name] = x; });
+    var addedEntries = tAdded.map(function(pid) {
+      var p = playerMap[pid] || {id: pid, pos:'?', ovr:0};
+      if (p.pos === '?' || !p.ovr) {
+        var agg = aggMap[pid];
+        if (agg) p = Object.assign({}, p, {pos: agg.pos || p.pos, ovr: agg.ovr || p.ovr});
+      }
+      return { pick: {playerId: pid, pickNum: null}, p: p, isAdded: true };
+    });
+
+    var allEntries = activePicks.map(function(pk){
+      return { pick: pk, p: playerMap[pk.playerId] || {id: pk.playerId, pos:'?', ovr:0}, isAdded: false };
+    }).concat(addedEntries);
+
+    if (allEntries.length === 0) {
       html += '<div style="font-size:12px;color:var(--text3);font-style:italic">No picks yet</div>';
     } else {
-      tPicks.sort(function(a,b){ return a.pickNum - b.pickNum; });
-
       var posColors = {PG:'#f0c060',SG:'#60a5fa',SF:'#a78bfa',LCK:'#a78bfa',PF:'#4ade80',C:'#fb923c'};
       var STARTING_SLOTS = ['PG','SG','SF','PF','C'];
       var filledSlots = {};
       var flexPicks = [];
 
-      // Assign picks to position slots; overflow → flex
       var posOverrides = {
-        'leMouraaa': 'PF',
-        'y Olajuwon': 'C',
-        'BrkTheBeast': 'PG',
-        'raxocapalot': 'SG',
-        'JafadenDaben': 'PF',
-        'xpipotato-': 'SF'
+        'leMouraaa': 'PF', 'y Olajuwon': 'C', 'BrkTheBeast': 'PG',
+        'raxocapalot': 'SG', 'JafadenDaben': 'PF', 'xpipotato-': 'SF'
       };
-      tPicks.forEach(function(pick) {
-        var p = playerMap[pick.playerId] || {id: pick.playerId, pos:'?', ovr:0};
-        var pos = posOverrides[p.id] || p.pos || '?';
+
+      allEntries.forEach(function(entry) {
+        var pos = posOverrides[entry.p.id] || entry.p.pos || '?';
         var slotKey = (pos === 'LCK') ? 'SF' : pos;
         if (STARTING_SLOTS.indexOf(slotKey) !== -1 && !filledSlots[slotKey]) {
-          filledSlots[slotKey] = { pick: pick, p: p, isAdded: false };
+          filledSlots[slotKey] = entry;
         } else {
-          flexPicks.push({ pick: pick, p: p, isAdded: false });
+          flexPicks.push(entry);
         }
       });
 
-      function renderPickRow(pick, p, slotLabel, isAdded) {
+      function renderPickRow(entry, slotLabel) {
+        var pick = entry.pick, p = entry.p, isAdded = entry.isAdded;
         var posCol = posColors[slotLabel] || posColors[p.pos] || 'var(--text2)';
         var pName = p.id || pick.playerId;
         var flag = getFlag(pName);
@@ -5551,27 +5553,26 @@ async function renderRosters() {
         var safeTeamId = team.id.replace(/'/g,"\\'");
         var row = '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04)">';
         row += '<span style="font-size:10px;font-family:\'Barlow Condensed\',sans-serif;font-weight:700;color:' + posCol + ';min-width:28px">' + slotLabel + '</span>';
-        row += '<span style="font-size:13px;color:var(--white);flex:1;cursor:pointer" onclick="openElitePlayerModal(\'' + safeId + '\')" title="Open player card">' + flag + pName + '</span>';
+        row += '<span style="font-size:13px;color:var(--white);flex:1;cursor:pointer" onclick="openElitePlayerModal(\'' + safeId + '\')">' + flag + pName + '</span>';
         if (isAdded) {
-          row += '<span style="font-size:9px;color:var(--gold);font-family:\'Barlow Condensed\',sans-serif;font-weight:700;letter-spacing:.04em">+ADD</span>';
+          row += '<span style="font-size:9px;color:var(--gold);font-family:\'Barlow Condensed\',sans-serif;font-weight:700;letter-spacing:.04em">+</span>';
         } else if (p.ovr) {
           row += '<span style="font-size:11px;color:var(--text3)">' + p.ovr + ' OVR</span>';
         }
-        if (!isAdded) {
-          row += '<span style="font-size:10px;color:var(--text3);min-width:22px;text-align:right">#' + (pick.pickNum != null ? pick.pickNum : '?') + '</span>';
+        if (!isAdded && pick.pickNum != null) {
+          row += '<span style="font-size:10px;color:var(--text3);min-width:22px;text-align:right">#' + pick.pickNum + '</span>';
         }
         if (isAdmin) {
-          row += '<button onclick="adminRemoveRosterPlayer(\'' + safeTeamId + '\',\'' + safeId + '\')" title="Remove player" style="background:transparent;border:1px solid #f87171;border-radius:3px;padding:1px 5px;font-size:10px;color:#f87171;cursor:pointer;margin-left:2px">✕</button>';
-          row += '<button onclick="openSwapPlayerModal(\'' + safeTeamId + '\',\'' + safeId + '\')" title="Swap player" style="background:transparent;border:1px solid var(--gold);border-radius:3px;padding:1px 5px;font-size:10px;color:var(--gold);cursor:pointer;margin-left:2px">⇄</button>';
+          row += '<button onclick="adminRemoveRosterPlayer(\'' + safeTeamId + '\',\'' + safeId + '\')" title="Remove" style="background:transparent;border:1px solid #f87171;border-radius:3px;padding:1px 5px;font-size:10px;color:#f87171;cursor:pointer;margin-left:2px">✕</button>';
+          row += '<button onclick="openSwapPlayerModal(\'' + safeTeamId + '\',\'' + safeId + '\')" title="Swap" style="background:transparent;border:1px solid var(--gold);border-radius:3px;padding:1px 5px;font-size:10px;color:var(--gold);cursor:pointer;margin-left:2px">⇄</button>';
         }
         row += '</div>';
         return row;
       }
 
-      // Render starting 5 in fixed slot order
       STARTING_SLOTS.forEach(function(slot) {
         if (filledSlots[slot]) {
-          html += renderPickRow(filledSlots[slot].pick, filledSlots[slot].p, slot, false);
+          html += renderPickRow(filledSlots[slot], slot);
         } else {
           html += '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04);opacity:.35">';
           html += '<span style="font-size:10px;font-family:\'Barlow Condensed\',sans-serif;font-weight:700;color:' + (posColors[slot]||'var(--text2)') + ';min-width:28px">' + slot + '</span>';
@@ -5579,30 +5580,12 @@ async function renderRosters() {
         }
       });
 
-      // Flex / bench divider + picks 6-7
       if (flexPicks.length > 0) {
         html += '<div style="display:flex;align-items:center;gap:6px;margin:8px 0 4px">';
         html += '<span style="font-size:10px;font-family:\'Barlow Condensed\',sans-serif;font-weight:700;color:var(--text3);letter-spacing:.08em">BENCH</span>';
         html += '<div style="flex:1;height:1px;background:rgba(255,255,255,.1)"></div></div>';
         flexPicks.forEach(function(entry) {
-          html += renderPickRow(entry.pick, entry.p, entry.p.pos || 'FLEX', false);
-        });
-      }
-
-      // Admin-added players section
-      if (tAdded.length > 0) {
-        html += '<div style="display:flex;align-items:center;gap:6px;margin:8px 0 4px">';
-        html += '<span style="font-size:10px;font-family:\'Barlow Condensed\',sans-serif;font-weight:700;color:var(--gold);letter-spacing:.08em">ADDED</span>';
-        html += '<div style="flex:1;height:1px;background:rgba(212,168,67,.25)"></div></div>';
-        tAdded.forEach(function(playerId) {
-          var p = playerMap[playerId] || {id: playerId, pos:'?', ovr:0};
-          // Get pos from aggregates if not in playerMap
-          if (p.pos === '?') {
-            var agg = withOvr(getAggregates(state.matches)).find(function(x){ return x.name === playerId; });
-            if (agg) { p = Object.assign({}, p, {pos: agg.pos, ovr: agg.ovr}); }
-          }
-          var virtualPick = {playerId: playerId, pickNum: null};
-          html += renderPickRow(virtualPick, p, p.pos || 'ADD', true);
+          html += renderPickRow(entry, entry.p.pos || 'BENCH');
         });
       }
     }
