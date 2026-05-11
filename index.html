@@ -5612,6 +5612,17 @@ async function renderRosters() {
 
   // Transfer history (visible to all)
   var rosterMoves = draftData.rosterMoves || [];
+  // Build teamId → team map for logo lookup
+  var teamById = {};
+  teams.forEach(function(t) { teamById[t.id] = t; });
+  function teamLogoHtml(teamId, teamName) {
+    var t = teamById[teamId] || teams.find(function(x){ return x.name === teamName; });
+    if (t && t.logoB64) {
+      return '<img src="' + t.logoB64 + '" style="width:26px;height:26px;object-fit:contain;border-radius:3px;flex-shrink:0" title="' + (t.name||'') + '">';
+    }
+    var initials = (teamName||teamId||'?').split(' ').map(function(w){return w[0];}).join('').substring(0,3).toUpperCase();
+    return '<span style="width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;background:var(--dark3);border-radius:3px;font-family:\'Barlow Condensed\',sans-serif;font-weight:900;font-size:9px;color:var(--gold);flex-shrink:0">' + initials + '</span>';
+  }
   html += '<div style="margin-top:28px">';
   html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;color:var(--gold);letter-spacing:.06em;margin-bottom:12px">📋 TRANSFER HISTORY</div>';
   if (rosterMoves.length === 0) {
@@ -5624,17 +5635,18 @@ async function renderRosters() {
       var typeLbl = (move.type || 'MOVE').toUpperCase();
       var dateStr = '';
       if (move.date) {
-        try { dateStr = new Date(move.date).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}); } catch(e) { dateStr = move.date; }
+        try { dateStr = new Date(move.date).toLocaleDateString('en-GB', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}); } catch(e) { dateStr = move.date; }
       }
       var desc = '';
-      if (move.type === 'add') desc = move.player + ' → ' + move.teamName;
-      else if (move.type === 'remove') desc = move.player + ' removed from ' + move.teamName;
-      else if (move.type === 'swap') desc = move.swappedOut + ' ⇄ ' + move.player + ' (' + move.teamName + ')';
-      else desc = move.player + ' · ' + move.teamName;
-      html += '<div style="display:flex;align-items:center;gap:10px;padding:7px 12px;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;border-left:3px solid ' + typeCol + '">';
+      if (move.type === 'add') desc = '<b style="color:var(--white)">' + move.player + '</b>';
+      else if (move.type === 'remove') desc = '<b style="color:var(--white)">' + move.player + '</b> <span style="color:var(--text3)">removed</span>';
+      else if (move.type === 'swap') desc = '<b style="color:var(--text3)">' + move.swappedOut + '</b> <span style="color:var(--text3)">⇄</span> <b style="color:var(--white)">' + move.player + '</b>';
+      else desc = '<b style="color:var(--white)">' + move.player + '</b>';
+      html += '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;border-left:3px solid ' + typeCol + '">';
       html += '<span style="font-size:9px;font-family:\'Barlow Condensed\',sans-serif;font-weight:800;color:' + typeCol + ';background:' + typeCol + '22;padding:2px 7px;border-radius:3px;letter-spacing:.06em;flex-shrink:0">' + typeLbl + '</span>';
-      html += '<span style="font-size:12px;color:var(--white);flex:1">' + desc + '</span>';
-      if (move.note) html += '<span style="font-size:11px;color:var(--text3);font-style:italic">' + move.note + '</span>';
+      html += teamLogoHtml(move.teamId, move.teamName);
+      html += '<span style="font-size:11px;font-family:\'Barlow Condensed\',sans-serif;font-weight:700;color:var(--gold);flex-shrink:0;max-width:90px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + (move.teamName||'') + '">' + (move.teamName||'') + '</span>';
+      html += '<span style="font-size:12px;flex:1">' + desc + '</span>';
       if (dateStr) html += '<span style="font-size:11px;color:var(--text3);flex-shrink:0">' + dateStr + '</span>';
       html += '</div>';
     });
