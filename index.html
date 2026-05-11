@@ -5560,7 +5560,7 @@ async function renderRosters() {
         if (!isAdded) {
           row += '<span style="font-size:10px;color:var(--text3);min-width:22px;text-align:right">#' + (pick.pickNum != null ? pick.pickNum : '?') + '</span>';
         }
-        if (isAdmin && isAdded) {
+        if (isAdmin) {
           row += '<button onclick="adminRemoveRosterPlayer(\'' + safeTeamId + '\',\'' + safeId + '\')" title="Remove player" style="background:transparent;border:1px solid #f87171;border-radius:3px;padding:1px 5px;font-size:10px;color:#f87171;cursor:pointer;margin-left:2px">✕</button>';
           row += '<button onclick="openSwapPlayerModal(\'' + safeTeamId + '\',\'' + safeId + '\')" title="Swap player" style="background:transparent;border:1px solid var(--gold);border-radius:3px;padding:1px 5px;font-size:10px;color:var(--gold);cursor:pointer;margin-left:2px">⇄</button>';
         }
