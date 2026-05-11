@@ -5164,11 +5164,23 @@ function getRosterUndraftedPlayers(draftData) {
   var pickedIds = new Set((draftData.picks || []).map(function(pk){ return pk.playerId; }));
   var addedIds  = new Set(draftData.addedPlayerIds || []);
   var excludedIds = new Set();
-  (draftData.players || []).forEach(function(p){ if (p.excluded) excludedIds.add(p.id); });
+  var dpOverrides = {};
+  (draftData.players || []).forEach(function(p){
+    if (p.excluded) excludedIds.add(p.id);
+    dpOverrides[p.id] = p;
+  });
   var all = withOvr(getAggregates(state.matches));
-  return all.filter(function(p){
-    return !pickedIds.has(p.name) && !addedIds.has(p.name) && !excludedIds.has(p.name);
-  }).sort(function(a,b){ return b.ovr - a.ovr; });
+  return all
+    .filter(function(p){ return !pickedIds.has(p.name) && !addedIds.has(p.name) && !excludedIds.has(p.name); })
+    .map(function(p) {
+      var ov = dpOverrides[p.name];
+      var info = getPlayerInfo(p.name);
+      return Object.assign({}, p, {
+        pos: (ov && ov.pos != null) ? ov.pos : (info ? info.p : p.pos),
+        ovr: (ov && ov.ovr != null) ? ov.ovr : p.ovr
+      });
+    })
+    .sort(function(a,b){ return b.ovr - a.ovr; });
 }
 
 async function saveRosterMove(draftData, move) {
@@ -5548,7 +5560,7 @@ async function renderRosters() {
         if (!isAdded) {
           row += '<span style="font-size:10px;color:var(--text3);min-width:22px;text-align:right">#' + (pick.pickNum != null ? pick.pickNum : '?') + '</span>';
         }
-        if (isAdmin && isAdded) {
+        if (isAdmin) {
           row += '<button onclick="adminRemoveRosterPlayer(\'' + safeTeamId + '\',\'' + safeId + '\')" title="Remove player" style="background:transparent;border:1px solid #f87171;border-radius:3px;padding:1px 5px;font-size:10px;color:#f87171;cursor:pointer;margin-left:2px">✕</button>';
           row += '<button onclick="openSwapPlayerModal(\'' + safeTeamId + '\',\'' + safeId + '\')" title="Swap player" style="background:transparent;border:1px solid var(--gold);border-radius:3px;padding:1px 5px;font-size:10px;color:var(--gold);cursor:pointer;margin-left:2px">⇄</button>';
         }
