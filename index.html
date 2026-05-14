@@ -4549,8 +4549,9 @@ async function openTeamModal(teamName) {
       // Build G1/G2 score cells
       function gameScoreCell(gameScore, linkedM) {
         if (!gameScore && !linkedM) return '<td style="padding:7px 6px;text-align:center;color:var(--text3);font-size:11px">—</td>';
-        var hs = linkedM ? (+linkedM.score1||0) : gameScore.hs;
-        var as = linkedM ? (+linkedM.score2||0) : gameScore.as;
+        // gameScore.hs/as are already remapped to home/away by getEffectiveMatchScores
+        var hs = gameScore ? gameScore.hs : (+linkedM.score1||0);
+        var as = gameScore ? gameScore.as : (+linkedM.score2||0);
         // From team perspective: team score vs opp score
         var ts = g.isHome ? hs : as;
         var os = g.isHome ? as : hs;
@@ -4759,13 +4760,30 @@ function getEliteSchedule() {
 
 // Returns effective G1/G2 scores for a schedule slot:
 // linked box score match scores take priority over manual eliteResults entries.
+function _schedTeamMatch(matchTeam, schedTeam) {
+  // Fuzzy check: is the match team the same as the schedule team?
+  if (!matchTeam || !schedTeam) return false;
+  var a = matchTeam.toLowerCase().replace(/[\s\-_]+/g, '');
+  var b = schedTeam.toLowerCase().replace(/[\s\-_]+/g, '');
+  return a === b || a.includes(b) || b.includes(a);
+}
+function _linkedScore(lm, homeTeam) {
+  // Map score1/score2 to hs/as based on which team is home in the schedule
+  if (!lm) return null;
+  var team1IsHome = _schedTeamMatch(lm.team1, homeTeam);
+  return team1IsHome
+    ? {hs: +lm.score1 || 0, as: +lm.score2 || 0}
+    : {hs: +lm.score2 || 0, as: +lm.score1 || 0};
+}
 function getEffectiveMatchScores(gid) {
+  var sched = getEliteSchedule()[parseInt(gid)];
+  var homeTeam = sched ? sched.home : null;
   var linked = (state.eliteMatches || []).filter(function(m) { return String(m.scheduleGameId) === String(gid); });
   var lG1 = linked.find(function(m) { return String(m.scheduleGameNum) === '1'; }) || (linked.length === 1 ? linked[0] : null);
   var lG2 = linked.find(function(m) { return String(m.scheduleGameNum) === '2'; });
   var gres = (state.eliteResults || {})[gid];
-  var g1 = lG1 ? {hs: +lG1.score1 || 0, as: +lG1.score2 || 0} : (gres && gres.g1 ? gres.g1 : null);
-  var g2 = lG2 ? {hs: +lG2.score1 || 0, as: +lG2.score2 || 0} : (gres && gres.g2 ? gres.g2 : null);
+  var g1 = lG1 ? _linkedScore(lG1, homeTeam) : (gres && gres.g1 ? gres.g1 : null);
+  var g2 = lG2 ? _linkedScore(lG2, homeTeam) : (gres && gres.g2 ? gres.g2 : null);
   return {g1: g1, g2: g2, lG1: lG1, lG2: lG2, gres: gres};
 }
 
@@ -4899,10 +4917,10 @@ async function renderSchedule() {
         html += '<div id="strip-' + g.gid + '" style="background:rgba(0,0,0,.25);border:1px solid ' + stripBorder + ';border-top:none;border-radius:0 0 6px 6px;display:flex;gap:0">';
         [['G1', g1, linkedG1], ['G2', g2, linkedG2]].forEach(function(trio, idx) {
           var label = trio[0], game = trio[1], lm = trio[2];
-          // Determine what score to display: prefer linked match score, fall back to eliteResults score
+          // Determine what score to display: prefer remapped game score (already home/away correct), fall back to eliteResults score
           var displayScore = null;
-          if (lm) { displayScore = {hs: +lm.score1 || 0, as: +lm.score2 || 0, clickable: true}; }
-          else if (game) { displayScore = {hs: game.hs, as: game.as, clickable: false}; }
+          if (game) { displayScore = {hs: game.hs, as: game.as, clickable: !!lm}; }
+          else if (lm) { displayScore = {hs: +lm.score1 || 0, as: +lm.score2 || 0, clickable: true}; }
           var isForfeit = displayScore && ((displayScore.hs === 60 && displayScore.as === 40) || (displayScore.hs === 40 && displayScore.as === 60));
           if (idx > 0) html += '<div style="width:1px;background:rgba(255,255,255,.06)"></div>';
           html += '<div style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:5px 10px;flex-wrap:wrap">';
