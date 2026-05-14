@@ -365,17 +365,18 @@
   </a>
   <nav>
     <button id="standings-nav-btn" class="active" onclick="showSection('standings',this)">🏆 Standings</button>
-    <button onclick="showSection('boxscores',this)">Box Scores</button>
-    <button id="admin-nav-btn" onclick="showSection('admin',this)" style="display:none">⚙ Admin</button>
-    <button id="chemistry-nav-btn" onclick="showSection('chemistry',this)">🔗 Chemistry</button>
-    <button id="elite-stats-nav-btn" onclick="showSection('elite-stats',this)">📊 Elite Stats</button>
+    <button id="elite-bs-nav-btn" onclick="showSection('elite-boxscores',this)">🎮 Box Scores</button>
     <button id="schedule-nav-btn" onclick="showSection('schedule',this)">📅 Schedule</button>
+    <button id="elite-stats-nav-btn" onclick="showSection('elite-stats',this)">📊 Elite Stats</button>
     <button id="rosters-nav-btn" onclick="showSection('rosters',this)">👥 Rosters</button>
     <button id="draft-pool-nav-btn" onclick="showSection('draft-pool',this)">🎯 Draft Pool</button>
     <button onclick="showSection('stats',this)" style="display:flex;align-items:center;gap:6px;padding:6px 14px;">
       <img src="data:image/png;base64,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" alt="Arena" class="arena-nav-img" style="height:18px;width:auto;">
       <span>Statistics</span>
     </button>
+    <button onclick="showSection('boxscores',this)">Box Scores</button>
+    <button id="chemistry-nav-btn" onclick="showSection('chemistry',this)">🔗 Chemistry</button>
+    <button id="admin-nav-btn" onclick="showSection('admin',this)" style="display:none">⚙ Admin</button>
     <button id="superadmin-nav-btn" onclick="showSection('superadmin',this)" style="display:none">👑 Super Admin</button>
   </nav>
   <div class="header-right">
@@ -505,13 +506,15 @@
     </div>
     <div class="table-wrap" id="elite-stats-table-wrap"></div>
   </div>
-  <div class="card" style="margin-top:16px;">
-    <div class="card-title">Elite Box Scores</div>
-    <div id="elite-boxscores-list"></div>
-  </div>
 </section>
 
 <!-- SCHEDULE SECTION -->
+<section class="section" id="sec-elite-boxscores">
+  <div class="stats-wrap">
+    <div id="elite-boxscores-section"></div>
+  </div>
+</section>
+
 <section class="section" id="sec-schedule">
   <div class="stats-wrap">
     <div id="schedule-content"></div>
@@ -1411,6 +1414,7 @@ function showSection(name, btn) {
   if (name === 'boxscores') renderBoxScores();
   if (name === 'chemistry') { initChemistry(); initChemistrySF(); }
   if (name === 'elite-stats') renderEliteStats();
+  if (name === 'elite-boxscores') renderEliteBoxScores();
   if (name === 'schedule') renderSchedule();
   if (name === 'standings') renderStandings();
   if (name === 'rosters') renderRosters();
@@ -4347,13 +4351,8 @@ function setLeague(l) {
 // ELITE STATS
 // ============================================================
 let elitePosFilter = '';
-
-function setElitePosFilter(btn) {
-  elitePosFilter = btn.dataset.pos;
-  document.querySelectorAll('#elite-pos-filters .pos-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  renderEliteStats();
-}
+let eliteSortCol = 'per';
+let eliteSortDir = 'desc';
 
 function renderEliteStats() {
   if (!state.eliteMatches) state.eliteMatches = [];
@@ -4371,70 +4370,167 @@ function renderEliteStats() {
   const sortedPts = [...aggs].sort((a,b)=>b.ppg-a.ppg);
   if (ds) ds.textContent = sortedPts.length ? sortedPts[0].name.split(' ')[0] : '—';
 
-  // Stats table (reuse existing renderStats logic but for eliteMatches)
+  // Stats table — identical columns/sort/clickable names as Arena Statistics
   const search = (document.getElementById('elite-search-input')?.value || '').toLowerCase();
   let players = getAggregates(matches);
   if (elitePosFilter) players = players.filter(p => p.pos === elitePosFilter);
   if (search) players = players.filter(p => p.name.toLowerCase().includes(search));
-  players.sort((a,b) => b.per - a.per);
+
+  players.sort((a, b) => {
+    let va = a[eliteSortCol] ?? 0, vb = b[eliteSortCol] ?? 0;
+    if (typeof va === 'string') return eliteSortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+    return eliteSortDir === 'asc' ? va - vb : vb - va;
+  });
 
   const wrap = document.getElementById('elite-stats-table-wrap');
   if (!wrap) return;
 
   if (!players.length) {
     wrap.innerHTML = '<div style="color:var(--text3);padding:24px;text-align:center">' + (matches.length === 0 ? '🏀 No Elite Season 1 matches uploaded yet. Use admin panel with "Elite S1" selected.' : 'No players found.') + '</div>';
-  } else {
-    // Build same table as renderStats — use existing buildStatsTable if available, else minimal version
-    let html = '<table style="width:100%;border-collapse:collapse;font-size:13px">';
-    html += '<thead><tr style="border-bottom:2px solid var(--gold)">';
-    ['#','Player','Pos','GP','GRD','CS','PER','PTS','REB','AST','STL','BLK','FG%','3P%'].forEach(h => {
-      html += '<th style="padding:8px 6px;color:var(--text3);font-weight:700;text-align:' + (h==='Player'?'left':'center') + ';text-transform:uppercase;letter-spacing:.06em;font-size:11px">' + h + '</th>';
-    });
-    html += '</tr></thead><tbody>';
-    players.forEach((p, i) => {
-      const rowBg = i % 2 === 0 ? 'var(--bg4)' : 'transparent';
-      html += '<tr style="background:' + rowBg + ';border-bottom:1px solid var(--border)">';
-      html += '<td style="padding:8px 6px;text-align:center;color:var(--text3);font-size:12px">' + (i+1) + '</td>';
-      html += '<td style="padding:8px 6px;font-weight:700;color:var(--white)">' + p.name + '</td>';
-      html += '<td style="padding:8px 6px;text-align:center;color:var(--text2)">' + (p.pos||'—') + '</td>';
-      html += '<td style="padding:8px 6px;text-align:center;color:var(--text2)">' + (p.gp||0) + '</td>';
-      html += '<td style="padding:8px 6px;text-align:center"><span style="font-weight:700;color:var(--gold)">' + (p.grade||'—') + '</span></td>';
-      html += '<td style="padding:8px 6px;text-align:center;font-weight:700;color:var(--gold)">' + (p.cs||0).toFixed(1) + '</td>';
-      html += '<td style="padding:8px 6px;text-align:center;font-weight:700;color:var(--gold2)">' + (p.per||0).toFixed(1) + '</td>';
-      html += '<td style="padding:8px 6px;text-align:center">' + (p.ppg||0).toFixed(1) + '</td>';
-      html += '<td style="padding:8px 6px;text-align:center">' + (p.rpg||0).toFixed(1) + '</td>';
-      html += '<td style="padding:8px 6px;text-align:center">' + (p.apg||0).toFixed(1) + '</td>';
-      html += '<td style="padding:8px 6px;text-align:center">' + (p.spg||0).toFixed(1) + '</td>';
-      html += '<td style="padding:8px 6px;text-align:center">' + (p.bpg||0).toFixed(1) + '</td>';
-      html += '<td style="padding:8px 6px;text-align:center">' + (p.fg_pct !== '—' ? p.fg_pct + '%' : '—') + '</td>';
-      html += '<td style="padding:8px 6px;text-align:center">' + (p.tp_pct !== '—' ? p.tp_pct + '%' : '—') + '</td>';
-      html += '</tr>';
-    });
-    html += '</tbody></table>';
-    wrap.innerHTML = html;
+    return;
   }
 
-  // Elite box scores
-  const bsEl = document.getElementById('elite-boxscores-list');
-  if (bsEl) {
-    if (!matches.length) {
-      bsEl.innerHTML = '<div style="color:var(--text3);padding:16px">No Elite matches yet.</div>';
-    } else {
-      const sorted = [...matches].sort((a,b) => new Date(b.date||0) - new Date(a.date||0));
-      let bhtml = '';
-      sorted.forEach(m => {
-        const rnd = (m.note || '').replace(/elite\s*/i,'').trim() || '—';
-        bhtml += '<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer" onclick="openMatchDetail(\'' + m.id + '\',\'elite\')">';
-        bhtml += '<div style="font-size:12px;color:var(--text3);min-width:90px">' + (m.date||'—') + '</div>';
-        bhtml += '<div style="flex:1;font-family:\'Barlow Condensed\',sans-serif;font-size:15px;font-weight:700;color:var(--white)">' + (m.team1||'?') + '</div>';
-        bhtml += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:18px;font-weight:900;color:var(--gold);min-width:60px;text-align:center">' + (m.score1||0) + ' — ' + (m.score2||0) + '</div>';
-        bhtml += '<div style="flex:1;font-family:\'Barlow Condensed\',sans-serif;font-size:15px;font-weight:700;color:var(--white);text-align:right">' + (m.team2||'?') + '</div>';
-        bhtml += '<div style="font-size:11px;color:var(--text3);min-width:60px;text-align:right">' + rnd + '</div>';
-        bhtml += '</div>';
-      });
-      bsEl.innerHTML = bhtml;
-    }
+  const maxPer = Math.max(...players.map(p => p.per || 0), 1);
+
+  const cols = [
+    { key:'#',       label:'#',      sortable:false },
+    { key:'name',    label:'Player', sortable:true },
+    { key:'pos',     label:'POS',    sortable:true },
+    { key:'gp',      label:'GP',     sortable:true },
+    { key:'grd',     label:'GRD',    sortable:true },
+    { key:'ppg',     label:'PTS',    sortable:true },
+    { key:'rpg',     label:'REB',    sortable:true },
+    { key:'apg',     label:'AST',    sortable:true },
+    { key:'spg',     label:'STL',    sortable:true },
+    { key:'bpg',     label:'BLK',    sortable:true },
+    { key:'fpg',     label:'PF',     sortable:true },
+    { key:'tpg',     label:'TO',     sortable:true },
+    { key:'fg_pct',  label:'FG%',    sortable:true },
+    { key:'tp_pct',  label:'3P%',    sortable:true },
+    { key:'ft_pct',  label:'FT%',    sortable:true },
+    { key:'wins',    label:'W',      sortable:true },
+    { key:'losses',  label:'L',      sortable:true },
+    { key:'win_pct', label:'W%',     sortable:true },
+    { key:'csa',     label:'CS ℹ',   sortable:true },
+    { key:'per',     label:'PER ℹ',  sortable:true },
+  ];
+
+  wrap.innerHTML = `<table>
+    <thead><tr>${cols.map(c => {
+      if (!c.sortable) return `<th>${c.label}</th>`;
+      const cls = eliteSortCol === c.key ? (eliteSortDir === 'desc' ? 'sorted-desc' : 'sorted-asc') : '';
+      return `<th class="${cls}" onclick="setEliteSort('${c.key}')">${c.label}</th>`;
+    }).join('')}</tr></thead>
+    <tbody>
+    ${players.map((p, i) => {
+      const rankClass = i===0?'rank-1':i===1?'rank-2':i===2?'rank-3':'';
+      const grdClass = p.grd==='A+'?'grd-aplus':p.grd==='A'?'grd-a':p.grd==='A-'?'grd-aminus':p.grd==='B+'?'grd-bplus':'grd-b';
+      return `<tr class="${rankClass}">
+        <td><span class="rank-num">${i+1}</span></td>
+        <td class="td-name" style="cursor:pointer;" onclick="openElitePlayerModal('${p.name.replace(/'/g,"\\'")}')"><span style="border-bottom:1px dashed var(--gold);color:var(--white);transition:color .15s;" onmouseover="this.style.color='var(--gold)'" onmouseout="this.style.color='var(--white)'">${p.name}</span></td>
+        <td class="td-pos">${p.pos}</td>
+        <td>${p.gp}</td>
+        <td class="td-grd ${grdClass}">${p.grd||'—'}</td>
+        <td class="td-pts">${(p.ppg||0).toFixed(1)}</td>
+        <td>${(p.rpg||0).toFixed(1)}</td>
+        <td>${(p.apg||0).toFixed(1)}</td>
+        <td>${(p.spg||0).toFixed(1)}</td>
+        <td>${(p.bpg||0).toFixed(1)}</td>
+        <td>${(p.fpg||0).toFixed(1)}</td>
+        <td>${(p.tpg||0).toFixed(1)}</td>
+        <td>${p.fg_pct && p.fg_pct!=='—' ? p.fg_pct+'%' : '—'}</td>
+        <td>${p.tp_pct && p.tp_pct!=='—' ? p.tp_pct+'%' : '—'}</td>
+        <td>${p.ft_pct && p.ft_pct!=='—' ? p.ft_pct+'%' : '—'}</td>
+        <td>${p.wins||0}</td>
+        <td>${p.losses||0}</td>
+        <td>${p.win_pct||0}%</td>
+        <td>${p.csa ? p.csa.toFixed(1) : '—'}</td>
+        <td><div class="per-bar"><span class="per-val">${(p.per||0).toFixed(1)}</span><div class="per-bg"><div class="per-fill" style="width:${((p.per||0)/maxPer*100).toFixed(1)}%"></div></div></div></td>
+      </tr>`;
+    }).join('')}
+    </tbody>
+  </table>`;
+
+}
+
+function renderEliteBoxScores() {
+  var wrap = document.getElementById('elite-boxscores-section');
+  if (!wrap) return;
+  var matches = state.eliteMatches || [];
+
+  var html = '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:28px;font-weight:900;color:var(--gold);letter-spacing:.05em;margin-bottom:20px">🎮 ELITE BOX SCORES</div>';
+
+  if (!matches.length) {
+    html += '<div style="color:var(--text3);padding:24px;text-align:center">No Elite Season 1 matches yet.</div>';
+    wrap.innerHTML = html;
+    return;
   }
+
+  // Group by round/note
+  var byRound = {};
+  var sorted = [...matches].sort(function(a, b) {
+    var rd = (parseInt(a.scheduleGameNum)||0) - (parseInt(b.scheduleGameNum)||0);
+    return new Date(b.date||0) - new Date(a.date||0) || rd;
+  });
+
+  sorted.forEach(function(m) {
+    var rnd = (m.note || '').replace(/elite\s*/i,'').trim() || 'Week 1';
+    if (!byRound[rnd]) byRound[rnd] = [];
+    byRound[rnd].push(m);
+  });
+
+  Object.keys(byRound).forEach(function(rnd) {
+    html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:14px;font-weight:900;color:var(--text3);letter-spacing:.12em;text-transform:uppercase;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border2)">' + rnd + '</div>';
+    html += '<div style="display:flex;flex-direction:column;gap:4px;margin-bottom:24px">';
+    byRound[rnd].forEach(function(m) {
+      var s1 = +m.score1 || 0, s2 = +m.score2 || 0;
+      var t1 = m.team1 || '?', t2 = m.team2 || '?';
+      var t1win = s1 > s2, t2win = s2 > s1;
+      var gameLabel = '';
+      if (m.scheduleGameId != null) {
+        var sg = getEliteSchedule()[parseInt(m.scheduleGameId)];
+        if (sg) gameLabel = 'R' + sg.round + ' · G' + (m.scheduleGameNum || '1');
+      }
+      html += '<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;cursor:pointer;transition:border-color .15s" onclick="openMatchDetail(\'' + m.id + '\',\'elite\')" onmouseover="this.style.borderColor=\'var(--gold)\'" onmouseout="this.style.borderColor=\'var(--border)\'">';
+      // Date
+      html += '<div style="font-size:11px;color:var(--text3);min-width:90px;flex-shrink:0">' + (m.date || '—') + '</div>';
+      // Team 1
+      html += '<div style="flex:1;display:flex;align-items:center;gap:8px;justify-content:flex-end">';
+      html += '<span style="font-family:\'Barlow Condensed\',sans-serif;font-size:14px;font-weight:700;color:' + (t1win ? 'var(--white)' : 'var(--text2)') + '">' + t1 + '</span>';
+      html += getDraftLogoHTML(t1, 26);
+      html += '</div>';
+      // Score
+      html += '<div style="min-width:90px;text-align:center">';
+      html += '<span style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;color:' + (t1win ? '#4ade80' : 'var(--text2)') + '">' + s1 + '</span>';
+      html += '<span style="font-family:\'Barlow Condensed\',sans-serif;font-size:14px;color:var(--text3);margin:0 4px">–</span>';
+      html += '<span style="font-family:\'Barlow Condensed\',sans-serif;font-size:20px;font-weight:900;color:' + (t2win ? '#4ade80' : 'var(--text2)') + '">' + s2 + '</span>';
+      html += '</div>';
+      // Team 2
+      html += '<div style="flex:1;display:flex;align-items:center;gap:8px">';
+      html += getDraftLogoHTML(t2, 26);
+      html += '<span style="font-family:\'Barlow Condensed\',sans-serif;font-size:14px;font-weight:700;color:' + (t2win ? 'var(--white)' : 'var(--text2)') + '">' + t2 + '</span>';
+      html += '</div>';
+      // Game label
+      html += '<div style="font-size:11px;color:var(--text3);min-width:60px;text-align:right;flex-shrink:0">' + gameLabel + '</div>';
+      html += '</div>';
+    });
+    html += '</div>';
+  });
+
+  wrap.innerHTML = html;
+}
+
+function setEliteSort(col) {
+  if (eliteSortCol === col) eliteSortDir = eliteSortDir === 'desc' ? 'asc' : 'desc';
+  else { eliteSortCol = col; eliteSortDir = 'desc'; }
+  renderEliteStats();
+}
+
+function setElitePosFilter(btn) {
+  document.querySelectorAll('#elite-pos-filters .pos-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  elitePosFilter = btn.dataset.pos;
+  renderEliteStats();
 }
 
 // ============================================================
@@ -4549,8 +4645,9 @@ async function openTeamModal(teamName) {
       // Build G1/G2 score cells
       function gameScoreCell(gameScore, linkedM) {
         if (!gameScore && !linkedM) return '<td style="padding:7px 6px;text-align:center;color:var(--text3);font-size:11px">—</td>';
-        var hs = linkedM ? (+linkedM.score1||0) : gameScore.hs;
-        var as = linkedM ? (+linkedM.score2||0) : gameScore.as;
+        // gameScore.hs/as are already remapped to home/away by getEffectiveMatchScores
+        var hs = gameScore ? gameScore.hs : (+linkedM.score1||0);
+        var as = gameScore ? gameScore.as : (+linkedM.score2||0);
         // From team perspective: team score vs opp score
         var ts = g.isHome ? hs : as;
         var os = g.isHome ? as : hs;
@@ -4628,11 +4725,21 @@ function openMatchDetail(id, league) {
       }
     }
 
+    const logo1 = league === 'elite' ? getDraftLogoHTML(t1, 40) : '';
+    const logo2 = league === 'elite' ? getDraftLogoHTML(t2, 40) : '';
     content.innerHTML = schedCtx + `
-      <div style="display:flex;justify-content:center;gap:32px;margin-bottom:20px;text-align:center;">
-        <div><div style="font-size:16px;font-weight:700;color:var(--text2)">${t1}</div><div style="font-family:'Bebas Neue';font-size:56px;color:${s1>s2?'var(--gold)':'var(--text3)'}">${s1}</div></div>
+      <div style="display:flex;justify-content:center;align-items:center;gap:32px;margin-bottom:20px;text-align:center;">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+          ${logo1}
+          <div style="font-size:16px;font-weight:700;color:var(--text2)">${t1}</div>
+          <div style="font-family:'Bebas Neue';font-size:56px;color:${s1>s2?'var(--gold)':'var(--text3)'}">${s1}</div>
+        </div>
         <div style="font-family:'Bebas Neue';font-size:28px;color:var(--text3);padding-top:20px">VS</div>
-        <div><div style="font-size:16px;font-weight:700;color:var(--text2)">${t2}</div><div style="font-family:'Bebas Neue';font-size:56px;color:${s2>s1?'var(--gold)':'var(--text3)'}">${s2}</div></div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px;">
+          ${logo2}
+          <div style="font-size:16px;font-weight:700;color:var(--text2)">${t2}</div>
+          <div style="font-family:'Bebas Neue';font-size:56px;color:${s2>s1?'var(--gold)':'var(--text3)'}">${s2}</div>
+        </div>
       </div>
       ${(m.quarters1||[]).length ? `
       <div style="display:flex;justify-content:center;gap:8px;margin-bottom:16px;flex-wrap:wrap">
@@ -4759,13 +4866,30 @@ function getEliteSchedule() {
 
 // Returns effective G1/G2 scores for a schedule slot:
 // linked box score match scores take priority over manual eliteResults entries.
+function _schedTeamMatch(matchTeam, schedTeam) {
+  // Fuzzy check: is the match team the same as the schedule team?
+  if (!matchTeam || !schedTeam) return false;
+  var a = matchTeam.toLowerCase().replace(/[\s\-_]+/g, '');
+  var b = schedTeam.toLowerCase().replace(/[\s\-_]+/g, '');
+  return a === b || a.includes(b) || b.includes(a);
+}
+function _linkedScore(lm, homeTeam) {
+  // Map score1/score2 to hs/as based on which team is home in the schedule
+  if (!lm) return null;
+  var team1IsHome = _schedTeamMatch(lm.team1, homeTeam);
+  return team1IsHome
+    ? {hs: +lm.score1 || 0, as: +lm.score2 || 0}
+    : {hs: +lm.score2 || 0, as: +lm.score1 || 0};
+}
 function getEffectiveMatchScores(gid) {
+  var sched = getEliteSchedule()[parseInt(gid)];
+  var homeTeam = sched ? sched.home : null;
   var linked = (state.eliteMatches || []).filter(function(m) { return String(m.scheduleGameId) === String(gid); });
   var lG1 = linked.find(function(m) { return String(m.scheduleGameNum) === '1'; }) || (linked.length === 1 ? linked[0] : null);
   var lG2 = linked.find(function(m) { return String(m.scheduleGameNum) === '2'; });
   var gres = (state.eliteResults || {})[gid];
-  var g1 = lG1 ? {hs: +lG1.score1 || 0, as: +lG1.score2 || 0} : (gres && gres.g1 ? gres.g1 : null);
-  var g2 = lG2 ? {hs: +lG2.score1 || 0, as: +lG2.score2 || 0} : (gres && gres.g2 ? gres.g2 : null);
+  var g1 = lG1 ? _linkedScore(lG1, homeTeam) : (gres && gres.g1 ? gres.g1 : null);
+  var g2 = lG2 ? _linkedScore(lG2, homeTeam) : (gres && gres.g2 ? gres.g2 : null);
   return {g1: g1, g2: g2, lG1: lG1, lG2: lG2, gres: gres};
 }
 
@@ -4899,10 +5023,10 @@ async function renderSchedule() {
         html += '<div id="strip-' + g.gid + '" style="background:rgba(0,0,0,.25);border:1px solid ' + stripBorder + ';border-top:none;border-radius:0 0 6px 6px;display:flex;gap:0">';
         [['G1', g1, linkedG1], ['G2', g2, linkedG2]].forEach(function(trio, idx) {
           var label = trio[0], game = trio[1], lm = trio[2];
-          // Determine what score to display: prefer linked match score, fall back to eliteResults score
+          // Determine what score to display: prefer remapped game score (already home/away correct), fall back to eliteResults score
           var displayScore = null;
-          if (lm) { displayScore = {hs: +lm.score1 || 0, as: +lm.score2 || 0, clickable: true}; }
-          else if (game) { displayScore = {hs: game.hs, as: game.as, clickable: false}; }
+          if (game) { displayScore = {hs: game.hs, as: game.as, clickable: !!lm}; }
+          else if (lm) { displayScore = {hs: +lm.score1 || 0, as: +lm.score2 || 0, clickable: true}; }
           var isForfeit = displayScore && ((displayScore.hs === 60 && displayScore.as === 40) || (displayScore.hs === 40 && displayScore.as === 60));
           if (idx > 0) html += '<div style="width:1px;background:rgba(255,255,255,.06)"></div>';
           html += '<div style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:5px 10px;flex-wrap:wrap">';
