@@ -4347,13 +4347,8 @@ function setLeague(l) {
 // ELITE STATS
 // ============================================================
 let elitePosFilter = '';
-
-function setElitePosFilter(btn) {
-  elitePosFilter = btn.dataset.pos;
-  document.querySelectorAll('#elite-pos-filters .pos-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  renderEliteStats();
-}
+let eliteSortCol = 'per';
+let eliteSortDir = 'desc';
 
 function renderEliteStats() {
   if (!state.eliteMatches) state.eliteMatches = [];
@@ -4371,48 +4366,86 @@ function renderEliteStats() {
   const sortedPts = [...aggs].sort((a,b)=>b.ppg-a.ppg);
   if (ds) ds.textContent = sortedPts.length ? sortedPts[0].name.split(' ')[0] : '—';
 
-  // Stats table (reuse existing renderStats logic but for eliteMatches)
+  // Stats table — identical columns/sort/clickable names as Arena Statistics
   const search = (document.getElementById('elite-search-input')?.value || '').toLowerCase();
   let players = getAggregates(matches);
   if (elitePosFilter) players = players.filter(p => p.pos === elitePosFilter);
   if (search) players = players.filter(p => p.name.toLowerCase().includes(search));
-  players.sort((a,b) => b.per - a.per);
+
+  players.sort((a, b) => {
+    let va = a[eliteSortCol] ?? 0, vb = b[eliteSortCol] ?? 0;
+    if (typeof va === 'string') return eliteSortDir === 'asc' ? va.localeCompare(vb) : vb.localeCompare(va);
+    return eliteSortDir === 'asc' ? va - vb : vb - va;
+  });
 
   const wrap = document.getElementById('elite-stats-table-wrap');
   if (!wrap) return;
 
   if (!players.length) {
     wrap.innerHTML = '<div style="color:var(--text3);padding:24px;text-align:center">' + (matches.length === 0 ? '🏀 No Elite Season 1 matches uploaded yet. Use admin panel with "Elite S1" selected.' : 'No players found.') + '</div>';
-  } else {
-    // Build same table as renderStats — use existing buildStatsTable if available, else minimal version
-    let html = '<table style="width:100%;border-collapse:collapse;font-size:13px">';
-    html += '<thead><tr style="border-bottom:2px solid var(--gold)">';
-    ['#','Player','Pos','GP','GRD','CS','PER','PTS','REB','AST','STL','BLK','FG%','3P%'].forEach(h => {
-      html += '<th style="padding:8px 6px;color:var(--text3);font-weight:700;text-align:' + (h==='Player'?'left':'center') + ';text-transform:uppercase;letter-spacing:.06em;font-size:11px">' + h + '</th>';
-    });
-    html += '</tr></thead><tbody>';
-    players.forEach((p, i) => {
-      const rowBg = i % 2 === 0 ? 'var(--bg4)' : 'transparent';
-      html += '<tr style="background:' + rowBg + ';border-bottom:1px solid var(--border)">';
-      html += '<td style="padding:8px 6px;text-align:center;color:var(--text3);font-size:12px">' + (i+1) + '</td>';
-      html += '<td style="padding:8px 6px;font-weight:700;color:var(--white)">' + p.name + '</td>';
-      html += '<td style="padding:8px 6px;text-align:center;color:var(--text2)">' + (p.pos||'—') + '</td>';
-      html += '<td style="padding:8px 6px;text-align:center;color:var(--text2)">' + (p.gp||0) + '</td>';
-      html += '<td style="padding:8px 6px;text-align:center"><span style="font-weight:700;color:var(--gold)">' + (p.grade||'—') + '</span></td>';
-      html += '<td style="padding:8px 6px;text-align:center;font-weight:700;color:var(--gold)">' + (p.cs||0).toFixed(1) + '</td>';
-      html += '<td style="padding:8px 6px;text-align:center;font-weight:700;color:var(--gold2)">' + (p.per||0).toFixed(1) + '</td>';
-      html += '<td style="padding:8px 6px;text-align:center">' + (p.ppg||0).toFixed(1) + '</td>';
-      html += '<td style="padding:8px 6px;text-align:center">' + (p.rpg||0).toFixed(1) + '</td>';
-      html += '<td style="padding:8px 6px;text-align:center">' + (p.apg||0).toFixed(1) + '</td>';
-      html += '<td style="padding:8px 6px;text-align:center">' + (p.spg||0).toFixed(1) + '</td>';
-      html += '<td style="padding:8px 6px;text-align:center">' + (p.bpg||0).toFixed(1) + '</td>';
-      html += '<td style="padding:8px 6px;text-align:center">' + (p.fg_pct !== '—' ? p.fg_pct + '%' : '—') + '</td>';
-      html += '<td style="padding:8px 6px;text-align:center">' + (p.tp_pct !== '—' ? p.tp_pct + '%' : '—') + '</td>';
-      html += '</tr>';
-    });
-    html += '</tbody></table>';
-    wrap.innerHTML = html;
+    return;
   }
+
+  const maxPer = Math.max(...players.map(p => p.per || 0), 1);
+
+  const cols = [
+    { key:'#',       label:'#',      sortable:false },
+    { key:'name',    label:'Player', sortable:true },
+    { key:'pos',     label:'POS',    sortable:true },
+    { key:'gp',      label:'GP',     sortable:true },
+    { key:'grd',     label:'GRD',    sortable:true },
+    { key:'ppg',     label:'PTS',    sortable:true },
+    { key:'rpg',     label:'REB',    sortable:true },
+    { key:'apg',     label:'AST',    sortable:true },
+    { key:'spg',     label:'STL',    sortable:true },
+    { key:'bpg',     label:'BLK',    sortable:true },
+    { key:'fpg',     label:'PF',     sortable:true },
+    { key:'tpg',     label:'TO',     sortable:true },
+    { key:'fg_pct',  label:'FG%',    sortable:true },
+    { key:'tp_pct',  label:'3P%',    sortable:true },
+    { key:'ft_pct',  label:'FT%',    sortable:true },
+    { key:'wins',    label:'W',      sortable:true },
+    { key:'losses',  label:'L',      sortable:true },
+    { key:'win_pct', label:'W%',     sortable:true },
+    { key:'csa',     label:'CS ℹ',   sortable:true },
+    { key:'per',     label:'PER ℹ',  sortable:true },
+  ];
+
+  wrap.innerHTML = `<table>
+    <thead><tr>${cols.map(c => {
+      if (!c.sortable) return `<th>${c.label}</th>`;
+      const cls = eliteSortCol === c.key ? (eliteSortDir === 'desc' ? 'sorted-desc' : 'sorted-asc') : '';
+      return `<th class="${cls}" onclick="setEliteSort('${c.key}')">${c.label}</th>`;
+    }).join('')}</tr></thead>
+    <tbody>
+    ${players.map((p, i) => {
+      const rankClass = i===0?'rank-1':i===1?'rank-2':i===2?'rank-3':'';
+      const grdClass = p.grd==='A+'?'grd-aplus':p.grd==='A'?'grd-a':p.grd==='A-'?'grd-aminus':p.grd==='B+'?'grd-bplus':'grd-b';
+      return `<tr class="${rankClass}">
+        <td><span class="rank-num">${i+1}</span></td>
+        <td class="td-name" style="cursor:pointer;" onclick="openElitePlayerModal('${p.name.replace(/'/g,"\\'")}')"><span style="border-bottom:1px dashed var(--gold);color:var(--white);transition:color .15s;" onmouseover="this.style.color='var(--gold)'" onmouseout="this.style.color='var(--white)'">${p.name}</span></td>
+        <td class="td-pos">${p.pos}</td>
+        <td>${p.gp}</td>
+        <td class="td-grd ${grdClass}">${p.grd||'—'}</td>
+        <td class="td-pts">${(p.ppg||0).toFixed(1)}</td>
+        <td>${(p.rpg||0).toFixed(1)}</td>
+        <td>${(p.apg||0).toFixed(1)}</td>
+        <td>${(p.spg||0).toFixed(1)}</td>
+        <td>${(p.bpg||0).toFixed(1)}</td>
+        <td>${(p.fpg||0).toFixed(1)}</td>
+        <td>${(p.tpg||0).toFixed(1)}</td>
+        <td>${p.fg_pct && p.fg_pct!=='—' ? p.fg_pct+'%' : '—'}</td>
+        <td>${p.tp_pct && p.tp_pct!=='—' ? p.tp_pct+'%' : '—'}</td>
+        <td>${p.ft_pct && p.ft_pct!=='—' ? p.ft_pct+'%' : '—'}</td>
+        <td>${p.wins||0}</td>
+        <td>${p.losses||0}</td>
+        <td>${p.win_pct||0}%</td>
+        <td>${p.csa ? p.csa.toFixed(1) : '—'}</td>
+        <td><div class="per-bar"><span class="per-val">${(p.per||0).toFixed(1)}</span><div class="per-bg"><div class="per-fill" style="width:${((p.per||0)/maxPer*100).toFixed(1)}%"></div></div></div></td>
+      </tr>`;
+    }).join('')}
+    </tbody>
+  </table>`;
 
   // Elite box scores
   const bsEl = document.getElementById('elite-boxscores-list');
@@ -4435,6 +4468,19 @@ function renderEliteStats() {
       bsEl.innerHTML = bhtml;
     }
   }
+}
+
+function setEliteSort(col) {
+  if (eliteSortCol === col) eliteSortDir = eliteSortDir === 'desc' ? 'asc' : 'desc';
+  else { eliteSortCol = col; eliteSortDir = 'desc'; }
+  renderEliteStats();
+}
+
+function setElitePosFilter(btn) {
+  document.querySelectorAll('#elite-pos-filters .pos-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  elitePosFilter = btn.dataset.pos;
+  renderEliteStats();
 }
 
 // ============================================================
