@@ -4324,10 +4324,23 @@ async function fetchDraftCache() {
 
 function getDraftLogoHTML(teamName, size) {
   size = size || 28;
-  const idx = ELITE_TEAMS.indexOf(teamName);
-  const col = TEAM_COLORS[idx % TEAM_COLORS.length] || 'var(--gold)';
-  const initials = teamName.split(' ').map(function(w){return w[0];}).join('').substring(0,3).toUpperCase();
-  const team = _draftCache && (_draftCache.teams || []).find(function(t){ return t.name === teamName; });
+  // Try exact match first, then fuzzy (handles "KW5" vs "TEAM KW5" etc.)
+  var team = _draftCache && (_draftCache.teams || []).find(function(t){ return t.name === teamName; });
+  if (!team && _draftCache) {
+    var normA = teamName.toLowerCase().replace(/[\s\-_]+/g, '');
+    team = (_draftCache.teams || []).find(function(t) {
+      var normB = (t.name || '').toLowerCase().replace(/[\s\-_]+/g, '');
+      return normA === normB || normA.includes(normB) || normB.includes(normA);
+    });
+  }
+  // Determine color and initials using matched name or original
+  var displayName = (team && team.name) || teamName;
+  var idx = ELITE_TEAMS.findIndex(function(n) {
+    var na = n.toLowerCase().replace(/[\s\-_]+/g,''), nb = displayName.toLowerCase().replace(/[\s\-_]+/g,'');
+    return na === nb || na.includes(nb) || nb.includes(na);
+  });
+  const col = TEAM_COLORS[idx >= 0 ? idx % TEAM_COLORS.length : 0] || 'var(--gold)';
+  const initials = displayName.split(' ').map(function(w){return w[0];}).join('').substring(0,3).toUpperCase();
   if (team && team.logoB64) {
     return '<img src="' + team.logoB64 + '" style="width:' + size + 'px;height:' + size + 'px;object-fit:contain;border-radius:3px;flex-shrink:0">';
   }
@@ -4468,9 +4481,12 @@ function renderEliteBoxScores() {
 
   // Group by round/note
   var byRound = {};
+  // Sort: group G1+G2 of the same matchup together (by scheduleGameId), then by game number
   var sorted = [...matches].sort(function(a, b) {
-    var rd = (parseInt(a.scheduleGameNum)||0) - (parseInt(b.scheduleGameNum)||0);
-    return new Date(b.date||0) - new Date(a.date||0) || rd;
+    var aId = a.scheduleGameId != null ? parseInt(a.scheduleGameId) : 9999;
+    var bId = b.scheduleGameId != null ? parseInt(b.scheduleGameId) : 9999;
+    if (aId !== bId) return aId - bId;
+    return (parseInt(a.scheduleGameNum)||1) - (parseInt(b.scheduleGameNum)||1);
   });
 
   sorted.forEach(function(m) {
