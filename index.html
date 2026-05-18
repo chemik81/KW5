@@ -1576,8 +1576,10 @@ function getAggregates(matches) {
     const process = (players, result) => {
       (players||[]).forEach(p => {
         if (!p.name) return;
-        if (!map[p.name]) map[p.name] = { name:p.name, pos:p.pos||'', gp:0, wins:0, losses:0, pts:0, reb:0, ast:0, stl:0, blk:0, to:0, pf:0, grades:[], fgm:0,fga:0,tpm:0,tpa:0,ftm:0,fta:0, posCounts:{} };
-        const pl = map[p.name];
+        const pKey = p.name.trim();
+        if (!pKey) return;
+        if (!map[pKey]) map[pKey] = { name:pKey, pos:p.pos||'', gp:0, wins:0, losses:0, pts:0, reb:0, ast:0, stl:0, blk:0, to:0, pf:0, grades:[], fgm:0,fga:0,tpm:0,tpa:0,ftm:0,fta:0, posCounts:{} };
+        const pl = map[pKey];
         pl.gp++;
         if (result === 'W') pl.wins++;
         else if (result === 'L') pl.losses++;
@@ -2369,6 +2371,15 @@ function saveMatch() {
   if (schedSel && schedSel.value) {
     match.scheduleGameId = schedSel.value;
     match.scheduleGameNum = schedNum ? schedNum.value : '1';
+    // Override team names with canonical schedule names
+    const sg = getEliteSchedule()[parseInt(schedSel.value)];
+    if (sg) {
+      const t1matchesHome = _schedTeamMatch(match.team1, sg.home);
+      const t1matchesAway = _schedTeamMatch(match.team1, sg.away);
+      if (t1matchesHome) { match.team1 = sg.home; match.team2 = sg.away; }
+      else if (t1matchesAway) { match.team1 = sg.away; match.team2 = sg.home; }
+      else { match.team1 = sg.home; match.team2 = sg.away; } // fallback: keep schedule order
+    }
   } else {
     delete match.scheduleGameId;
     delete match.scheduleGameNum;
@@ -2715,7 +2726,7 @@ function openPlayerModal(playerName, matchesArr) {
   _matches.forEach(m => {
     const checkTeam = (players, teamName, oppName) => {
       (players||[]).forEach(p => {
-        if (p.name !== playerName) return;
+        if ((p.name||'').trim() !== playerName) return;
         const fgPct  = p.fga  > 0 ? ((p.fgm /p.fga )*100).toFixed(0)+'%' : '—';
         const tpPct  = p.tpa  > 0 ? ((p.tpm /p.tpa )*100).toFixed(0)+'%' : '—';
         const ftPct  = p.fta  > 0 ? ((p.ftm /p.fta )*100).toFixed(0)+'%' : '—';
@@ -2830,19 +2841,32 @@ function openPlayerModal(playerName, matchesArr) {
     `<span style="background:var(--gold);color:#000;font-size:10px;font-weight:700;padding:1px 6px;border-radius:3px;margin-right:6px;">${posLabel||'—'}</span>` +
     `<span>${gp} games</span>`;
 
-  // Team logo from draft cache
+  // Team logo — find from matches first, fallback to draft picks
   const logoEl = document.getElementById('player-modal-team-logo');
   if (logoEl) {
     logoEl.innerHTML = '';
-    fetchDraftCache().then(function() {
-      if (!_draftCache) return;
-      const pick = (_draftCache.picks || []).find(function(pk) { return pk.playerId === playerName; });
-      if (!pick) return;
-      const team = (_draftCache.teams || []).find(function(t) { return t.id === pick.teamId; });
-      if (!team) return;
-      logoEl.innerHTML = getDraftLogoHTML(team.name, 44);
-      logoEl.title = team.name;
-    });
+    // Find player's team directly from the matches array
+    var _teamFromMatches = null;
+    for (var _lm of _matches) {
+      if ((_lm.team1_players||[]).some(function(p){ return p.name === playerName || p.name.trim() === playerName; })) { _teamFromMatches = _lm.team1; break; }
+      if ((_lm.team2_players||[]).some(function(p){ return p.name === playerName || p.name.trim() === playerName; })) { _teamFromMatches = _lm.team2; break; }
+    }
+    if (_teamFromMatches) {
+      fetchDraftCache().then(function() {
+        logoEl.innerHTML = getDraftLogoHTML(_teamFromMatches, 44);
+        logoEl.title = _teamFromMatches;
+      });
+    } else {
+      fetchDraftCache().then(function() {
+        if (!_draftCache) return;
+        const pick = (_draftCache.picks || []).find(function(pk) { return pk.playerId === playerName; });
+        if (!pick) return;
+        const team = (_draftCache.teams || []).find(function(t) { return t.id === pick.teamId; });
+        if (!team) return;
+        logoEl.innerHTML = getDraftLogoHTML(team.name, 44);
+        logoEl.title = team.name;
+      });
+    }
   }
 
   document.getElementById('player-modal-content').innerHTML = `
@@ -2930,7 +2954,7 @@ function openElitePlayerModal(playerName) {
   let hasEliteGames = false;
   for (var _em of eliteMatches) {
     var _all = (_em.team1_players||[]).concat(_em.team2_players||[]);
-    if (_all.some(function(p){ return p.name === playerName; })) { hasEliteGames = true; break; }
+    if (_all.some(function(p){ return (p.name||'').trim() === playerName; })) { hasEliteGames = true; break; }
   }
 
   if (!hasEliteGames) {
@@ -2943,11 +2967,10 @@ function openElitePlayerModal(playerName) {
       fetchDraftCache().then(function() {
         if (!_draftCache) return;
         var pick = (_draftCache.picks || []).find(function(pk){ return pk.playerId === playerName; });
-        if (!pick) return;
-        var team = (_draftCache.teams || []).find(function(t){ return t.id === pick.teamId; });
-        if (!team) return;
-        logoEl.innerHTML = getDraftLogoHTML(team.name, 44);
-        logoEl.title = team.name;
+        if (pick) {
+          var team = (_draftCache.teams || []).find(function(t){ return t.id === pick.teamId; });
+          if (team) { logoEl.innerHTML = getDraftLogoHTML(team.name, 44); logoEl.title = team.name; }
+        }
       });
     }
     document.getElementById('player-modal-content').innerHTML =
@@ -4506,11 +4529,11 @@ function renderEliteBoxScores() {
 
   // Group by round/note
   var byRound = {};
-  // Sort: group G1+G2 of the same matchup together (by scheduleGameId), then by game number
+  // Sort: newest matchups first (descending scheduleGameId), G1 before G2 within same matchup
   var sorted = [...matches].sort(function(a, b) {
-    var aId = a.scheduleGameId != null ? parseInt(a.scheduleGameId) : 9999;
-    var bId = b.scheduleGameId != null ? parseInt(b.scheduleGameId) : 9999;
-    if (aId !== bId) return aId - bId;
+    var aId = a.scheduleGameId != null ? parseInt(a.scheduleGameId) : -1;
+    var bId = b.scheduleGameId != null ? parseInt(b.scheduleGameId) : -1;
+    if (aId !== bId) return bId - aId; // descending = newest first
     return (parseInt(a.scheduleGameNum)||1) - (parseInt(b.scheduleGameNum)||1);
   });
 
@@ -4969,18 +4992,42 @@ async function renderSchedule() {
   }
   Object.values(rounds).forEach(function(arr) { arr.sort(function(a,b){ return schedSortKey(a)-schedSortKey(b); }); });
 
-  for (var rn = 1; rn <= 11; rn++) {
+  // Separate complete rounds (all games played) from active/upcoming
+  var allRoundNums = Object.keys(rounds).map(Number).sort(function(a,b){return a-b;});
+  function isRoundComplete(rn) {
     var games = rounds[rn];
-    if (!games) continue;
+    return games.every(function(g) { var e = getEffectiveMatchScores(g.gid); return e.g1 !== null && e.g2 !== null; });
+  }
+  var activeRounds   = allRoundNums.filter(function(rn){ return !isRoundComplete(rn); });
+  var completeRounds = allRoundNums.filter(function(rn){ return isRoundComplete(rn); });
+  // Active/upcoming rounds first (ascending), then complete rounds at the bottom (ascending)
+  var renderOrder = activeRounds.concat(completeRounds);
+
+  var completeSet = new Set(completeRounds);
+  var firstCompleteShown = false;
+
+  renderOrder.forEach(function(rn) {
+    var games = rounds[rn];
+    if (!games) return;
     var dates = [];
     games.forEach(function(g) { if (dates.indexOf(g.date) < 0) dates.push(g.date); });
     dates.sort(function(a,b){ return new Date(a+' 2025').getTime()-new Date(b+' 2025').getTime(); });
     var dateLabel = dates.length === 1 ? dates[0] : dates[0] + ' — ' + dates[dates.length - 1];
     var playedCount = games.filter(function(g) { var e = getEffectiveMatchScores(g.gid); return e.g1 !== null || e.g2 !== null; }).length;
 
+    // Divider before the completed rounds block
+    if (completeSet.has(rn) && !firstCompleteShown) {
+      firstCompleteShown = true;
+      html += '<div style="margin:24px 0 16px;display:flex;align-items:center;gap:10px">'
+        + '<div style="flex:1;height:1px;background:var(--border2)"></div>'
+        + '<div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;font-weight:700;white-space:nowrap">Completed Rounds</div>'
+        + '<div style="flex:1;height:1px;background:var(--border2)"></div>'
+        + '</div>';
+    }
+
     html += '<div style="margin-bottom:20px">';
     html += '<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border2)">';
-    html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:18px;font-weight:900;color:var(--gold);letter-spacing:.1em;min-width:90px">ROUND ' + rn + '</div>';
+    html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:18px;font-weight:900;color:' + (completeSet.has(rn)?'var(--text2)':'var(--gold)') + ';letter-spacing:.1em;min-width:90px">ROUND ' + rn + '</div>';
     html += '<div style="font-size:13px;color:var(--text3)">' + dateLabel + '</div>';
     if (playedCount > 0) html += '<div style="margin-left:auto;font-size:12px;color:var(--text2)">' + playedCount + '/' + games.length + ' played</div>';
     html += '</div>';
@@ -5141,7 +5188,7 @@ async function renderSchedule() {
       html += '</div>'; // close game wrapper
     });
     html += '</div></div>'; // close games column + round block
-  }
+  });
 
   // Playoffs
   html += '<div style="margin-top:12px;padding-top:20px;border-top:2px solid rgba(212,168,67,0.4)">';
