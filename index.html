@@ -3553,9 +3553,10 @@ function levenshtein(a, b) {
 
 function openSmartMerge() {
   const playerNames = new Set();
-  state.matches.forEach(function(m) {
-    (m.team1_players||[]).forEach(function(p) { if(p.name) playerNames.add(p.name); });
-    (m.team2_players||[]).forEach(function(p) { if(p.name) playerNames.add(p.name); });
+  const allMatchesSM = [...(state.matches||[]), ...(state.eliteMatches||[])];
+  allMatchesSM.forEach(function(m) {
+    (m.team1_players||[]).forEach(function(p) { if(p.name) playerNames.add(p.name.trim()); });
+    (m.team2_players||[]).forEach(function(p) { if(p.name) playerNames.add(p.name.trim()); });
   });
   const names = [...playerNames].sort();
 
@@ -3595,9 +3596,9 @@ function openSmartMerge() {
   const groupsHtml = multiGroups.map(function(group, gi) {
     const freq = {};
     group.forEach(function(n) {
-      freq[n] = state.matches.reduce(function(s,m) {
-        return s + (m.team1_players||[]).filter(function(p){return p.name===n;}).length
-                 + (m.team2_players||[]).filter(function(p){return p.name===n;}).length;
+      freq[n] = allMatchesSM.reduce(function(s,m) {
+        return s + (m.team1_players||[]).filter(function(p){return (p.name||'').trim()===n;}).length
+                 + (m.team2_players||[]).filter(function(p){return (p.name||'').trim()===n;}).length;
       }, 0);
     });
     group.sort(function(a,b) { return freq[b]-freq[a]; });
