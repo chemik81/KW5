@@ -1576,8 +1576,10 @@ function getAggregates(matches) {
     const process = (players, result) => {
       (players||[]).forEach(p => {
         if (!p.name) return;
-        if (!map[p.name]) map[p.name] = { name:p.name, pos:p.pos||'', gp:0, wins:0, losses:0, pts:0, reb:0, ast:0, stl:0, blk:0, to:0, pf:0, grades:[], fgm:0,fga:0,tpm:0,tpa:0,ftm:0,fta:0, posCounts:{} };
-        const pl = map[p.name];
+        const pKey = p.name.trim();
+        if (!pKey) return;
+        if (!map[pKey]) map[pKey] = { name:pKey, pos:p.pos||'', gp:0, wins:0, losses:0, pts:0, reb:0, ast:0, stl:0, blk:0, to:0, pf:0, grades:[], fgm:0,fga:0,tpm:0,tpa:0,ftm:0,fta:0, posCounts:{} };
+        const pl = map[pKey];
         pl.gp++;
         if (result === 'W') pl.wins++;
         else if (result === 'L') pl.losses++;
@@ -2715,7 +2717,7 @@ function openPlayerModal(playerName, matchesArr) {
   _matches.forEach(m => {
     const checkTeam = (players, teamName, oppName) => {
       (players||[]).forEach(p => {
-        if (p.name !== playerName) return;
+        if ((p.name||'').trim() !== playerName) return;
         const fgPct  = p.fga  > 0 ? ((p.fgm /p.fga )*100).toFixed(0)+'%' : '—';
         const tpPct  = p.tpa  > 0 ? ((p.tpm /p.tpa )*100).toFixed(0)+'%' : '—';
         const ftPct  = p.fta  > 0 ? ((p.ftm /p.fta )*100).toFixed(0)+'%' : '—';
@@ -2830,19 +2832,32 @@ function openPlayerModal(playerName, matchesArr) {
     `<span style="background:var(--gold);color:#000;font-size:10px;font-weight:700;padding:1px 6px;border-radius:3px;margin-right:6px;">${posLabel||'—'}</span>` +
     `<span>${gp} games</span>`;
 
-  // Team logo from draft cache
+  // Team logo — find from matches first, fallback to draft picks
   const logoEl = document.getElementById('player-modal-team-logo');
   if (logoEl) {
     logoEl.innerHTML = '';
-    fetchDraftCache().then(function() {
-      if (!_draftCache) return;
-      const pick = (_draftCache.picks || []).find(function(pk) { return pk.playerId === playerName; });
-      if (!pick) return;
-      const team = (_draftCache.teams || []).find(function(t) { return t.id === pick.teamId; });
-      if (!team) return;
-      logoEl.innerHTML = getDraftLogoHTML(team.name, 44);
-      logoEl.title = team.name;
-    });
+    // Find player's team directly from the matches array
+    var _teamFromMatches = null;
+    for (var _lm of _matches) {
+      if ((_lm.team1_players||[]).some(function(p){ return p.name === playerName || p.name.trim() === playerName; })) { _teamFromMatches = _lm.team1; break; }
+      if ((_lm.team2_players||[]).some(function(p){ return p.name === playerName || p.name.trim() === playerName; })) { _teamFromMatches = _lm.team2; break; }
+    }
+    if (_teamFromMatches) {
+      fetchDraftCache().then(function() {
+        logoEl.innerHTML = getDraftLogoHTML(_teamFromMatches, 44);
+        logoEl.title = _teamFromMatches;
+      });
+    } else {
+      fetchDraftCache().then(function() {
+        if (!_draftCache) return;
+        const pick = (_draftCache.picks || []).find(function(pk) { return pk.playerId === playerName; });
+        if (!pick) return;
+        const team = (_draftCache.teams || []).find(function(t) { return t.id === pick.teamId; });
+        if (!team) return;
+        logoEl.innerHTML = getDraftLogoHTML(team.name, 44);
+        logoEl.title = team.name;
+      });
+    }
   }
 
   document.getElementById('player-modal-content').innerHTML = `
@@ -2930,7 +2945,7 @@ function openElitePlayerModal(playerName) {
   let hasEliteGames = false;
   for (var _em of eliteMatches) {
     var _all = (_em.team1_players||[]).concat(_em.team2_players||[]);
-    if (_all.some(function(p){ return p.name === playerName; })) { hasEliteGames = true; break; }
+    if (_all.some(function(p){ return (p.name||'').trim() === playerName; })) { hasEliteGames = true; break; }
   }
 
   if (!hasEliteGames) {
@@ -2943,11 +2958,10 @@ function openElitePlayerModal(playerName) {
       fetchDraftCache().then(function() {
         if (!_draftCache) return;
         var pick = (_draftCache.picks || []).find(function(pk){ return pk.playerId === playerName; });
-        if (!pick) return;
-        var team = (_draftCache.teams || []).find(function(t){ return t.id === pick.teamId; });
-        if (!team) return;
-        logoEl.innerHTML = getDraftLogoHTML(team.name, 44);
-        logoEl.title = team.name;
+        if (pick) {
+          var team = (_draftCache.teams || []).find(function(t){ return t.id === pick.teamId; });
+          if (team) { logoEl.innerHTML = getDraftLogoHTML(team.name, 44); logoEl.title = team.name; }
+        }
       });
     }
     document.getElementById('player-modal-content').innerHTML =
