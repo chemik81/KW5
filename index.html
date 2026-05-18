@@ -2643,13 +2643,13 @@ function renderCorrections() {
 function applyCorrectionsToAll() {
   if (!Object.keys(state.corrections).length) { notify('No corrections defined', 'info'); return; }
   let changed = 0;
-  state.matches.forEach(m => {
+  [...(state.matches || []), ...(state.eliteMatches || [])].forEach(m => {
     [...(m.team1_players||[]), ...(m.team2_players||[])].forEach(p => {
       const corrected = state.corrections[p.name];
       if (corrected && corrected !== p.name) { p.name = corrected; changed++; }
     });
   });
-  saveState(); renderStats(); renderBoxScores();
+  saveState(); renderStats(); renderBoxScores(); renderEliteStats();
   if (changed === 0) notify('All corrections already applied — nothing to change', 'info');
   else notify(`Applied corrections to ${changed} player record${changed!==1?'s':''}`, 'success');
 }
@@ -3648,51 +3648,74 @@ function smartMergeApplyGroup(gi, namesStr) {
 // ============================================================
 // MERGE SPLIT MATCHES
 // ============================================================
+function _mergeSplitSkipKey(id1, id2) {
+  return [String(id1), String(id2)].sort().join('|');
+}
+function _getMergeSkipped() {
+  try { return new Set(JSON.parse(localStorage.getItem('kw5_skipped_merges') || '[]')); }
+  catch(e) { return new Set(); }
+}
+function _addMergeSkipped(id1, id2) {
+  var skipped = _getMergeSkipped();
+  skipped.add(_mergeSplitSkipKey(id1, id2));
+  localStorage.setItem('kw5_skipped_merges', JSON.stringify([...skipped]));
+}
+
 function openMergeSplitMatches() {
   var LOW_SCORE = 40;
   var candidates = [];
   var seen = new Set();
+  var skipped = _getMergeSkipped();
 
-  var lowMatches = state.matches.filter(function(m) {
-    return ((+m.score1||0) < LOW_SCORE || (+m.score2||0) < LOW_SCORE) && m.date;
-  });
+  // Search both arena and elite matches
+  var allPools = [
+    { arr: state.matches || [], source: 'arena' },
+    { arr: state.eliteMatches || [], source: 'elite' }
+  ];
 
-  lowMatches.forEach(function(m) {
-    if(seen.has(String(m.id))) return;
-    var sameDay = state.matches.filter(function(x) {
-      return String(x.id) !== String(m.id) && x.date === m.date && !seen.has(String(x.id));
+  allPools.forEach(function(pool) {
+    var lowMatches = pool.arr.filter(function(m) {
+      return ((+m.score1||0) < LOW_SCORE || (+m.score2||0) < LOW_SCORE) && m.date;
     });
 
-    sameDay.forEach(function(x) {
-      var teams1 = [m.team1||'', m.team2||''].map(function(t){return t.toLowerCase();});
-      var teams2 = [x.team1||'', x.team2||''].map(function(t){return t.toLowerCase();});
-      // Both teams must match (same set of teams, possibly in different order)
-      var teamsMatch = teams1.every(function(t) {
-        return teams2.some(function(t2){
-          var minLen = Math.min(t.length, t2.length);
-          var prefixMatch = minLen >= 3 && (t.slice(0,4) === t2.slice(0,4));
-          var dist = levenshtein(t, t2);
-          return prefixMatch || dist <= 2;
-        });
+    lowMatches.forEach(function(m) {
+      if(seen.has(String(m.id))) return;
+      var sameDay = pool.arr.filter(function(x) {
+        return String(x.id) !== String(m.id) && x.date === m.date && !seen.has(String(x.id));
       });
-      if(!teamsMatch) return;
 
-      var m1players = [...(m.team1_players||[]), ...(m.team2_players||[])].map(function(p){return p.name;});
-      var m2players = [...(x.team1_players||[]), ...(x.team2_players||[])].map(function(p){return p.name;});
-      var common = m1players.filter(function(n){ return m2players.includes(n); });
-      // ALL players from m1 must be present in m2 (and vice versa)
-      if(common.length < m1players.length || common.length < m2players.length) return;
+      sameDay.forEach(function(x) {
+        // Skip persisted pairs
+        if (skipped.has(_mergeSplitSkipKey(m.id, x.id))) return;
 
-      seen.add(String(m.id));
-      seen.add(String(x.id));
+        var teams1 = [m.team1||'', m.team2||''].map(function(t){return t.toLowerCase();});
+        var teams2 = [x.team1||'', x.team2||''].map(function(t){return t.toLowerCase();});
+        var teamsMatch = teams1.every(function(t) {
+          return teams2.some(function(t2){
+            var minLen = Math.min(t.length, t2.length);
+            var prefixMatch = minLen >= 3 && (t.slice(0,4) === t2.slice(0,4));
+            var dist = levenshtein(t, t2);
+            return prefixMatch || dist <= 2;
+          });
+        });
+        if(!teamsMatch) return;
 
-      var ms1 = +m.score1||0, ms2 = +m.score2||0;
-      var xs1 = +x.score1||0, xs2 = +x.score2||0;
-      var t1match = (m.team1||'').toLowerCase() === (x.team1||'').toLowerCase();
-      var mergedS1 = t1match ? ms1+xs1 : ms1+xs2;
-      var mergedS2 = t1match ? ms2+xs2 : ms2+xs1;
+        var m1players = [...(m.team1_players||[]), ...(m.team2_players||[])].map(function(p){return p.name;});
+        var m2players = [...(x.team1_players||[]), ...(x.team2_players||[])].map(function(p){return p.name;});
+        var common = m1players.filter(function(n){ return m2players.includes(n); });
+        if(common.length < m1players.length || common.length < m2players.length) return;
 
-      candidates.push({m1:m, m2:x, mergedS1:mergedS1, mergedS2:mergedS2, t1match:t1match, common:common});
+        seen.add(String(m.id));
+        seen.add(String(x.id));
+
+        var ms1 = +m.score1||0, ms2 = +m.score2||0;
+        var xs1 = +x.score1||0, xs2 = +x.score2||0;
+        var t1match = (m.team1||'').toLowerCase() === (x.team1||'').toLowerCase();
+        var mergedS1 = t1match ? ms1+xs1 : ms1+xs2;
+        var mergedS2 = t1match ? ms2+xs2 : ms2+xs1;
+
+        candidates.push({m1:m, m2:x, mergedS1:mergedS1, mergedS2:mergedS2, t1match:t1match, common:common, source:pool.source});
+      });
     });
   });
 
@@ -3723,9 +3746,10 @@ function openMergeSplitMatches() {
       + '</button>'
       + '</div>'
       + '<div id="msc-detail-' + i + '" style="display:none;margin-bottom:8px"></div>'
-      + '<div style="display:flex;gap:8px">'
+      + '<div style="display:flex;align-items:center;gap:8px">'
       + '<button onclick="executeMerge(' + i + ')" style="background:#4ade80;color:#000;border:none;border-radius:4px;padding:5px 16px;cursor:pointer;font-weight:700;font-size:.85rem">Merge and save</button>'
-      + '<button onclick="document.getElementById(\'msc-' + i + '\').remove()" style="background:transparent;border:1px solid #555;color:#888;border-radius:4px;padding:5px 10px;cursor:pointer;font-size:.8rem">Skip</button>'
+      + '<button onclick="_addMergeSkipped(\'' + c.m1.id + '\',\'' + c.m2.id + '\');document.getElementById(\'msc-' + i + '\').remove()" style="background:transparent;border:1px solid #555;color:#888;border-radius:4px;padding:5px 10px;cursor:pointer;font-size:.8rem">Skip</button>'
+      + '<span style="margin-left:auto;font-size:.7rem;color:' + (c.source==='elite'?'#fb923c':'#60a5fa') + ';font-weight:700;text-transform:uppercase">' + c.source + '</span>'
       + '</div></div>';
   }).join('');
 
@@ -3862,15 +3886,16 @@ function executeMerge(idx) {
     note: (m1.note ? m1.note+' ' : '') + '[merged match]',
   });
 
-  state.matches = state.matches.map(function(m) {
+  var arr = c.source === 'elite' ? 'eliteMatches' : 'matches';
+  state[arr] = state[arr].map(function(m) {
     return String(m.id)===String(m1.id) ? mergedMatch : m;
   }).filter(function(m) {
     return String(m.id) !== String(m2.id);
   });
 
   saveState();
-  renderBoxScores();
-  renderStats();
+  if (c.source === 'elite') { renderEliteStats(); renderEliteBoxScores(); }
+  else { renderBoxScores(); renderStats(); }
   notify('Matches merged: ' + mergedS1 + '-' + mergedS2, 'success');
 
   var card = document.getElementById('msc-' + idx);
