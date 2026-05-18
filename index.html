@@ -4506,11 +4506,11 @@ function renderEliteBoxScores() {
 
   // Group by round/note
   var byRound = {};
-  // Sort: group G1+G2 of the same matchup together (by scheduleGameId), then by game number
+  // Sort: newest matchups first (descending scheduleGameId), G1 before G2 within same matchup
   var sorted = [...matches].sort(function(a, b) {
-    var aId = a.scheduleGameId != null ? parseInt(a.scheduleGameId) : 9999;
-    var bId = b.scheduleGameId != null ? parseInt(b.scheduleGameId) : 9999;
-    if (aId !== bId) return aId - bId;
+    var aId = a.scheduleGameId != null ? parseInt(a.scheduleGameId) : -1;
+    var bId = b.scheduleGameId != null ? parseInt(b.scheduleGameId) : -1;
+    if (aId !== bId) return bId - aId; // descending = newest first
     return (parseInt(a.scheduleGameNum)||1) - (parseInt(b.scheduleGameNum)||1);
   });
 
@@ -4969,18 +4969,42 @@ async function renderSchedule() {
   }
   Object.values(rounds).forEach(function(arr) { arr.sort(function(a,b){ return schedSortKey(a)-schedSortKey(b); }); });
 
-  for (var rn = 1; rn <= 11; rn++) {
+  // Separate complete rounds (all games played) from active/upcoming
+  var allRoundNums = Object.keys(rounds).map(Number).sort(function(a,b){return a-b;});
+  function isRoundComplete(rn) {
     var games = rounds[rn];
-    if (!games) continue;
+    return games.every(function(g) { var e = getEffectiveMatchScores(g.gid); return e.g1 !== null && e.g2 !== null; });
+  }
+  var activeRounds   = allRoundNums.filter(function(rn){ return !isRoundComplete(rn); });
+  var completeRounds = allRoundNums.filter(function(rn){ return isRoundComplete(rn); });
+  // Active/upcoming rounds first (ascending), then complete rounds at the bottom (ascending)
+  var renderOrder = activeRounds.concat(completeRounds);
+
+  var completeSet = new Set(completeRounds);
+  var firstCompleteShown = false;
+
+  renderOrder.forEach(function(rn) {
+    var games = rounds[rn];
+    if (!games) return;
     var dates = [];
     games.forEach(function(g) { if (dates.indexOf(g.date) < 0) dates.push(g.date); });
     dates.sort(function(a,b){ return new Date(a+' 2025').getTime()-new Date(b+' 2025').getTime(); });
     var dateLabel = dates.length === 1 ? dates[0] : dates[0] + ' — ' + dates[dates.length - 1];
     var playedCount = games.filter(function(g) { var e = getEffectiveMatchScores(g.gid); return e.g1 !== null || e.g2 !== null; }).length;
 
+    // Divider before the completed rounds block
+    if (completeSet.has(rn) && !firstCompleteShown) {
+      firstCompleteShown = true;
+      html += '<div style="margin:24px 0 16px;display:flex;align-items:center;gap:10px">'
+        + '<div style="flex:1;height:1px;background:var(--border2)"></div>'
+        + '<div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;font-weight:700;white-space:nowrap">Completed Rounds</div>'
+        + '<div style="flex:1;height:1px;background:var(--border2)"></div>'
+        + '</div>';
+    }
+
     html += '<div style="margin-bottom:20px">';
     html += '<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid var(--border2)">';
-    html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:18px;font-weight:900;color:var(--gold);letter-spacing:.1em;min-width:90px">ROUND ' + rn + '</div>';
+    html += '<div style="font-family:\'Barlow Condensed\',sans-serif;font-size:18px;font-weight:900;color:' + (completeSet.has(rn)?'var(--text2)':'var(--gold)') + ';letter-spacing:.1em;min-width:90px">ROUND ' + rn + '</div>';
     html += '<div style="font-size:13px;color:var(--text3)">' + dateLabel + '</div>';
     if (playedCount > 0) html += '<div style="margin-left:auto;font-size:12px;color:var(--text2)">' + playedCount + '/' + games.length + ' played</div>';
     html += '</div>';
@@ -5141,7 +5165,7 @@ async function renderSchedule() {
       html += '</div>'; // close game wrapper
     });
     html += '</div></div>'; // close games column + round block
-  }
+  });
 
   // Playoffs
   html += '<div style="margin-top:12px;padding-top:20px;border-top:2px solid rgba(212,168,67,0.4)">';
