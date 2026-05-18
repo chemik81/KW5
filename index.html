@@ -4538,7 +4538,13 @@ function renderEliteBoxScores() {
   });
 
   sorted.forEach(function(m) {
-    var rnd = (m.note || '').replace(/elite\s*/i,'').trim() || 'Week 1';
+    var rnd;
+    if (m.scheduleGameId != null) {
+      var sg = getEliteSchedule()[parseInt(m.scheduleGameId)];
+      rnd = sg ? 'Week ' + sg.round : 'Week 1';
+    } else {
+      rnd = (m.note || '').replace(/elite\s*/i,'').trim() || 'Week 1';
+    }
     if (!byRound[rnd]) byRound[rnd] = [];
     byRound[rnd].push(m);
   });
