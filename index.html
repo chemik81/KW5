@@ -2371,6 +2371,15 @@ function saveMatch() {
   if (schedSel && schedSel.value) {
     match.scheduleGameId = schedSel.value;
     match.scheduleGameNum = schedNum ? schedNum.value : '1';
+    // Override team names with canonical schedule names
+    const sg = getEliteSchedule()[parseInt(schedSel.value)];
+    if (sg) {
+      const t1matchesHome = _schedTeamMatch(match.team1, sg.home);
+      const t1matchesAway = _schedTeamMatch(match.team1, sg.away);
+      if (t1matchesHome) { match.team1 = sg.home; match.team2 = sg.away; }
+      else if (t1matchesAway) { match.team1 = sg.away; match.team2 = sg.home; }
+      else { match.team1 = sg.home; match.team2 = sg.away; } // fallback: keep schedule order
+    }
   } else {
     delete match.scheduleGameId;
     delete match.scheduleGameNum;
